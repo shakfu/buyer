@@ -3,6 +3,28 @@ import Foundation
 import Logging
 import buyerlib
 
+enum StoreKind: String, ExpressibleByArgument {
+    case sqlite
+    case json
+
+    static func inferred(from path: String) -> StoreKind {
+        let trimmed = path.lowercased()
+        if trimmed.hasSuffix(".json") { return .json }
+        if trimmed.hasSuffix(".sqlite") || trimmed.hasSuffix(".sqlite3") || trimmed.hasSuffix(".db") {
+            return .sqlite
+        }
+        return .sqlite
+    }
+}
+
+struct StoreOptions: ParsableArguments {
+    @Option(name: [.customShort("s"), .long], help: "Datastore backend to use (sqlite or json).")
+    var store: StoreKind?
+
+    @Option(name: [.customShort("d"), .long], help: "Override path to the datastore file.")
+    var database: String?
+}
+
 let logger = Logger(label: "org.me.swiftbuyer.main")
 
 struct Buyer: ParsableCommand {
@@ -12,7 +34,7 @@ struct Buyer: ParsableCommand {
         version: "0.0.1",
 
         // subcommands: [Status.self, Search.self, Report.self, Sound.self, Demo.self],
-        subcommands: [Status.self, Search.self, Report.self, Demo.self],
+        subcommands: [Status.self, Search.self, Report.self, Demo.self, Fixtures.self],
 
         defaultSubcommand: Status.self
     )
@@ -28,8 +50,11 @@ struct Buyer: ParsableCommand {
             abstract: "Print the procurement control tower summary."
         )
 
+        @OptionGroup var storeOptions: StoreOptions
+
         mutating func run() throws {
-            let service = try procurementService()
+            let service = try procurementService(storeKind: storeOptions.store,
+                                                storePath: storeOptions.database)
             let summary = try service.statusSummary()
 
             print("Procurement status as of \(formatTimestamp(summary.generatedAt))")
@@ -59,6 +84,8 @@ struct Buyer: ParsableCommand {
             abstract: "Search the supplier master."
         )
 
+        @OptionGroup var storeOptions: StoreOptions
+
         @Argument(help: "Text to match supplier name, country, or category.")
         var query: String
 
@@ -70,7 +97,8 @@ struct Buyer: ParsableCommand {
                 throw ValidationError("Limit must be at least 1.")
             }
 
-            let service = try procurementService()
+            let service = try procurementService(storeKind: storeOptions.store,
+                                                storePath: storeOptions.database)
             let results = try service.searchSuppliers(matching: query, limit: limit)
 
             if results.isEmpty {
@@ -95,12 +123,15 @@ struct Buyer: ParsableCommand {
             abstract: "Generate a procurement operations report."
         )
 
+        @OptionGroup var storeOptions: StoreOptions
+
         @Option(name: [.short, .long], help: "Output path for the generated workbook (defaults to temp directory).")
         var output: String?
 
         mutating func run() throws {
             logger.info("report generation requested")
-            let service = try procurementService()
+            let service = try procurementService(storeKind: storeOptions.store,
+                                                storePath: storeOptions.database)
             let outputURL = try generateOperationsWorkbook(using: service, overridePath: output)
             print("Report written to \(outputURL.path)")
         }
@@ -123,14 +154,86 @@ struct Buyer: ParsableCommand {
             abstract: "Demo a feature."
         )
 
+        @OptionGroup var storeOptions: StoreOptions
+
         mutating func run() throws {
             logger.info("demonstrating feature now")
-            let service = try procurementService()
+            let service = try procurementService(storeKind: storeOptions.store,
+                                                storePath: storeOptions.database)
             let supplierSummaries = try service.supplierSpendSummaries().prefix(3)
             print("Top suppliers by open PO value:")
             for summary in supplierSummaries {
                 let spend = formatCurrency(amount: summary.totalOpenPOValue, currency: "USD")
                 print("- \(summary.supplier.legalName): \(spend) open, \(summary.invoicesOnHold) invoices on hold, \(summary.overdueDeliveries) overdue deliveries")
+            }
+        }
+    }
+
+    struct Fixtures: ParsableCommand {
+        static var configuration = CommandConfiguration(
+            abstract: "Generate datastore fixtures for demos or tests."
+        )
+
+        @OptionGroup var storeOptions: StoreOptions
+
+        @Option(name: [.short, .long], help: "Output path for the generated fixture. Defaults under ./fixtures.")
+        var output: String?
+
+        @Option(name: .long, help: "Seed timestamp in ISO-8601 (defaults to 2024-06-01T12:00:00Z).")
+        var seedDate: String?
+
+        @Flag(name: [.customShort("f"), .long], help: "Overwrite the fixture if it already exists.")
+        var overwrite: Bool = false
+
+        mutating func run() throws {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let defaultSeedString = "2024-06-01T12:00:00Z"
+            let seedString = seedDate ?? defaultSeedString
+            guard let seededDate = formatter.date(from: seedString) else {
+                throw ValidationError("Unable to parse seed date '\(seedString)'. Use ISO-8601, e.g. 2024-06-01T12:00:00Z")
+            }
+
+            let store = storeOptions.store ?? .sqlite
+            let resolvedOutput = output ?? defaultFixturePath(for: store)
+            let outputURL = URL(fileURLWithPath: resolvedOutput)
+            let fileManager = FileManager.default
+
+            if fileManager.fileExists(atPath: outputURL.path), !overwrite {
+                throw ValidationError("Fixture already exists at \(outputURL.path). Pass --overwrite to replace it.")
+            }
+
+            if overwrite, fileManager.fileExists(atPath: outputURL.path) {
+                try fileManager.removeItem(at: outputURL)
+            }
+
+            try fileManager.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+            let tenantID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            let dataset = ProcurementSeedData.makeDataSet(seedDate: seededDate, tenantID: tenantID)
+
+            switch store {
+            case .json:
+                let repository = FileProcurementRepository(url: outputURL, seedDate: seededDate)
+                // Persist seed dataset explicitly to preserve stable order.
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(dataset)
+                try data.write(to: outputURL, options: .atomic)
+            case .sqlite:
+                _ = try SQLiteProcurementRepository(path: outputURL.path, seedDate: seededDate)
+            }
+
+            print("Fixture written to \(outputURL.path)")
+        }
+
+        private func defaultFixturePath(for store: StoreKind) -> String {
+            switch store {
+            case .sqlite:
+                return "fixtures/procurement.sqlite3"
+            case .json:
+                return "fixtures/procurement.json"
             }
         }
     }
@@ -140,34 +243,52 @@ Buyer.main()
 
 // MARK: - Helpers
 
-private func procurementService() throws -> ProcurementService {
+private func procurementService(storeKind: StoreKind? = nil, storePath: String? = nil) throws -> ProcurementService {
     let referenceDate = Date()
     let environment = ProcessInfo.processInfo.environment
 
-    if let path = environment["BUYER_DB_PATH"], !path.isEmpty {
-        let lowercased = path.lowercased()
-        let url = URL(fileURLWithPath: path)
+    let providedPath = storePath ?? environment["BUYER_DB_PATH"]
 
-        if lowercased.hasSuffix(".sqlite") || lowercased.hasSuffix(".sqlite3") || lowercased.hasSuffix(".db") {
-            if let repository = try? SQLiteProcurementRepository(path: url.path, seedDate: referenceDate) {
-                return ProcurementService(repository: repository)
-            }
-            logger.warning("Failed to open SQLite store at \(path). Falling back to JSON store.")
+    var resolvedKind = storeKind
+    if resolvedKind == nil, let storeEnv = environment["BUYER_STORE"], let envKind = StoreKind(rawValue: storeEnv.lowercased()) {
+        resolvedKind = envKind
+    }
+    if resolvedKind == nil, let path = providedPath {
+        resolvedKind = StoreKind.inferred(from: path)
+    }
+
+    let selectedKind = resolvedKind ?? .sqlite
+    let targetURL = URL(fileURLWithPath: providedPath ?? defaultStorePath(for: selectedKind))
+
+    switch selectedKind {
+    case .sqlite:
+        do {
+            let repository = try SQLiteProcurementRepository(path: targetURL.path, seedDate: referenceDate)
+            return ProcurementService(repository: repository)
+        } catch {
+            logger.warning("Failed to open SQLite store at \(targetURL.path). Error: \(error). Falling back to JSON store.")
+            let fallbackURL = providedPath == nil ? defaultStoreURL(for: .json) : targetURL.deletingPathExtension().appendingPathExtension("json")
+            let repository = FileProcurementRepository(url: fallbackURL, seedDate: referenceDate)
+            return ProcurementService(repository: repository)
         }
-
-        let repository = FileProcurementRepository(url: url, seedDate: referenceDate)
+    case .json:
+        let repository = FileProcurementRepository(url: targetURL, seedDate: referenceDate)
         return ProcurementService(repository: repository)
     }
+}
 
+private func defaultStorePath(for store: StoreKind) -> String {
+    defaultStoreURL(for: store).path
+}
+
+private func defaultStoreURL(for store: StoreKind) -> URL {
     let tempDirectory = FileManager.default.temporaryDirectory
-    let sqliteURL = tempDirectory.appendingPathComponent("buyer-procurement.sqlite3")
-    if let repository = try? SQLiteProcurementRepository(path: sqliteURL.path, seedDate: referenceDate) {
-        return ProcurementService(repository: repository)
+    switch store {
+    case .sqlite:
+        return tempDirectory.appendingPathComponent("buyer-procurement.sqlite3")
+    case .json:
+        return tempDirectory.appendingPathComponent("buyer-procurement.json")
     }
-
-    let jsonURL = tempDirectory.appendingPathComponent("buyer-procurement.json")
-    let repository = FileProcurementRepository(url: jsonURL, seedDate: referenceDate)
-    return ProcurementService(repository: repository)
 }
 
 private func formatTimestamp(_ date: Date) -> String {

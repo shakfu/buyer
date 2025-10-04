@@ -105,10 +105,10 @@ The **Head Procurement Manager** is a **strategic and operational leader** who d
 The `buyer` CLI now surfaces real procurement telemetry captured in either a SQLite database or JSON ledger and exports multi-sheet XLSX workbooks for operational reviews.
 
 - `swift run buyer status` streams a control-tower snapshot with alert highlights and key counts.
-- `swift run buyer search "steel"` returns ranked suppliers by name, country, or category (`--limit` caps results).
-- `swift run buyer report --output reports/ops.xlsx` builds an Excel workbook with summary, supplier, PO, approval, delivery, and invoice tabs.
+- `swift run buyer search "steel" --store sqlite` returns ranked suppliers by name, country, or category (`--limit` caps results). Use `--store json` to point at a JSON ledger instead.
+- `swift run buyer report --output reports/ops.xlsx --store sqlite` builds an Excel workbook with summary, supplier, PO, approval, delivery, and invoice tabs.
+- `swift run buyer fixtures --store sqlite --output fixtures/procurement.sqlite3 --overwrite` snapshots the canonical demo dataset; switch `--store json` to emit `fixtures/procurement.json`.
 
-By default the CLI seeds a temporary SQLite database; point it elsewhere with `BUYER_DB_PATH=/path/to/procurement.sqlite3`. If you prefer a plain JSON ledger, supply a path with a non-SQLite extension (e.g., `BUYER_DB_PATH=/path/to/procurement.json`). Workbook generation also honors `BUYER_REPORT_PATH` when `--output` is omitted. All generated files live under the provided directory, which is created if missing.
+By default the CLI seeds a temporary SQLite database; point it elsewhere with `BUYER_DB_PATH=/path/to/procurement.sqlite3` or override the backend explicitly via `--store sqlite|json`. If you prefer a plain JSON ledger, supply a path with a non-SQLite extension (e.g., `BUYER_DB_PATH=/path/to/procurement.json`). Workbook generation also honors `BUYER_REPORT_PATH` when `--output` is omitted. All generated files live under the provided directory, which is created if missing.
 
 Each command shares the same domain service defined in `buyerlib`, so extensions (e.g., new alerts or report sheets) only require updating the library layer.
-

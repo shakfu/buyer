@@ -13,8 +13,9 @@ The `buyer report` command exports a multi-sheet Excel workbook at the path you 
 
 ## Usage Tips
 
-1. Set `BUYER_DB_PATH` to keep the data store in a persistent location (e.g., `~/.buyer/procurement.sqlite3`). Use a `.json` extension if you prefer the file-backed ledger.
-2. Pass `--output reports/ops.xlsx` to write the workbook to a tracked folder (`reports/` is created automatically).
-3. Re-run `buyer report` before governance meetings to refresh the workbook with the latest approvals, deliveries, and invoice states.
+1. Bootstrap fixtures with `swift run buyer fixtures --store sqlite --output fixtures/procurement.sqlite3` (or `--store json` if you prefer a ledger).
+2. Set `BUYER_DB_PATH` to keep the data store in a persistent location (e.g., `~/.buyer/procurement.sqlite3`). Use a `.json` extension if you prefer the file-backed ledger.
+3. Pass `--output reports/ops.xlsx` to write the workbook to a tracked folder (`reports/` is created automatically).
+4. Re-run `buyer report` before governance meetings to refresh the workbook with the latest approvals, deliveries, and invoice states.
 
 For extensions, add new sheets or metrics inside `writeProcurementWorkbook` in `src/buyerlib/commands/xlsxwriter.swift` and expose new data from `ProcurementService` so the CLI stays thin.

@@ -1,0 +1,214 @@
+{
+  "suppliers": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "legalName": "Northwind Logistics",
+      "country": "United States",
+      "category": "Logistics",
+      "isActive": true,
+      "riskRating": "Low",
+      "spendYearToDate": 1250000.0
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "legalName": "Atlas Steelworks",
+      "country": "Germany",
+      "category": "Structural Steel",
+      "isActive": true,
+      "riskRating": "Medium",
+      "spendYearToDate": 980000.0
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "legalName": "Skyline Electrical",
+      "country": "United Arab Emirates",
+      "category": "Electrical",
+      "isActive": true,
+      "riskRating": "High",
+      "spendYearToDate": 640000.0
+    },
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "legalName": "Coastal Finishes",
+      "country": "United Kingdom",
+      "category": "Interior Finishes",
+      "isActive": false,
+      "riskRating": null,
+      "spendYearToDate": 120000.0
+    }
+  ],
+  "purchaseOrders": [
+    {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "number": "PO-1001",
+      "supplierID": "11111111-1111-1111-1111-111111111111",
+      "supplierName": "Northwind Logistics",
+      "projectCode": "PRJ-ALPHA",
+      "projectName": "Airport Expansion",
+      "status": "released",
+      "currency": "USD",
+      "totalValue": 450000.0,
+      "expectedDelivery": "2024-06-04T12:00:00Z",
+      "issuedAt": "2024-05-22T12:00:00Z"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "number": "PO-1002",
+      "supplierID": "22222222-2222-2222-2222-222222222222",
+      "supplierName": "Atlas Steelworks",
+      "projectCode": "PRJ-ALPHA",
+      "projectName": "Airport Expansion",
+      "status": "partiallyReceived",
+      "currency": "EUR",
+      "totalValue": 820000.0,
+      "expectedDelivery": "2024-05-30T12:00:00Z",
+      "issuedAt": "2024-05-07T12:00:00Z"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "number": "PO-1003",
+      "supplierID": "33333333-3333-3333-3333-333333333333",
+      "supplierName": "Skyline Electrical",
+      "projectCode": "PRJ-ORBIT",
+      "projectName": "Orbital Tower",
+      "status": "approved",
+      "currency": "AED",
+      "totalValue": 310000.0,
+      "expectedDelivery": "2024-06-15T12:00:00Z",
+      "issuedAt": "2024-05-29T12:00:00Z"
+    },
+    {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "number": "PO-1004",
+      "supplierID": "11111111-1111-1111-1111-111111111111",
+      "supplierName": "Northwind Logistics",
+      "projectCode": "PRJ-HARBOR",
+      "projectName": "Harbor Redevelopment",
+      "status": "completed",
+      "currency": "USD",
+      "totalValue": 275000.0,
+      "expectedDelivery": "2024-05-12T12:00:00Z",
+      "issuedAt": "2024-04-02T12:00:00Z"
+    }
+  ],
+  "approvalQueue": [
+    {
+      "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "title": "Steel package >$1M",
+      "requestType": "Purchase Order",
+      "requestedBy": "Maria Singh",
+      "pendingWith": "Liam Patel",
+      "dueDate": "2024-05-31T12:00:00Z",
+      "status": "pending"
+    },
+    {
+      "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "title": "Emergency crane rental",
+      "requestType": "Exception",
+      "requestedBy": "Noah Martinez",
+      "pendingWith": "Emma Thompson",
+      "dueDate": "2024-06-03T12:00:00Z",
+      "status": "escalated"
+    },
+    {
+      "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "title": "Contract extension HVAC",
+      "requestType": "Contract",
+      "requestedBy": "Oliver Chen",
+      "pendingWith": "Hannah Wood",
+      "dueDate": "2024-06-06T12:00:00Z",
+      "status": "approved"
+    }
+  ],
+  "deliveryMilestones": [
+    {
+      "id": "cccccccc-cccc-cccc-cccc-ccccccccccc1",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "purchaseOrderNumber": "PO-1001",
+      "description": "Hangar doors shipment",
+      "expectedOn": "2024-06-03T12:00:00Z",
+      "status": "inTransit"
+    },
+    {
+      "id": "cccccccc-cccc-cccc-cccc-ccccccccccc2",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "purchaseOrderNumber": "PO-1002",
+      "description": "Steel trusses batch 3",
+      "expectedOn": "2024-05-29T12:00:00Z",
+      "status": "delayed"
+    },
+    {
+      "id": "cccccccc-cccc-cccc-cccc-ccccccccccc3",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "purchaseOrderNumber": "PO-1003",
+      "description": "Switchgear panels",
+      "expectedOn": "2024-06-11T12:00:00Z",
+      "status": "scheduled"
+    },
+    {
+      "id": "cccccccc-cccc-cccc-cccc-ccccccccccc4",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "purchaseOrderNumber": "PO-1004",
+      "description": "Marina decking",
+      "expectedOn": "2024-05-07T12:00:00Z",
+      "status": "received"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "dddddddd-dddd-dddd-dddd-ddddddddddd1",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "supplierID": "22222222-2222-2222-2222-222222222222",
+      "supplierName": "Atlas Steelworks",
+      "invoiceNumber": "INV-501",
+      "amount": 450000.0,
+      "currency": "EUR",
+      "dueDate": "2024-05-27T12:00:00Z",
+      "status": "onHold"
+    },
+    {
+      "id": "dddddddd-dddd-dddd-dddd-ddddddddddd2",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "supplierID": "33333333-3333-3333-3333-333333333333",
+      "supplierName": "Skyline Electrical",
+      "invoiceNumber": "INV-502",
+      "amount": 210000.0,
+      "currency": "AED",
+      "dueDate": "2024-06-16T12:00:00Z",
+      "status": "pending"
+    },
+    {
+      "id": "dddddddd-dddd-dddd-dddd-ddddddddddd3",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "supplierID": "11111111-1111-1111-1111-111111111111",
+      "supplierName": "Northwind Logistics",
+      "invoiceNumber": "INV-503",
+      "amount": 125000.0,
+      "currency": "USD",
+      "dueDate": "2024-05-30T12:00:00Z",
+      "status": "onHold"
+    },
+    {
+      "id": "dddddddd-dddd-dddd-dddd-ddddddddddd4",
+      "tenantID": "00000000-0000-0000-0000-000000000001",
+      "supplierID": "44444444-4444-4444-4444-444444444444",
+      "supplierName": "Coastal Finishes",
+      "invoiceNumber": "INV-504",
+      "amount": 89000.0,
+      "currency": "GBP",
+      "dueDate": "2024-06-21T12:00:00Z",
+      "status": "paid"
+    }
+  ]
+}

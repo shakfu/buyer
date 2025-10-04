@@ -1,8 +1,8 @@
 import Foundation
 
-struct ProcurementSeedData {
-    static func makeDataSet(seedDate: Date = Date(),
-                            tenantID: UUID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!) -> ProcurementDataSet {
+public struct ProcurementSeedData {
+    public static func makeDataSet(seedDate: Date = Date(),
+                                   tenantID: UUID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!) -> ProcurementDataSet {
         let calendar = Calendar(identifier: .gregorian)
 
         func addDays(_ value: Int) -> Date {
