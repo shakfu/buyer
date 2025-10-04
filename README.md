@@ -100,5 +100,16 @@ Their effectiveness influences the company’s profitability, client satisfactio
 The **Head Procurement Manager** is a **strategic and operational leader** who drives efficiency, cost savings, and reliability across the entire supply chain. Their success is measured not only in reduced procurement costs but also in smoother project delivery, stronger supplier networks, and adherence to quality and compliance standards.
 
 
+## CLI Quick Start
+
+The `buyer` CLI now surfaces real procurement telemetry captured in a file-backed ledger and exports multi-sheet XLSX workbooks for operational reviews.
+
+- `swift run buyer status` streams a control-tower snapshot with alert highlights and key counts.
+- `swift run buyer search "steel"` returns ranked suppliers by name, country, or category (`--limit` caps results).
+- `swift run buyer report --output reports/ops.xlsx` builds an Excel workbook with summary, supplier, PO, approval, delivery, and invoice tabs.
+
+By default the CLI seeds a temporary JSON store. Pin it elsewhere via `BUYER_DB_PATH=/path/to/procurement.json`. Workbook generation also honors `BUYER_REPORT_PATH` when `--output` is omitted. All generated files live under the provided directory, which is created if missing.
+
+Each command shares the same domain service defined in `buyerlib`, so extensions (e.g., new alerts or report sheets) only require updating the library layer.
 
 

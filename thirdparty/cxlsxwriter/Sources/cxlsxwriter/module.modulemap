@@ -1,5 +1,0 @@
-module cxlsxwriter {
-    header "../../Headers/cxlsxwriter-bridging-header.h"
-    link "xlsxwriter"
-    export *
-}

@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The Swift Package manifest defines `buyer` (CLI) and `buyerlib` (core services) under `src/`. Command-line entry points live in `src/buyer`, reusable workflows in `src/buyerlib`, and C interop helpers in `src/factorial`. Integration data, templates, and workbook samples sit in `xlsx/` and `doc/`. Tests are split between `tests/buyerlibTests` for library units and `tests/buyerTests` for CLI-level coverage. Vendored dependencies such as `cxlsxwriter` reside in `thirdparty/`; avoid editing them directly.
+The Swift Package manifest defines `buyer` (CLI) and `buyerlib` (core services) under `src/`. Command-line entry points live in `src/buyer`, reusable workflows in `src/buyerlib`, and C interop helpers in `src/factorial`. Integration data, templates, and workbook samples sit in `xlsx/` and `doc/`. Tests are split between `tests/buyerlibTests` for library units and `tests/buyerTests` for CLI-level coverage.
 
 ## Build, Test, and Development Commands
 Run `swift build` for a debug build, or `make build` to inject Homebrew include/lib paths automatically. Use `swift run buyer status` to verify the CLI wiring. Release artifacts come from `make release`. Apply formatting with `make format` (wraps `swift-format --configuration .swiftformatrc`). Clean builds via `make clean`.

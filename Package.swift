@@ -13,19 +13,23 @@ let package = Package(
         .executable(name: "buyer", targets: ["buyer"]),
     ],
     dependencies: [
-        .package(path: "thirdparty/cxlsxwriter"),
         .package(url: "https://github.com/michaelnisi/skull", from: "11.0.4"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "0.3.0"),
-        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.12.0"),
         .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.14.0"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.16"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         // .package(url: "https://github.com/AudioKit/AudioKit", .branch("v5.2.0")),
     ],
     targets: [
         .target(
             name: "buyerlib",
-            dependencies: ["cfactorial", "cxlsxwriter", "Skull", "Stencil", "SQLite"]),
-            // dependencies: ["cfactorial", "cxlsxwriter","Skull", "Stencil", "SQLite", "AudioKit"]),
+            dependencies: [
+                "cfactorial",
+                "Skull",
+                "Stencil",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation")
+            ]),
+            // dependencies: ["cfactorial", "Skull", "Stencil", "AudioKit"]),
         .testTarget(
             name: "buyerlibTests",
             dependencies: ["buyerlib"]),

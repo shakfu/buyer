@@ -17,6 +17,11 @@ final class buyerTests: XCTestCase {
         let process = Process()
         process.executableURL = fooBinary
 
+        let dbURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("buyer-cli-test.json")
+        var environment = ProcessInfo.processInfo.environment
+        environment["BUYER_DB_PATH"] = dbURL.path
+        process.environment = environment
+
         let pipe = Pipe()
         process.standardOutput = pipe
 
@@ -26,7 +31,17 @@ final class buyerTests: XCTestCase {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)
 
-        XCTAssertEqual(output, "Hello, world!\n")
+        guard let output = output else {
+            XCTFail("The buyer CLI produced no output")
+            return
+        }
+
+        XCTAssertTrue(output.hasPrefix("Procurement status as of"), "Status header should be present")
+        XCTAssertTrue(output.contains("Active suppliers: 3"), "Active supplier count should be printed")
+        XCTAssertTrue(output.contains("Open purchase orders: 3"), "Open PO count should be printed")
+        XCTAssertTrue(output.contains("Pending approvals: 2"), "Pending approvals count should be printed")
+        XCTAssertTrue(output.contains("Invoices on hold: 2"), "Invoices on hold count should be printed")
+        XCTAssertTrue(output.contains("PO-1002"), "Alerts should reference overdue purchase orders")
     }
 
     /// Returns path to the built products directory.
