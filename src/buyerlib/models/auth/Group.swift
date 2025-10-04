@@ -1,14 +1,18 @@
-class Group {
-    var name: String
-    var permissions: Set<Permission>
+public final class Group {
+    public var name: String
+    public var permissions: Set<Permission>
 
-    init(name: String, permissions: [Permission]) {
+    public init(name: String, permissions: [Permission] = []) {
         self.name = name
         self.permissions = Set(permissions)
     }
 
-    init(name: String, permissions: Set<Permission>) {
+    public init(name: String, permissions: Set<Permission>) {
         self.name = name
         self.permissions = permissions
+    }
+
+    public func addPermission(_ permission: Permission) {
+        permissions.insert(permission)
     }
 }

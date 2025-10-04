@@ -1,49 +1,47 @@
 import Foundation
 
-public struct Invoice: InvoiceProtocol {
+public struct PurchaseOrder: PurchaseOrderProtocol {
     public typealias SupplierType = Supplier
     public typealias ProjectType = Project
+    public typealias ContractType = Contract
 
     public var id: UUID
     public var tenantID: UUID
     public var createdAt: Date
     public var updatedAt: Date?
-    public var invoiceNumber: String
     public var supplier: Supplier
     public var project: Project
-    public var invoiceDate: Date
-    public var dueDate: Date
+    public var contract: Contract?
+    public var poNumber: String
+    public var issuedAt: Date
     public var currency: String
-    public var totalAmount: Decimal
     public var status: String
-    public var sapInvoiceID: String?
+    public var sapPONumber: String?
 
     public init(id: UUID,
                 tenantID: UUID,
                 createdAt: Date,
                 updatedAt: Date? = nil,
-                invoiceNumber: String,
                 supplier: Supplier,
                 project: Project,
-                invoiceDate: Date,
-                dueDate: Date,
+                contract: Contract? = nil,
+                poNumber: String,
+                issuedAt: Date,
                 currency: String,
-                totalAmount: Decimal,
                 status: String,
-                sapInvoiceID: String? = nil) {
+                sapPONumber: String? = nil) {
         self.id = id
         self.tenantID = tenantID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.invoiceNumber = invoiceNumber
         self.supplier = supplier
         self.project = project
-        self.invoiceDate = invoiceDate
-        self.dueDate = dueDate
+        self.contract = contract
+        self.poNumber = poNumber
+        self.issuedAt = issuedAt
         self.currency = currency
-        self.totalAmount = totalAmount
         self.status = status
-        self.sapInvoiceID = sapInvoiceID
+        self.sapPONumber = sapPONumber
     }
 }
 
