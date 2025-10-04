@@ -145,17 +145,28 @@ private func procurementService() throws -> ProcurementService {
     let environment = ProcessInfo.processInfo.environment
 
     if let path = environment["BUYER_DB_PATH"], !path.isEmpty {
+        let lowercased = path.lowercased()
         let url = URL(fileURLWithPath: path)
+
+        if lowercased.hasSuffix(".sqlite") || lowercased.hasSuffix(".sqlite3") || lowercased.hasSuffix(".db") {
+            if let repository = try? SQLiteProcurementRepository(path: url.path, seedDate: referenceDate) {
+                return ProcurementService(repository: repository)
+            }
+            logger.warning("Failed to open SQLite store at \(path). Falling back to JSON store.")
+        }
+
         let repository = FileProcurementRepository(url: url, seedDate: referenceDate)
         return ProcurementService(repository: repository)
     }
 
-    let cacheURL = FileManager.default
-        .temporaryDirectory
-        .appendingPathComponent("buyer-procurement")
-        .appendingPathExtension("json")
+    let tempDirectory = FileManager.default.temporaryDirectory
+    let sqliteURL = tempDirectory.appendingPathComponent("buyer-procurement.sqlite3")
+    if let repository = try? SQLiteProcurementRepository(path: sqliteURL.path, seedDate: referenceDate) {
+        return ProcurementService(repository: repository)
+    }
 
-    let repository = FileProcurementRepository(url: cacheURL, seedDate: referenceDate)
+    let jsonURL = tempDirectory.appendingPathComponent("buyer-procurement.json")
+    let repository = FileProcurementRepository(url: jsonURL, seedDate: referenceDate)
     return ProcurementService(repository: repository)
 }
 

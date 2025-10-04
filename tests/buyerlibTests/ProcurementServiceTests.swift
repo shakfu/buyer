@@ -68,6 +68,29 @@ final class ProcurementServiceTests: XCTestCase {
         XCTAssertEqual(searchResults.first?.legalName, "Skyline Electrical")
     }
 
+    func testSQLiteRepositoryMatchesInMemory() throws {
+        guard let referenceDate else {
+            XCTFail("Reference date missing")
+            return
+        }
+
+        let tempURL = FileManager.default
+            .temporaryDirectory
+            .appendingPathComponent("procurement-tests-\(UUID().uuidString)")
+            .appendingPathExtension("sqlite3")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let sqliteRepository = try SQLiteProcurementRepository(path: tempURL.path, seedDate: referenceDate)
+        let sqliteService = ProcurementService(repository: sqliteRepository, dateProvider: { referenceDate })
+
+        let summary = try sqliteService.statusSummary()
+        XCTAssertEqual(summary.activeSuppliers, 3)
+        XCTAssertEqual(summary.pendingApprovals, 2)
+
+        let suppliers = try sqliteService.searchSuppliers(matching: "Steel")
+        XCTAssertEqual(suppliers.first?.legalName, "Atlas Steelworks")
+    }
+
     func testWorkbookGenerationProducesFile() throws {
         guard let referenceDate else {
             XCTFail("Reference date missing")
@@ -96,6 +119,7 @@ final class ProcurementServiceTests: XCTestCase {
         ("testSearchSuppliersByCategory", testSearchSuppliersByCategory),
         ("testSupplierSpendSummariesAreOrdered", testSupplierSpendSummariesAreOrdered),
         ("testFileRepositoryMatchesInMemory", testFileRepositoryMatchesInMemory),
+        ("testSQLiteRepositoryMatchesInMemory", testSQLiteRepositoryMatchesInMemory),
         ("testWorkbookGenerationProducesFile", testWorkbookGenerationProducesFile),
     ]
 }

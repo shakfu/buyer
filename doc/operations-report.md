@@ -1,6 +1,6 @@
 # Operations Workbook
 
-The `buyer report` command exports a multi-sheet Excel workbook at the path you provide via `--output` (or the `BUYER_REPORT_PATH` environment variable). The workbook is assembled with the in-tree XLSX builder and reflects the live data in the file-backed repository used by the CLI.
+The `buyer report` command exports a multi-sheet Excel workbook at the path you provide via `--output` (or the `BUYER_REPORT_PATH` environment variable). The workbook is assembled with the in-tree XLSX builder and reflects the live data managed by the repository backing the CLI.
 
 ## Sheets
 
@@ -13,7 +13,7 @@ The `buyer report` command exports a multi-sheet Excel workbook at the path you 
 
 ## Usage Tips
 
-1. Set `BUYER_DB_PATH` to keep the JSON ledger in a persistent location (e.g., `~/.buyer/procurement.json`).
+1. Set `BUYER_DB_PATH` to keep the data store in a persistent location (e.g., `~/.buyer/procurement.sqlite3`). Use a `.json` extension if you prefer the file-backed ledger.
 2. Pass `--output reports/ops.xlsx` to write the workbook to a tracked folder (`reports/` is created automatically).
 3. Re-run `buyer report` before governance meetings to refresh the workbook with the latest approvals, deliveries, and invoice states.
 
