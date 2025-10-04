@@ -4,7 +4,7 @@ LIB := $(HOMEBREW)/lib
 INCLUDE := $(HOMEBREW)/include
 
 
-.PHONY: all build release format clean
+.PHONY: all build release format clean fixtures fixtures-sqlite fixtures-json
 
 all: build
 
@@ -22,3 +22,11 @@ format:
 
 clean:
 	-@rm -rf .build
+
+fixtures: fixtures-sqlite fixtures-json
+
+fixtures-sqlite:
+	@swift run buyer fixtures --store sqlite --output fixtures/procurement.sqlite3 --overwrite
+
+fixtures-json:
+	@swift run buyer fixtures --store json --output fixtures/procurement.json --overwrite
