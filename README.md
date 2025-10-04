@@ -1,33 +1,58 @@
-# Buyer
+# buyer-swift: swiftbuyer
+
+A description of this package.
+
+## Activities of a Buyer
+
+- Selecting new products and reviewing the old
+- Finding the right suppliers
+- Negotiating prices (so the store doesn’t get ripped off)
+- Ensuring the products are delivered on time
+- Helping to interpret reports and predicting future sales
+- Pitching ideas to senior management
+- Stock control
+- Budgeting
+- Reacting to any changes in customer demand
+- Maintaining relationships with existing suppliers while seeking new ones
+- Attending trade events
+- Getting feedback from customers
 
 
-A few variations on a basic online purchasing support tool.
 
-Meant to help learn about the strengths (and weaknesses) of each language used.
+## Command Tree
 
-## Target core features
 
-- commandline interface
-- organization and persistence (sqlite and alternatively, postgres) of all buying data
-	- inventory of purchased items
-- repl for buying support
-- webscraping of vendor's prices
-- report generation (xlsx, html, pdf..)
-    - quote comparison
-    - shipping costs attribution based on destination (from, to)
-    - discount codes
-    - sales patterns recommendation
-    - budget mgmt
+### verbs
 
-## Develop in Different Languages
+- buyer
+	- source
+	- buy
+	- add
+		- link
+		- quote
+		- product
+		- brand
+		- vendor
+		- wishlist
+		- review
+	- delete
+		- ...
+	- report
+	- status
+	- search or query
+	- send
+	- inventory
+	- budget
+	- calendar
 
-1. [python](buyer-python)
-2. [swift](buyer-swift)
-3. c++
-4. rust
-5. go
+### objects
 
-## Current Model
+																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																						
+## TODO
 
-![entity-relationship-diagram](doc/er_model.svg)
+- add sql schema of model + test data
+- map out command hierarchy
+
+
+
 

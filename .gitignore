@@ -1,3 +1,9 @@
 .DS_Store
-__pycache__
-*.pyc
+.vscode
+/.build
+/Packages
+/*.xcodeproj
+xcuserdata/
+*.sqlite3
+Package.resolved
+
