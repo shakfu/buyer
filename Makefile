@@ -51,6 +51,7 @@ clean:
 # Run all checks (fmt, lint, test)
 check: fmt lint test
 
+# Take git snapshot
 snap:
 	@git add --all . && git commit -m 'snap' && git push
 

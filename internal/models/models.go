@@ -78,19 +78,20 @@ type RequisitionItem struct {
 
 // Quote represents a price quote from a vendor for a product
 type Quote struct {
-	ID               uint      `gorm:"primaryKey" json:"id"`
-	VendorID         uint      `gorm:"not null;index" json:"vendor_id"`
-	Vendor           *Vendor   `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
-	ProductID        uint      `gorm:"not null;index" json:"product_id"`
-	Product          *Product  `gorm:"foreignKey:ProductID" json:"product,omitempty"`
-	Price            float64   `gorm:"not null" json:"price"`
-	Currency         string    `gorm:"size:3;not null" json:"currency"`
-	ConvertedPrice   float64   `gorm:"not null" json:"converted_price"` // Price in USD
-	ConversionRate   float64   `gorm:"not null" json:"conversion_rate"`
-	QuoteDate        time.Time `gorm:"not null;index" json:"quote_date"`
-	Notes            string    `gorm:"type:text" json:"notes,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID               uint       `gorm:"primaryKey" json:"id"`
+	VendorID         uint       `gorm:"not null;index" json:"vendor_id"`
+	Vendor           *Vendor    `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
+	ProductID        uint       `gorm:"not null;index" json:"product_id"`
+	Product          *Product   `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	Price            float64    `gorm:"not null" json:"price"`
+	Currency         string     `gorm:"size:3;not null" json:"currency"`
+	ConvertedPrice   float64    `gorm:"not null" json:"converted_price"` // Price in USD
+	ConversionRate   float64    `gorm:"not null" json:"conversion_rate"`
+	QuoteDate        time.Time  `gorm:"not null;index" json:"quote_date"`
+	ValidUntil       *time.Time `gorm:"index" json:"valid_until,omitempty"` // Optional expiration date
+	Notes            string     `gorm:"type:text" json:"notes,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // Forex represents currency exchange rates
@@ -128,4 +129,30 @@ func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 		q.QuoteDate = time.Now()
 	}
 	return nil
+}
+
+// IsExpired checks if the quote has passed its expiration date
+func (q *Quote) IsExpired() bool {
+	if q.ValidUntil == nil {
+		return false
+	}
+	return time.Now().After(*q.ValidUntil)
+}
+
+// IsStale checks if the quote is older than 90 days (or expired if ValidUntil is set)
+func (q *Quote) IsStale() bool {
+	if q.IsExpired() {
+		return true
+	}
+	// Consider quotes older than 90 days as stale
+	return time.Since(q.QuoteDate) > 90*24*time.Hour
+}
+
+// DaysUntilExpiration returns the number of days until expiration, or -1 if no expiration
+func (q *Quote) DaysUntilExpiration() int {
+	if q.ValidUntil == nil {
+		return -1
+	}
+	duration := time.Until(*q.ValidUntil)
+	return int(duration.Hours() / 24)
 }

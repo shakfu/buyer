@@ -45,6 +45,11 @@
                 {{template "currency-select"}}
             </select>
         </label>
+        <label for="valid_until">
+            Valid Until (Optional)
+            <input type="date" id="valid_until" name="valid_until" placeholder="Leave blank for no expiry">
+            <small>Leave blank if quote has no expiration date</small>
+        </label>
         <label for="notes">
             Notes
             <textarea id="notes" name="notes" placeholder="Optional notes about this quote" rows="3"></textarea>
@@ -64,7 +69,8 @@
                 <th>Price</th>
                 <th>Currency</th>
                 <th>Price (USD)</th>
-                <th>Date</th>
+                <th>Quote Date</th>
+                <th>Expires (Days)</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -78,6 +84,22 @@
                 <td>{{.Currency}}</td>
                 <td>{{printf "%.2f" .ConvertedPrice}}</td>
                 <td>{{.QuoteDate.Format "2006-01-02"}}</td>
+                <td>
+                    {{if .ValidUntil}}
+                        {{$days := .DaysUntilExpiration}}
+                        {{if lt $days 0}}
+                            <span style="color: red; font-weight: bold;">{{$days}}</span>
+                        {{else if lt $days 7}}
+                            <span style="color: red; font-weight: bold;">{{$days}}</span>
+                        {{else if lt $days 30}}
+                            <span style="color: orange; font-weight: bold;">{{$days}}</span>
+                        {{else}}
+                            <span style="color: green;">{{$days}}</span>
+                        {{end}}
+                    {{else}}
+                        <span style="color: gray;">—</span>
+                    {{end}}
+                </td>
                 <td>
                     <div class="actions">
                         <button class="btn-sm contrast"

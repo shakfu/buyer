@@ -197,6 +197,226 @@ func setupRoutes(
 		})
 	})
 
+	// Requisition quote comparison routes
+	app.Get("/requisition-comparison", func(c *fiber.Ctx) error {
+		requisitions, err := requisitionSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "requisition-comparison.html", fiber.Map{
+			"Title":        "Requisition Quote Comparison",
+			"Requisitions": requisitions,
+		})
+	})
+
+	app.Get("/requisition-comparison/results", func(c *fiber.Ctx) error {
+		requisitionIDStr := c.Query("requisition_id")
+		if requisitionIDStr == "" {
+			return c.SendString("<article><p class='error'>Please select a requisition</p></article>")
+		}
+
+		requisitionID, err := strconv.ParseUint(requisitionIDStr, 10, 32)
+		if err != nil {
+			return c.SendString("<article><p class='error'>Invalid requisition ID</p></article>")
+		}
+
+		comparison, err := requisitionSvc.GetQuoteComparison(uint(requisitionID), quoteSvc)
+		if err != nil {
+			return c.SendString(fmt.Sprintf("<article><p class='error'>Error: %v</p></article>", err))
+		}
+
+		// Build comprehensive comparison HTML
+		html := fmt.Sprintf(`<article>
+			<h2>Quote Comparison for Requisition: %s</h2>`, comparison.Requisition.Name)
+
+		if comparison.Requisition.Justification != "" {
+			html += fmt.Sprintf(`<p><em>%s</em></p>`, comparison.Requisition.Justification)
+		}
+
+		// Summary section
+		html += `<section style="background: #f0f0f0; padding: 1rem; margin: 1rem 0; border-radius: 5px;">
+			<h3>Summary</h3>
+			<table>
+				<tr>
+					<td><strong>Total Items:</strong></td>
+					<td>` + fmt.Sprintf("%d", len(comparison.ItemComparisons)) + `</td>
+				</tr>
+				<tr>
+					<td><strong>Best Quote Total:</strong></td>
+					<td style="color: green; font-weight: bold;">$` + fmt.Sprintf("%.2f", comparison.TotalEstimate) + `</td>
+				</tr>`
+
+		if comparison.TotalBudget > 0 {
+			html += `<tr>
+					<td><strong>Budget:</strong></td>
+					<td>$` + fmt.Sprintf("%.2f", comparison.TotalBudget) + `</td>
+				</tr>
+				<tr>
+					<td><strong>Savings:</strong></td>`
+
+			savingsColor := "green"
+			if comparison.TotalSavings < 0 {
+				savingsColor = "red"
+			}
+			html += `<td style="color: ` + savingsColor + `; font-weight: bold;">$` + fmt.Sprintf("%.2f", comparison.TotalSavings) + `</td>
+				</tr>`
+		}
+
+		html += `<tr>
+				<td><strong>All Items Have Quotes:</strong></td>
+				<td>`
+		if comparison.AllItemsHaveQuotes {
+			html += `<span style="color: green;">✓ Yes</span>`
+		} else {
+			html += `<span style="color: red;">✗ No - Some items missing quotes</span>`
+		}
+		html += `</td>
+			</tr>
+			</table>
+		</section>`
+
+		// Item-by-item comparison
+		for _, itemComp := range comparison.ItemComparisons {
+			specName := "Unknown"
+			if itemComp.Specification != nil {
+				specName = itemComp.Specification.Name
+			}
+
+			html += fmt.Sprintf(`<section style="margin: 2rem 0; border: 1px solid #ddd; padding: 1rem; border-radius: 5px;">
+				<h3>%s (Quantity: %d)</h3>`,
+				specName, itemComp.Item.Quantity)
+
+			if itemComp.Item.Description != "" {
+				html += fmt.Sprintf(`<p><em>%s</em></p>`, itemComp.Item.Description)
+			}
+
+			if !itemComp.HasQuotes {
+				html += `<p style="color: red;"><strong>⚠ No quotes available for products matching this specification</strong></p>`
+			} else {
+				// Show best quote summary
+				bestQuote := itemComp.BestQuote
+				vendorName := "Unknown"
+				productName := "Unknown"
+				if bestQuote.Vendor != nil {
+					vendorName = bestQuote.Vendor.Name
+				}
+				if bestQuote.Product != nil {
+					productName = bestQuote.Product.Name
+					if bestQuote.Product.Brand != nil {
+						productName += fmt.Sprintf(" (%s)", bestQuote.Product.Brand.Name)
+					}
+				}
+
+				html += `<div style="background: #e8f5e9; padding: 1rem; margin: 1rem 0; border-radius: 5px;">
+					<h4 style="margin-top: 0;">Best Quote</h4>
+					<table>
+						<tr><td><strong>Product:</strong></td><td>` + productName + `</td></tr>
+						<tr><td><strong>Vendor:</strong></td><td>` + vendorName + `</td></tr>
+						<tr><td><strong>Unit Price:</strong></td><td>$` + fmt.Sprintf("%.2f", bestQuote.ConvertedPrice) + ` USD</td></tr>
+						<tr><td><strong>Total Cost:</strong></td><td style="color: green; font-weight: bold;">$` + fmt.Sprintf("%.2f", itemComp.TotalCostBest) + `</td></tr>`
+
+				if itemComp.Item.BudgetPerUnit > 0 {
+					savingsColor := "green"
+					if itemComp.SavingsVsBudget < 0 {
+						savingsColor = "red"
+					}
+					html += `<tr><td><strong>Budget:</strong></td><td>$` + fmt.Sprintf("%.2f", itemComp.TotalCostBudget) + `</td></tr>
+						<tr><td><strong>Savings:</strong></td><td style="color: ` + savingsColor + `; font-weight: bold;">$` + fmt.Sprintf("%.2f", itemComp.SavingsVsBudget) + `</td></tr>`
+				}
+
+				html += `</table>
+				</div>`
+
+				// Show all quotes for this specification
+				if len(itemComp.Quotes) > 1 {
+					html += fmt.Sprintf(`<details>
+						<summary>Show all %d quotes for this specification</summary>
+						<figure>
+							<table role="grid">
+								<thead>
+									<tr>
+										<th>Rank</th>
+										<th>Product</th>
+										<th>Vendor</th>
+										<th>Unit Price (USD)</th>
+										<th>Total Cost</th>
+										<th>Quote Date</th>
+										<th>Expires (Days)</th>
+									</tr>
+								</thead>
+								<tbody>`, len(itemComp.Quotes))
+
+					for idx, quote := range itemComp.Quotes {
+						rank := idx + 1
+						rankClass := ""
+						if rank == 1 {
+							rankClass = " style='background: #e8f5e9;'"
+						}
+
+						qVendorName := "Unknown"
+						qProductName := "Unknown"
+						if quote.Vendor != nil {
+							qVendorName = quote.Vendor.Name
+						}
+						if quote.Product != nil {
+							qProductName = quote.Product.Name
+							if quote.Product.Brand != nil {
+								qProductName += fmt.Sprintf(" (%s)", quote.Product.Brand.Name)
+							}
+						}
+
+						expiresStr := "—"
+						expiresColor := "gray"
+						if quote.ValidUntil != nil {
+							days := quote.DaysUntilExpiration()
+							expiresStr = fmt.Sprintf("%d", days)
+							if days < 0 {
+								expiresColor = "red"
+							} else if days < 7 {
+								expiresColor = "red"
+							} else if days < 30 {
+								expiresColor = "orange"
+							} else {
+								expiresColor = "green"
+							}
+						}
+
+						totalCost := quote.ConvertedPrice * float64(itemComp.Item.Quantity)
+						diffStr := ""
+						if rank > 1 {
+							diff := totalCost - itemComp.TotalCostBest
+							diffStr = fmt.Sprintf("<br><small style='color: red;'>+$%.2f</small>", diff)
+						}
+
+						html += fmt.Sprintf(`<tr%s>
+							<td><strong>%d</strong></td>
+							<td>%s</td>
+							<td>%s</td>
+							<td>$%.2f</td>
+							<td>$%.2f%s</td>
+							<td>%s</td>
+							<td style="color: %s;">%s</td>
+						</tr>`,
+							rankClass, rank, qProductName, qVendorName,
+							quote.ConvertedPrice, totalCost, diffStr,
+							quote.QuoteDate.Format("2006-01-02"),
+							expiresColor, expiresStr)
+					}
+
+					html += `</tbody>
+							</table>
+						</figure>
+					</details>`
+				}
+			}
+
+			html += `</section>`
+		}
+
+		html += `</article>`
+		return c.SendString(html)
+	})
+
 	// CRUD endpoints for Brands
 	app.Post("/brands", func(c *fiber.Ctx) error {
 		name := c.FormValue("name")
@@ -1026,12 +1246,23 @@ func setupRoutes(
 		currency := c.FormValue("currency")
 		notes := c.FormValue("notes")
 
+		// Parse valid_until if provided
+		var validUntil *time.Time
+		validUntilStr := c.FormValue("valid_until")
+		if validUntilStr != "" {
+			parsed, err := time.Parse("2006-01-02", validUntilStr)
+			if err == nil {
+				validUntil = &parsed
+			}
+		}
+
 		quote, err := quoteSvc.Create(services.CreateQuoteInput{
-			VendorID:  uint(vendorID),
-			ProductID: uint(productID),
-			Price:     price,
-			Currency:  currency,
-			Notes:     notes,
+			VendorID:   uint(vendorID),
+			ProductID:  uint(productID),
+			Price:      price,
+			Currency:   currency,
+			ValidUntil: validUntil,
+			Notes:      notes,
 		})
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
@@ -1046,6 +1277,21 @@ func setupRoutes(
 			productName = quote.Product.Name
 		}
 
+		// Format expiry display
+		expiryDisplay := `<span style="color: gray;">—</span>`
+		if quote.ValidUntil != nil {
+			days := quote.DaysUntilExpiration()
+			if days < 0 {
+				expiryDisplay = fmt.Sprintf(`<span style="color: red; font-weight: bold;">%d</span>`, days)
+			} else if days < 7 {
+				expiryDisplay = fmt.Sprintf(`<span style="color: red; font-weight: bold;">%d</span>`, days)
+			} else if days < 30 {
+				expiryDisplay = fmt.Sprintf(`<span style="color: orange; font-weight: bold;">%d</span>`, days)
+			} else {
+				expiryDisplay = fmt.Sprintf(`<span style="color: green;">%d</span>`, days)
+			}
+		}
+
 		return c.SendString(fmt.Sprintf(`<tr id="quote-%d">
 			<td>%d</td>
 			<td>%s</td>
@@ -1053,6 +1299,7 @@ func setupRoutes(
 			<td>%.2f</td>
 			<td>%s</td>
 			<td>%.2f</td>
+			<td>%s</td>
 			<td>%s</td>
 			<td>
 				<div class="actions">
@@ -1065,7 +1312,7 @@ func setupRoutes(
 					</button>
 				</div>
 			</td>
-		</tr>`, quote.ID, quote.ID, vendorName, productName, quote.Price, quote.Currency, quote.ConvertedPrice, quote.QuoteDate.Format("2006-01-02"), quote.ID, quote.ID))
+		</tr>`, quote.ID, quote.ID, vendorName, productName, quote.Price, quote.Currency, quote.ConvertedPrice, quote.QuoteDate.Format("2006-01-02"), expiryDisplay, quote.ID, quote.ID))
 	})
 
 	app.Delete("/quotes/:id", func(c *fiber.Ctx) error {

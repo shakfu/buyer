@@ -300,3 +300,85 @@ func (s *RequisitionService) List(limit, offset int) ([]models.Requisition, erro
 	err := query.Find(&requisitions).Error
 	return requisitions, err
 }
+
+// QuoteComparison holds quote comparison data for a requisition item
+type QuoteComparison struct {
+	Item              *models.RequisitionItem
+	Specification     *models.Specification
+	Quotes            []models.Quote
+	BestQuote         *models.Quote
+	TotalCostBest     float64 // Best quote price * quantity
+	TotalCostBudget   float64 // Budget per unit * quantity (if set)
+	SavingsVsBudget   float64 // Difference between budget and best quote
+	HasQuotes         bool
+	MissingQuotes     bool
+}
+
+// RequisitionQuoteComparison holds full comparison report for a requisition
+type RequisitionQuoteComparison struct {
+	Requisition      *models.Requisition
+	ItemComparisons  []QuoteComparison
+	TotalEstimate    float64 // Sum of all best quote totals
+	TotalBudget      float64 // Sum of all item budgets (if set) or requisition budget
+	TotalSavings     float64 // Budget - Estimate
+	AllItemsHaveQuotes bool
+}
+
+// GetQuoteComparison generates a comprehensive quote comparison for a requisition
+func (s *RequisitionService) GetQuoteComparison(requisitionID uint, quoteService *QuoteService) (*RequisitionQuoteComparison, error) {
+	// Get requisition with items
+	requisition, err := s.GetByID(requisitionID)
+	if err != nil {
+		return nil, err
+	}
+
+	comparison := &RequisitionQuoteComparison{
+		Requisition:     requisition,
+		ItemComparisons: make([]QuoteComparison, 0),
+		TotalBudget:     requisition.Budget,
+	}
+
+	allHaveQuotes := true
+
+	for _, item := range requisition.Items {
+		itemComp := QuoteComparison{
+			Item:          &item,
+			Specification: item.Specification,
+		}
+
+		// Get quotes for this specification
+		quotes, err := quoteService.CompareQuotesForSpecification(item.SpecificationID)
+		if err != nil {
+			return nil, err
+		}
+
+		itemComp.Quotes = quotes
+		itemComp.HasQuotes = len(quotes) > 0
+
+		if itemComp.HasQuotes {
+			// Best quote is first (ordered by price)
+			itemComp.BestQuote = &quotes[0]
+			itemComp.TotalCostBest = quotes[0].ConvertedPrice * float64(item.Quantity)
+			comparison.TotalEstimate += itemComp.TotalCostBest
+
+			// Calculate savings vs budget if set
+			if item.BudgetPerUnit > 0 {
+				itemComp.TotalCostBudget = item.BudgetPerUnit * float64(item.Quantity)
+				itemComp.SavingsVsBudget = itemComp.TotalCostBudget - itemComp.TotalCostBest
+			}
+		} else {
+			itemComp.MissingQuotes = true
+			allHaveQuotes = false
+		}
+
+		comparison.ItemComparisons = append(comparison.ItemComparisons, itemComp)
+	}
+
+	comparison.AllItemsHaveQuotes = allHaveQuotes
+
+	if comparison.TotalBudget > 0 {
+		comparison.TotalSavings = comparison.TotalBudget - comparison.TotalEstimate
+	}
+
+	return comparison, nil
+}

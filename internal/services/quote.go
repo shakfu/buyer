@@ -22,13 +22,14 @@ func NewQuoteService(db *gorm.DB) *QuoteService {
 	}
 }
 
-// CreateInput holds the input for creating a quote
+// CreateQuoteInput holds the input for creating a quote
 type CreateQuoteInput struct {
 	VendorID   uint
 	ProductID  uint
 	Price      float64
 	Currency   string
 	QuoteDate  time.Time
+	ValidUntil *time.Time
 	Notes      string
 }
 
@@ -81,6 +82,7 @@ func (s *QuoteService) Create(input CreateQuoteInput) (*models.Quote, error) {
 		ConvertedPrice: convertedPrice,
 		ConversionRate: conversionRate,
 		QuoteDate:      quoteDate,
+		ValidUntil:     input.ValidUntil,
 		Notes:          input.Notes,
 	}
 
@@ -176,4 +178,65 @@ func (s *QuoteService) Count() (int64, error) {
 	var count int64
 	err := s.db.Model(&models.Quote{}).Count(&count).Error
 	return count, err
+}
+
+// ListActiveQuotes retrieves all non-expired quotes
+func (s *QuoteService) ListActiveQuotes(limit, offset int) ([]models.Quote, error) {
+	var quotes []models.Quote
+	query := s.db.Preload("Vendor").Preload("Product.Brand").
+		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
+		Order("quote_date DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	err := query.Find(&quotes).Error
+	return quotes, err
+}
+
+// CompareQuotesForProduct retrieves all active quotes for a product with comparison data
+func (s *QuoteService) CompareQuotesForProduct(productID uint) ([]models.Quote, error) {
+	var quotes []models.Quote
+	err := s.db.Preload("Vendor").Preload("Product.Brand").
+		Where("product_id = ?", productID).
+		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
+		Order("converted_price ASC").
+		Find(&quotes).Error
+	return quotes, err
+}
+
+// CompareQuotesForSpecification retrieves all active quotes for products matching a specification
+func (s *QuoteService) CompareQuotesForSpecification(specificationID uint) ([]models.Quote, error) {
+	var quotes []models.Quote
+	err := s.db.Preload("Vendor").Preload("Product.Brand").Preload("Product.Specification").
+		Joins("JOIN products ON products.id = quotes.product_id").
+		Where("products.specification_id = ?", specificationID).
+		Where("quotes.valid_until IS NULL OR quotes.valid_until > ?", time.Now()).
+		Order("quotes.converted_price ASC").
+		Find(&quotes).Error
+	return quotes, err
+}
+
+// GetBestQuoteForSpecification finds the lowest price quote for products matching a specification
+func (s *QuoteService) GetBestQuoteForSpecification(specificationID uint) (*models.Quote, error) {
+	var quote models.Quote
+	err := s.db.Preload("Vendor").Preload("Product.Brand").Preload("Product.Specification").
+		Joins("JOIN products ON products.id = quotes.product_id").
+		Where("products.specification_id = ?", specificationID).
+		Where("quotes.valid_until IS NULL OR quotes.valid_until > ?", time.Now()).
+		Order("quotes.converted_price ASC").
+		First(&quote).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, &NotFoundError{Entity: "Quote for specification", ID: specificationID}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &quote, nil
 }

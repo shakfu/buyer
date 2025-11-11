@@ -1,0 +1,39 @@
+{{define "content"}}
+<header>
+    <nav>
+        <ul>
+            <li><a href="/">← Back to Home</a></li>
+            <li><a href="/requisitions">View All Requisitions</a></li>
+        </ul>
+        <ul>
+            <li><strong>Requisition Quote Comparison</strong></li>
+        </ul>
+    </nav>
+</header>
+
+<article>
+    <h2>Select Requisition to Compare Quotes</h2>
+    <form hx-get="/requisition-comparison/results" hx-target="#comparison-results" hx-swap="innerHTML">
+        <label for="requisition_id">
+            Requisition
+            <select id="requisition_id" name="requisition_id" required>
+                <option value="">Select a requisition...</option>
+                {{range .Requisitions}}
+                <option value="{{.ID}}">
+                    {{.Name}}
+                    {{if .Budget}}(Budget: ${{printf "%.2f" .Budget}}){{end}}
+                    - {{len .Items}} item(s)
+                </option>
+                {{end}}
+            </select>
+        </label>
+        <button type="submit">Compare Quotes</button>
+    </form>
+</article>
+
+<div id="comparison-results">
+    <article>
+        <p><em>Select a requisition to see quote comparisons for each specification</em></p>
+    </article>
+</div>
+{{end}}
