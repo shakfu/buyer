@@ -1,0 +1,22 @@
+{{define "content"}}
+<h1>Forex Rates</h1>
+<a href="/">Back to Home</a>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Rate</th>
+        <th>Date</th>
+    </tr>
+    {{range .Rates}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td>{{.FromCurrency}}</td>
+        <td>{{.ToCurrency}}</td>
+        <td>{{printf "%.4f" .Rate}}</td>
+        <td>{{.EffectiveDate.Format "2006-01-02"}}</td>
+    </tr>
+    {{end}}
+</table>
+{{end}}

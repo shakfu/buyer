@@ -1,0 +1,16 @@
+{{define "content"}}
+<h1>Brands</h1>
+<a href="/">Back to Home</a>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+    </tr>
+    {{range .Brands}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td>{{.Name}}</td>
+    </tr>
+    {{end}}
+</table>
+{{end}}

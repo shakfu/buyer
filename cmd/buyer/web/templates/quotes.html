@@ -1,0 +1,24 @@
+{{define "content"}}
+<h1>Quotes</h1>
+<a href="/">Back to Home</a>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Product</th>
+        <th>Price</th>
+        <th>USD</th>
+        <th>Date</th>
+    </tr>
+    {{range .Quotes}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+        <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+        <td>{{printf "%.2f" .Price}} {{.Currency}}</td>
+        <td>{{printf "%.2f" .ConvertedPrice}}</td>
+        <td>{{.QuoteDate.Format "2006-01-02"}}</td>
+    </tr>
+    {{end}}
+</table>
+{{end}}

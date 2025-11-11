@@ -1,0 +1,20 @@
+{{define "content"}}
+<h1>Vendors</h1>
+<a href="/">Back to Home</a>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Currency</th>
+        <th>Discount Code</th>
+    </tr>
+    {{range .Vendors}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td>{{.Name}}</td>
+        <td>{{.Currency}}</td>
+        <td>{{.DiscountCode}}</td>
+    </tr>
+    {{end}}
+</table>
+{{end}}
