@@ -1,3 +1,19 @@
+{{/* Breadcrumb navigation component */}}
+{{define "breadcrumb"}}
+<nav aria-label="breadcrumb">
+    <ul>
+        <li><a href="/">Home</a></li>
+        {{range .Breadcrumb}}
+            {{if .Active}}
+                <li>{{.Name}}</li>
+            {{else}}
+                <li><a href="{{.URL}}">{{.Name}}</a></li>
+            {{end}}
+        {{end}}
+    </ul>
+</nav>
+{{end}}
+
 {{/* Reusable currency dropdown component */}}
 {{define "currency-select"}}
 <option value="USD">USD - US Dollar</option>

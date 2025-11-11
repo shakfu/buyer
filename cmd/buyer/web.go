@@ -40,6 +40,16 @@ var webCmd = &cobra.Command{
 		app.Use(recover.New())
 		app.Use(logger.New())
 
+		// Security middleware
+		securityConfig := SecurityConfig{
+			EnableAuth:        os.Getenv("BUYER_ENABLE_AUTH") == "true",
+			EnableCSRF:        os.Getenv("BUYER_ENABLE_CSRF") == "true",
+			EnableRateLimiter: true, // Always enabled for security
+			Username:          getEnvOrDefault("BUYER_USERNAME", "admin"),
+			Password:          getEnvOrDefault("BUYER_PASSWORD", "admin"),
+		}
+		SetupSecurityMiddleware(app, securityConfig)
+
 		// Static files - extract subdirectory from embedded FS
 		staticSubFS, err := fs.Sub(staticFS, "web/static")
 		if err != nil {
@@ -124,6 +134,9 @@ func setupRoutes(
 			"ProductPrices":  productPrices,
 			"ExpiryStats":    expiryStats,
 			"RecentQuotes":   recentQuotes,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Dashboard", "Active": true},
+			},
 		})
 	})
 
@@ -143,6 +156,9 @@ func setupRoutes(
 		return renderTemplate(c, "specifications.html", fiber.Map{
 			"Title":          "Specifications",
 			"Specifications": specs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Specifications", "Active": true},
+			},
 		})
 	})
 
@@ -155,6 +171,9 @@ func setupRoutes(
 		return renderTemplate(c, "brands.html", fiber.Map{
 			"Title":  "Brands",
 			"Brands": brands,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Brands", "Active": true},
+			},
 		})
 	})
 
@@ -177,6 +196,9 @@ func setupRoutes(
 			"Products":       products,
 			"Brands":         brands,
 			"Specifications": specs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Products", "Active": true},
+			},
 		})
 	})
 
@@ -189,6 +211,9 @@ func setupRoutes(
 		return renderTemplate(c, "vendors.html", fiber.Map{
 			"Title":   "Vendors",
 			"Vendors": vendors,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Vendors", "Active": true},
+			},
 		})
 	})
 
@@ -211,6 +236,9 @@ func setupRoutes(
 			"Quotes":   quotes,
 			"Vendors":  vendors,
 			"Products": products,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Quotes", "Active": true},
+			},
 		})
 	})
 
@@ -228,6 +256,9 @@ func setupRoutes(
 			"Title":          "Requisitions",
 			"Requisitions":   requisitions,
 			"Specifications": specs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Requisitions", "Active": true},
+			},
 		})
 	})
 
@@ -240,6 +271,9 @@ func setupRoutes(
 		return renderTemplate(c, "forex.html", fiber.Map{
 			"Title": "Forex Rates",
 			"Rates": rates,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Forex Rates", "Active": true},
+			},
 		})
 	})
 
@@ -252,6 +286,10 @@ func setupRoutes(
 		return renderTemplate(c, "requisition-comparison.html", fiber.Map{
 			"Title":        "Requisition Quote Comparison",
 			"Requisitions": requisitions,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Requisitions", "URL": "/requisitions", "Active": false},
+				{"Name": "Quote Comparison", "Active": true},
+			},
 		})
 	})
 
@@ -468,29 +506,13 @@ func setupRoutes(
 		name := c.FormValue("name")
 		brand, err := brandSvc.Create(name)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
-		return c.SendString(fmt.Sprintf(`<tr id="brand-%d">
-			<td>%d</td>
-			<td>
-				<span class="brand-name">%s</span>
-				<form class="hidden edit-form" hx-put="/brands/%d" hx-target="#brand-%d" hx-swap="outerHTML">
-					<input type="text" name="name" value="%s" required>
-				</form>
-			</td>
-			<td>
-				<div class="actions">
-					<button class="btn-sm secondary" onclick="toggleEdit(%d)">Edit</button>
-					<button class="btn-sm contrast"
-							hx-delete="/brands/%d"
-							hx-target="#brand-%d"
-							hx-swap="outerHTML"
-							hx-confirm="Are you sure you want to delete this brand?">
-						Delete
-					</button>
-				</div>
-			</td>
-		</tr>`, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.ID))
+		html, err := RenderBrandRow(brand)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
 	})
 
 	app.Put("/brands/:id", func(c *fiber.Ctx) error {
@@ -501,29 +523,13 @@ func setupRoutes(
 		name := c.FormValue("name")
 		brand, err := brandSvc.Update(uint(id), name)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
-		return c.SendString(fmt.Sprintf(`<tr id="brand-%d">
-			<td>%d</td>
-			<td>
-				<span class="brand-name">%s</span>
-				<form class="hidden edit-form" hx-put="/brands/%d" hx-target="#brand-%d" hx-swap="outerHTML">
-					<input type="text" name="name" value="%s" required>
-				</form>
-			</td>
-			<td>
-				<div class="actions">
-					<button class="btn-sm secondary" onclick="toggleEdit(%d)">Edit</button>
-					<button class="btn-sm contrast"
-							hx-delete="/brands/%d"
-							hx-target="#brand-%d"
-							hx-swap="outerHTML"
-							hx-confirm="Are you sure you want to delete this brand?">
-						Delete
-					</button>
-				</div>
-			</td>
-		</tr>`, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.ID))
+		html, err := RenderBrandRow(brand)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
 	})
 
 	app.Delete("/brands/:id", func(c *fiber.Ctx) error {
@@ -532,7 +538,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := brandSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -558,39 +564,13 @@ func setupRoutes(
 
 		product, err := productSvc.Create(name, uint(brandID), specIDPtr)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
-		brandName := ""
-		if product.Brand != nil {
-			brandName = product.Brand.Name
+		html, err := RenderProductRow(product)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
 		}
-		specName := "-"
-		if product.Specification != nil {
-			specName = product.Specification.Name
-		}
-		return c.SendString(fmt.Sprintf(`<tr id="product-%d">
-			<td>%d</td>
-			<td>
-				<span class="product-name">%s</span>
-				<form class="hidden edit-form" hx-put="/products/%d" hx-target="#product-%d" hx-swap="outerHTML">
-					<input type="text" name="name" value="%s" required>
-				</form>
-			</td>
-			<td>%s</td>
-			<td>%s</td>
-			<td>
-				<div class="actions">
-					<button class="btn-sm secondary" onclick="toggleProductEdit(%d)">Edit</button>
-					<button class="btn-sm contrast"
-							hx-delete="/products/%d"
-							hx-target="#product-%d"
-							hx-swap="outerHTML"
-							hx-confirm="Are you sure you want to delete this product?">
-						Delete
-					</button>
-				</div>
-			</td>
-		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, specName, product.ID, product.ID, product.ID))
+		return c.SendString(html.String())
 	})
 
 	app.Put("/products/:id", func(c *fiber.Ctx) error {
@@ -1401,4 +1381,12 @@ func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
 
 func init() {
 	webCmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
+}
+
+// getEnvOrDefault returns the value of an environment variable or a default value
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

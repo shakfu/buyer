@@ -1,14 +1,5 @@
 {{define "content"}}
-<header>
-    <nav>
-        <ul>
-            <li><a href="/">← Back to Home</a></li>
-        </ul>
-        <ul>
-            <li><strong>Brands</strong></li>
-        </ul>
-    </nav>
-</header>
+{{template "breadcrumb" .}}
 
 <div class="toggle-form">
     <button onclick="toggleForm('add-brand-form')">Add New Brand</button>

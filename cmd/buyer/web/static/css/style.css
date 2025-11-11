@@ -72,6 +72,16 @@
     max-width: 1400px;
 }
 
+/* Breadcrumb spacing */
+nav[aria-label="breadcrumb"] {
+    margin-bottom: 1.5rem;
+}
+
+/* Reduce main container padding */
+/*main {
+    padding: 1.5rem 2rem;
+}*/
+
 /* Responsive: collapse sidebar on mobile */
 @media (max-width: 768px) {
     .layout {
