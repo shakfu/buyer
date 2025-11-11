@@ -1,4 +1,4 @@
-.PHONY: build test clean install run web coverage lint
+.PHONY: build test clean install run web coverage lint snap
 
 # Build the binary
 build:
@@ -51,6 +51,9 @@ clean:
 # Run all checks (fmt, lint, test)
 check: fmt lint test
 
+snap:
+	@git add --all . && git commit -m 'snap' && git push
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -66,3 +69,4 @@ help:
 	@echo "  tidy       - Tidy dependencies"
 	@echo "  clean      - Clean build artifacts"
 	@echo "  check      - Run fmt, lint, and test"
+	@echo "  snap       - Create and Push a git snapshot of the code"

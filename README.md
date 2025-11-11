@@ -1,6 +1,8 @@
-# GoBuy
+# buyer
 
-A purchasing support and vendor quote management tool written in Go. GoBuy helps you track brands, products, vendors, and price quotes across multiple vendors with multi-currency support.
+A purchasing support and vendor quote management tool written in Go.
+
+*buyer* helps you track brands, products, vendors, and price quotes across multiple vendors with multi-currency support.
 
 ## Features
 
@@ -187,7 +189,7 @@ buyer/
 
 ## Architecture
 
-GoBuy follows clean architecture principles:
+`buyer` follows clean architecture principles:
 
 1. **Models Layer** (`internal/models`): GORM-based ORM models defining database schema
 2. **Service Layer** (`internal/services`): Business logic with validation and error handling
@@ -287,25 +289,6 @@ make clean
 - **Web Framework**: Fiber v2.52+
 - **Table Rendering**: rodaine/table v1.3+
 - **Testing**: Go standard testing package
-
-## Migration from Python
-
-This project is a Go port of the original Python `buyer-log` project. Key improvements:
-
-1. **Performance**: Compiled Go binary vs interpreted Python
-2. **Type Safety**: Strong static typing catches errors at compile time
-3. **Deployment**: Single binary with no dependencies
-4. **Concurrency**: Built-in goroutines for potential future enhancements
-5. **Resource Usage**: Lower memory footprint
-
-### API Compatibility
-
-While the Go version maintains feature parity with the Python version, the internal API differs:
-
-- Python: SQLAlchemy ORM → Go: GORM
-- Python: Click CLI → Go: Cobra
-- Python: FastAPI → Go: Fiber
-- Python: Pydantic schemas → Go: struct validation
 
 ## Contributing
 
