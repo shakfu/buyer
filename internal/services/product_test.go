@@ -182,6 +182,109 @@ func TestProductService_Update(t *testing.T) {
 	}
 }
 
+func TestProductService_GetByName(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Apple")
+	productSvc.Create("MacBook Pro", brand.ID, nil)
+
+	tests := []struct {
+		name        string
+		productName string
+		wantErr     bool
+	}{
+		{
+			name:        "existing product",
+			productName: "MacBook Pro",
+			wantErr:     false,
+		},
+		{
+			name:        "non-existent product",
+			productName: "NonExistent",
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := productSvc.GetByName(tt.productName)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("GetByName() error = nil, wantErr true")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("GetByName() unexpected error = %v", err)
+				return
+			}
+
+			if result.Name != tt.productName {
+				t.Errorf("GetByName() Name = %v, want %v", result.Name, tt.productName)
+			}
+		})
+	}
+}
+
+func TestProductService_List(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Sony")
+	productSvc.Create("PlayStation 5", brand.ID, nil)
+	productSvc.Create("PlayStation 4", brand.ID, nil)
+	productSvc.Create("PlayStation VR", brand.ID, nil)
+
+	tests := []struct {
+		name      string
+		limit     int
+		offset    int
+		wantCount int
+	}{
+		{
+			name:      "all products",
+			limit:     0,
+			offset:    0,
+			wantCount: 3,
+		},
+		{
+			name:      "limited products",
+			limit:     2,
+			offset:    0,
+			wantCount: 2,
+		},
+		{
+			name:      "with offset",
+			limit:     0,
+			offset:    1,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			products, err := productSvc.List(tt.limit, tt.offset)
+			if err != nil {
+				t.Errorf("List() error = %v", err)
+				return
+			}
+
+			if len(products) != tt.wantCount {
+				t.Errorf("List() count = %v, want %v", len(products), tt.wantCount)
+			}
+		})
+	}
+}
+
 func TestProductService_ListByBrand(t *testing.T) {
 	cfg := setupTestDB(t)
 	defer cfg.Close()
@@ -201,5 +304,109 @@ func TestProductService_ListByBrand(t *testing.T) {
 
 	if len(products) != 2 {
 		t.Errorf("Expected 2 products, got %d", len(products))
+	}
+}
+
+func TestProductService_ListBySpecification(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	specSvc := NewSpecificationService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Samsung")
+	spec, _ := specSvc.Create("Smartphone", "Mobile phone device")
+
+	productSvc.Create("Galaxy S21", brand.ID, &spec.ID)
+	productSvc.Create("Galaxy S22", brand.ID, &spec.ID)
+
+	products, err := productSvc.ListBySpecification(spec.ID)
+	if err != nil {
+		t.Errorf("ListBySpecification() error = %v", err)
+		return
+	}
+
+	if len(products) != 2 {
+		t.Errorf("ListBySpecification() count = %v, want 2", len(products))
+	}
+}
+
+func TestProductService_Delete(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+
+	brand, _ := brandSvc.Create("LG")
+	product, _ := productSvc.Create("OLED TV", brand.ID, nil)
+
+	tests := []struct {
+		name    string
+		id      uint
+		wantErr bool
+		errType interface{}
+	}{
+		{
+			name:    "delete existing product",
+			id:      product.ID,
+			wantErr: false,
+		},
+		{
+			name:    "delete non-existent product",
+			id:      9999,
+			wantErr: true,
+			errType: &NotFoundError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := productSvc.Delete(tt.id)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Delete() error = nil, wantErr true")
+					return
+				}
+				if _, ok := err.(*NotFoundError); !ok {
+					t.Errorf("Delete() error type = %T, want NotFoundError", err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Delete() unexpected error = %v", err)
+			}
+
+			// Verify it's actually deleted
+			_, err = productSvc.GetByID(tt.id)
+			if err == nil {
+				t.Error("Product should be deleted but still exists")
+			}
+		})
+	}
+}
+
+func TestProductService_Count(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+
+	brand, _ := brandSvc.Create("HP")
+	productSvc.Create("EliteBook", brand.ID, nil)
+	productSvc.Create("ProBook", brand.ID, nil)
+
+	count, err := productSvc.Count()
+	if err != nil {
+		t.Errorf("Count() error = %v", err)
+		return
+	}
+
+	if count != 2 {
+		t.Errorf("Count() = %v, want 2", count)
 	}
 }

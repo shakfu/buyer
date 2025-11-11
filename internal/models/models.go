@@ -13,7 +13,7 @@ type Vendor struct {
 	Currency     string    `gorm:"size:3;not null" json:"currency"` // ISO 4217 currency code
 	DiscountCode string    `gorm:"size:50" json:"discount_code,omitempty"`
 	Brands       []*Brand  `gorm:"many2many:vendor_brands;" json:"brands,omitempty"`
-	Quotes       []Quote   `gorm:"foreignKey:VendorID" json:"quotes,omitempty"`
+	Quotes       []Quote   `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"quotes,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -23,7 +23,7 @@ type Brand struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"uniqueIndex;not null" json:"name"`
 	Vendors   []*Vendor `gorm:"many2many:vendor_brands;" json:"vendors,omitempty"`
-	Products  []Product `gorm:"foreignKey:BrandID" json:"products,omitempty"`
+	Products  []Product `gorm:"foreignKey:BrandID;constraint:OnDelete:RESTRICT" json:"products,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -33,7 +33,7 @@ type Specification struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `gorm:"uniqueIndex;not null" json:"name"`
 	Description string    `gorm:"type:text" json:"description,omitempty"`
-	Products    []Product `gorm:"foreignKey:SpecificationID" json:"products,omitempty"`
+	Products    []Product `gorm:"foreignKey:SpecificationID;constraint:OnDelete:SET NULL" json:"products,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -43,10 +43,10 @@ type Product struct {
 	ID              uint            `gorm:"primaryKey" json:"id"`
 	Name            string          `gorm:"uniqueIndex;not null" json:"name"`
 	BrandID         uint            `gorm:"not null;index" json:"brand_id"`
-	Brand           *Brand          `gorm:"foreignKey:BrandID" json:"brand,omitempty"`
-	SpecificationID uint            `gorm:"index" json:"specification_id,omitempty"`
-	Specification   *Specification  `gorm:"foreignKey:SpecificationID" json:"specification,omitempty"`
-	Quotes          []Quote         `gorm:"foreignKey:ProductID" json:"quotes,omitempty"`
+	Brand           *Brand          `gorm:"foreignKey:BrandID;constraint:OnDelete:RESTRICT" json:"brand,omitempty"`
+	SpecificationID *uint           `gorm:"index" json:"specification_id,omitempty"`
+	Specification   *Specification  `gorm:"foreignKey:SpecificationID;constraint:OnDelete:SET NULL" json:"specification,omitempty"`
+	Quotes          []Quote         `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"quotes,omitempty"`
 	CreatedAt       time.Time       `json:"created_at"`
 	UpdatedAt       time.Time       `json:"updated_at"`
 }
@@ -57,7 +57,7 @@ type Requisition struct {
 	Name          string            `gorm:"uniqueIndex;not null" json:"name"`
 	Justification string            `gorm:"type:text" json:"justification,omitempty"`
 	Budget        float64           `json:"budget,omitempty"` // Optional overall budget limit
-	Items         []RequisitionItem `gorm:"foreignKey:RequisitionID" json:"items,omitempty"`
+	Items         []RequisitionItem `gorm:"foreignKey:RequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
 	CreatedAt     time.Time         `json:"created_at"`
 	UpdatedAt     time.Time         `json:"updated_at"`
 }
@@ -66,9 +66,9 @@ type Requisition struct {
 type RequisitionItem struct {
 	ID              uint           `gorm:"primaryKey" json:"id"`
 	RequisitionID   uint           `gorm:"not null;index" json:"requisition_id"`
-	Requisition     *Requisition   `gorm:"foreignKey:RequisitionID" json:"requisition,omitempty"`
+	Requisition     *Requisition   `gorm:"foreignKey:RequisitionID;constraint:OnDelete:CASCADE" json:"requisition,omitempty"`
 	SpecificationID uint           `gorm:"not null;index" json:"specification_id"`
-	Specification   *Specification `gorm:"foreignKey:SpecificationID" json:"specification,omitempty"`
+	Specification   *Specification `gorm:"foreignKey:SpecificationID;constraint:OnDelete:RESTRICT" json:"specification,omitempty"`
 	Quantity        int            `gorm:"not null" json:"quantity"`
 	BudgetPerUnit   float64        `json:"budget_per_unit,omitempty"` // Optional budget per unit
 	Description     string         `gorm:"type:text" json:"description,omitempty"` // Optional description for details
@@ -80,9 +80,9 @@ type RequisitionItem struct {
 type Quote struct {
 	ID               uint       `gorm:"primaryKey" json:"id"`
 	VendorID         uint       `gorm:"not null;index" json:"vendor_id"`
-	Vendor           *Vendor    `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
+	Vendor           *Vendor    `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"vendor,omitempty"`
 	ProductID        uint       `gorm:"not null;index" json:"product_id"`
-	Product          *Product   `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	Product          *Product   `gorm:"foreignKey:ProductID;constraint:OnDelete:RESTRICT" json:"product,omitempty"`
 	Price            float64    `gorm:"not null" json:"price"`
 	Currency         string     `gorm:"size:3;not null" json:"currency"`
 	ConvertedPrice   float64    `gorm:"not null" json:"converted_price"` // Price in USD

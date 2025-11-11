@@ -277,3 +277,445 @@ func TestQuoteService_ListByVendor(t *testing.T) {
 		t.Errorf("Expected vendor ID %d, got %d", vendor1.ID, quotes[0].Vendor.ID)
 	}
 }
+
+func TestQuoteService_GetByID(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Panasonic")
+	product, _ := productSvc.Create("Lumix S5", brand.ID, nil)
+	vendor, _ := vendorSvc.Create("Camera Store", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quote, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     1999.99,
+		Currency:  "USD",
+	})
+
+	tests := []struct {
+		name    string
+		id      uint
+		wantErr bool
+	}{
+		{
+			name:    "existing quote",
+			id:      quote.ID,
+			wantErr: false,
+		},
+		{
+			name:    "non-existent quote",
+			id:      9999,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := quoteSvc.GetByID(tt.id)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("GetByID() error = nil, wantErr true")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("GetByID() unexpected error = %v", err)
+				return
+			}
+
+			if result.ID != tt.id {
+				t.Errorf("GetByID() ID = %v, want %v", result.ID, tt.id)
+			}
+			if result.Vendor == nil {
+				t.Error("Expected vendor to be preloaded")
+			}
+			if result.Product == nil {
+				t.Error("Expected product to be preloaded")
+			}
+		})
+	}
+}
+
+func TestQuoteService_List(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Olympus")
+	product, _ := productSvc.Create("OM-1", brand.ID, nil)
+	vendor, _ := vendorSvc.Create("Photo Shop", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     2199.99,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     2099.99,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     1999.99,
+		Currency:  "USD",
+	})
+
+	tests := []struct {
+		name      string
+		limit     int
+		offset    int
+		wantCount int
+	}{
+		{
+			name:      "all quotes",
+			limit:     0,
+			offset:    0,
+			wantCount: 3,
+		},
+		{
+			name:      "limited quotes",
+			limit:     2,
+			offset:    0,
+			wantCount: 2,
+		},
+		{
+			name:      "with offset",
+			limit:     0,
+			offset:    1,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			quotes, err := quoteSvc.List(tt.limit, tt.offset)
+			if err != nil {
+				t.Errorf("List() error = %v", err)
+				return
+			}
+
+			if len(quotes) != tt.wantCount {
+				t.Errorf("List() count = %v, want %v", len(quotes), tt.wantCount)
+			}
+		})
+	}
+}
+
+func TestQuoteService_Delete(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Leica")
+	product, _ := productSvc.Create("M11", brand.ID, nil)
+	vendor, _ := vendorSvc.Create("Leica Store", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quote, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     8995.00,
+		Currency:  "USD",
+	})
+
+	tests := []struct {
+		name    string
+		id      uint
+		wantErr bool
+	}{
+		{
+			name:    "delete existing quote",
+			id:      quote.ID,
+			wantErr: false,
+		},
+		{
+			name:    "delete non-existent quote",
+			id:      9999,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := quoteSvc.Delete(tt.id)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Delete() error = nil, wantErr true")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Delete() unexpected error = %v", err)
+			}
+
+			// Verify it's actually deleted
+			_, err = quoteSvc.GetByID(tt.id)
+			if err == nil {
+				t.Error("Quote should be deleted but still exists")
+			}
+		})
+	}
+}
+
+func TestQuoteService_Count(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Hasselblad")
+	product, _ := productSvc.Create("X2D 100C", brand.ID, nil)
+	vendor, _ := vendorSvc.Create("Hasselblad Store", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     8199.00,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     7999.00,
+		Currency:  "USD",
+	})
+
+	count, err := quoteSvc.Count()
+	if err != nil {
+		t.Errorf("Count() error = %v", err)
+		return
+	}
+
+	if count != 2 {
+		t.Errorf("Count() = %v, want 2", count)
+	}
+}
+
+func TestQuoteService_ListActiveQuotes(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Sigma")
+	product, _ := productSvc.Create("fp L", brand.ID, nil)
+	vendor, _ := vendorSvc.Create("Sigma Store", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	// Create active quote (no expiry)
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product.ID,
+		Price:     2499.00,
+		Currency:  "USD",
+	})
+
+	// Create active quote (future expiry)
+	futureDate := time.Now().AddDate(0, 0, 30)
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor.ID,
+		ProductID:  product.ID,
+		Price:      2399.00,
+		Currency:   "USD",
+		ValidUntil: &futureDate,
+	})
+
+	// Create expired quote
+	pastDate := time.Now().AddDate(0, 0, -1)
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor.ID,
+		ProductID:  product.ID,
+		Price:      2299.00,
+		Currency:   "USD",
+		ValidUntil: &pastDate,
+	})
+
+	// List active quotes
+	activeQuotes, err := quoteSvc.ListActiveQuotes(0, 0)
+	if err != nil {
+		t.Errorf("ListActiveQuotes() error = %v", err)
+		return
+	}
+
+	if len(activeQuotes) != 2 {
+		t.Errorf("ListActiveQuotes() count = %v, want 2", len(activeQuotes))
+	}
+}
+
+func TestQuoteService_CompareQuotesForProduct(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	brand, _ := brandSvc.Create("Pentax")
+	product, _ := productSvc.Create("K-3 III", brand.ID, nil)
+	vendor1, _ := vendorSvc.Create("Vendor A", "USD", "")
+	vendor2, _ := vendorSvc.Create("Vendor B", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor1.ID,
+		ProductID: product.ID,
+		Price:     1999.00,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor2.ID,
+		ProductID: product.ID,
+		Price:     1899.00,
+		Currency:  "USD",
+	})
+
+	quotes, err := quoteSvc.CompareQuotesForProduct(product.ID)
+	if err != nil {
+		t.Errorf("CompareQuotesForProduct() error = %v", err)
+		return
+	}
+
+	if len(quotes) != 2 {
+		t.Errorf("CompareQuotesForProduct() count = %v, want 2", len(quotes))
+	}
+
+	// Should be ordered by price ascending
+	if quotes[0].ConvertedPrice > quotes[1].ConvertedPrice {
+		t.Error("CompareQuotesForProduct() should return quotes ordered by price ascending")
+	}
+}
+
+func TestQuoteService_CompareQuotesForSpecification(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	specSvc := NewSpecificationService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	spec, _ := specSvc.Create("Camera", "Digital camera")
+	brand1, _ := brandSvc.Create("Brand X")
+	brand2, _ := brandSvc.Create("Brand Y")
+	product1, _ := productSvc.Create("Camera X1", brand1.ID, &spec.ID)
+	product2, _ := productSvc.Create("Camera Y1", brand2.ID, &spec.ID)
+	vendor, _ := vendorSvc.Create("Vendor C", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product1.ID,
+		Price:     1500.00,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product2.ID,
+		Price:     1300.00,
+		Currency:  "USD",
+	})
+
+	quotes, err := quoteSvc.CompareQuotesForSpecification(spec.ID)
+	if err != nil {
+		t.Errorf("CompareQuotesForSpecification() error = %v", err)
+		return
+	}
+
+	if len(quotes) != 2 {
+		t.Errorf("CompareQuotesForSpecification() count = %v, want 2", len(quotes))
+	}
+}
+
+func TestQuoteService_GetBestQuoteForSpecification(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer cfg.Close()
+
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	specSvc := NewSpecificationService(cfg.DB)
+	quoteSvc := NewQuoteService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	spec, _ := specSvc.Create("Lens", "Camera lens")
+	brand, _ := brandSvc.Create("Brand Z")
+	product1, _ := productSvc.Create("50mm f/1.8", brand.ID, &spec.ID)
+	product2, _ := productSvc.Create("50mm f/1.4", brand.ID, &spec.ID)
+	vendor, _ := vendorSvc.Create("Vendor D", "USD", "")
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product1.ID,
+		Price:     199.00,
+		Currency:  "USD",
+	})
+
+	quoteSvc.Create(CreateQuoteInput{
+		VendorID:  vendor.ID,
+		ProductID: product2.ID,
+		Price:     399.00,
+		Currency:  "USD",
+	})
+
+	bestQuote, err := quoteSvc.GetBestQuoteForSpecification(spec.ID)
+	if err != nil {
+		t.Errorf("GetBestQuoteForSpecification() error = %v", err)
+		return
+	}
+
+	if bestQuote.Price != 199.00 {
+		t.Errorf("GetBestQuoteForSpecification() price = %v, want 199.00", bestQuote.Price)
+	}
+
+	// Test non-existent specification
+	_, err = quoteSvc.GetBestQuoteForSpecification(9999)
+	if err == nil {
+		t.Error("Expected error for non-existent specification")
+	}
+}

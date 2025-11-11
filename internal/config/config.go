@@ -90,6 +90,11 @@ func (c *Config) InitDB() error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// Enable foreign key constraints for SQLite
+	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		return fmt.Errorf("failed to enable foreign key constraints: %w", err)
+	}
+
 	c.DB = db
 	return nil
 }

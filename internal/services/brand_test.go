@@ -13,13 +13,16 @@ func setupTestDB(t *testing.T) *config.Config {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
 
-	// Run migrations
+	// Run migrations for all models
 	if err := cfg.AutoMigrate(
 		&models.Vendor{},
 		&models.Brand{},
+		&models.Specification{},
 		&models.Product{},
 		&models.Quote{},
 		&models.Forex{},
+		&models.Requisition{},
+		&models.RequisitionItem{},
 	); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

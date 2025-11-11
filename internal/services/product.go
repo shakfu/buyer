@@ -56,11 +56,9 @@ func (s *ProductService) Create(name string, brandID uint, specificationID *uint
 	}
 
 	product := &models.Product{
-		Name:    name,
-		BrandID: brandID,
-	}
-	if specificationID != nil && *specificationID > 0 {
-		product.SpecificationID = *specificationID
+		Name:            name,
+		BrandID:         brandID,
+		SpecificationID: specificationID,
 	}
 
 	if err := s.db.Create(product).Error; err != nil {
@@ -162,14 +160,7 @@ func (s *ProductService) Update(id uint, newName string, specificationID *uint) 
 	}
 
 	product.Name = newName
-	if specificationID != nil {
-		if *specificationID == 0 {
-			// Clear specification
-			product.SpecificationID = 0
-		} else {
-			product.SpecificationID = *specificationID
-		}
-	}
+	product.SpecificationID = specificationID
 
 	if err := s.db.Save(product).Error; err != nil {
 		return nil, err
