@@ -1,0 +1,56 @@
+/* Custom styles to complement Pico CSS */
+
+/* Utility classes */
+.hidden {
+    display: none;
+}
+
+/* HTMX transitions */
+.htmx-swapping {
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+.htmx-settling {
+    opacity: 1;
+    transition: opacity 0.2s ease-in;
+}
+
+/* Action buttons inline layout */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.actions button {
+    margin: 0;
+}
+
+/* Inline edit form styling */
+.edit-form input {
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Toggle form container */
+.toggle-form {
+    margin: 1rem 0;
+}
+
+/* Message auto-hide animation */
+.message {
+    transition: opacity 0.3s ease-out;
+}
+
+/* Table row hover enhancement */
+tbody tr:hover {
+    background-color: var(--pico-table-row-stripped-background-color);
+}
+
+/* Small button variant */
+button.btn-sm,
+a.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}

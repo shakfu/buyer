@@ -4,14 +4,35 @@
     <title>{{.Title}} - Buyer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/css/pico.classless.min.css">
+    <link rel="stylesheet" href="/static/css/pico.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="/static/js/htmx.min-2.0.8.js"></script>
 </head>
 <body>
-    <main>
-        {{template "content" .}}
-    </main>
+    <div class="layout">
+        <aside class="sidebar">
+            <nav>
+                <h2><a href="/" style="text-decoration: none; color: inherit;">Buyer</a></h2>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><strong>Master Data</strong></li>
+                    <li><a href="/specifications">Specifications</a></li>
+                    <li><a href="/brands">Brands</a></li>
+                    <li><a href="/products">Products</a></li>
+                    <li><a href="/vendors">Vendors</a></li>
+                    <li><strong>Purchasing</strong></li>
+                    <li><a href="/requisitions">Requisitions</a></li>
+                    <li><a href="/quotes">Quotes</a></li>
+                    <li><a href="/requisition-comparison" class="secondary">Compare Quotes</a></li>
+                    <li><strong>Configuration</strong></li>
+                    <li><a href="/forex">Forex Rates</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            {{template "content" .}}
+        </main>
+    </div>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

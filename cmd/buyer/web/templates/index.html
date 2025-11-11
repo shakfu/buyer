@@ -1,33 +1,42 @@
 {{define "content"}}
 <header>
-    <h1>Buyer - Purchasing Management</h1>
-    <p>Your purchasing support and vendor quote management tool</p>
+    <h1>Purchasing Management</h1>
+    <p>Welcome to Buyer - Your purchasing support and vendor quote management tool</p>
 </header>
-
-<nav>
-    <ul>
-        <li><a href="/specifications" role="button">Specifications</a></li>
-        <li><a href="/brands" role="button">Brands</a></li>
-        <li><a href="/products" role="button">Products</a></li>
-        <li><a href="/vendors" role="button">Vendors</a></li>
-        <li><a href="/requisitions" role="button">Requisitions</a></li>
-        <li><a href="/quotes" role="button">Quotes</a></li>
-        <li><a href="/requisition-comparison" role="button" class="secondary">Compare Requisition Quotes</a></li>
-        <li><a href="/forex" role="button">Forex Rates</a></li>
-    </ul>
-</nav>
 
 <article>
     <h2>Features</h2>
-    <ul>
-        <li><strong>Specifications</strong>: Define general product types</li>
-        <li><strong>Brand Management</strong>: Track manufacturing brands</li>
-        <li><strong>Product Catalog</strong>: Organize products by brand and specification</li>
-        <li><strong>Vendor Management</strong>: Manage vendors with currency support</li>
-        <li><strong>Requisitions</strong>: Track purchasing requirements with budgets</li>
-        <li><strong>Quote Tracking</strong>: Compare prices across vendors with expiration tracking</li>
-        <li><strong>Requisition Quote Comparison</strong>: Compare quotes by specification for each requisition item, calculate total costs and savings</li>
-        <li><strong>Multi-Currency</strong>: Automatic forex conversion</li>
-    </ul>
+    <p>Use the sidebar navigation to access different sections of the application:</p>
+
+    <section>
+        <h3>Master Data</h3>
+        <ul>
+            <li><strong>Specifications</strong>: Define general product types and categories</li>
+            <li><strong>Brands</strong>: Track manufacturing brands</li>
+            <li><strong>Products</strong>: Organize products by brand and specification</li>
+            <li><strong>Vendors</strong>: Manage vendors with multi-currency support</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Purchasing Operations</h3>
+        <ul>
+            <li><strong>Requisitions</strong>: Create and track purchasing requirements with budgets</li>
+            <li><strong>Quotes</strong>: Track vendor quotes with expiration dates</li>
+            <li><strong>Compare Quotes</strong>: Analyze quotes by specification for requisitions, calculate total costs and savings</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Configuration</h3>
+        <ul>
+            <li><strong>Forex Rates</strong>: Manage currency exchange rates for automatic price conversion to USD</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Quick Stats</h2>
+    <p>Navigate to specific sections to view and manage your purchasing data.</p>
 </article>
 {{end}}
