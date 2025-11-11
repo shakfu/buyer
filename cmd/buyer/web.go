@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -100,9 +101,14 @@ func setupRoutes(
 		if err != nil {
 			return err
 		}
+		brands, err := brandSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
 		return renderTemplate(c, "products.html", fiber.Map{
 			"Title":    "Products",
 			"Products": products,
+			"Brands":   brands,
 		})
 	})
 
@@ -140,6 +146,168 @@ func setupRoutes(
 			"Title": "Forex Rates",
 			"Rates": rates,
 		})
+	})
+
+	// CRUD endpoints for Brands
+	app.Post("/brands", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		brand, err := brandSvc.Create(name)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="brand-%d">
+			<td>%d</td>
+			<td>
+				<span class="brand-name">%s</span>
+				<form class="hidden edit-form" hx-put="/brands/%d" hx-target="#brand-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/brands/%d"
+							hx-target="#brand-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this brand?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.ID))
+	})
+
+	app.Put("/brands/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		name := c.FormValue("name")
+		brand, err := brandSvc.Update(uint(id), name)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="brand-%d">
+			<td>%d</td>
+			<td>
+				<span class="brand-name">%s</span>
+				<form class="hidden edit-form" hx-put="/brands/%d" hx-target="#brand-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/brands/%d"
+							hx-target="#brand-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this brand?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.Name, brand.ID, brand.ID, brand.ID))
+	})
+
+	app.Delete("/brands/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := brandSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Products
+	app.Post("/products", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		brandID, err := strconv.ParseUint(c.FormValue("brand_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid brand ID")
+		}
+		product, err := productSvc.Create(name, uint(brandID))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		brandName := ""
+		if product.Brand != nil {
+			brandName = product.Brand.Name
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="product-%d">
+			<td>%d</td>
+			<td>
+				<span class="product-name">%s</span>
+				<form class="hidden edit-form" hx-put="/products/%d" hx-target="#product-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleProductEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/products/%d"
+							hx-target="#product-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this product?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, product.ID, product.ID, product.ID))
+	})
+
+	app.Put("/products/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		name := c.FormValue("name")
+		product, err := productSvc.Update(uint(id), name)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		brandName := ""
+		if product.Brand != nil {
+			brandName = product.Brand.Name
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="product-%d">
+			<td>%d</td>
+			<td>
+				<span class="product-name">%s</span>
+				<form class="hidden edit-form" hx-put="/products/%d" hx-target="#product-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleProductEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/products/%d"
+							hx-target="#product-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this product?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, product.ID, product.ID, product.ID))
+	})
+
+	app.Delete("/products/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := productSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
 	})
 }
 

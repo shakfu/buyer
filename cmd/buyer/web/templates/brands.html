@@ -1,16 +1,88 @@
 {{define "content"}}
-<h1>Brands</h1>
-<a href="/">Back to Home</a>
-<table>
-    <tr>
-        <th>ID</th>
-        <th>Name</th>
-    </tr>
-    {{range .Brands}}
-    <tr>
-        <td>{{.ID}}</td>
-        <td>{{.Name}}</td>
-    </tr>
-    {{end}}
-</table>
+<header>
+    <nav>
+        <ul>
+            <li><a href="/">← Back to Home</a></li>
+        </ul>
+        <ul>
+            <li><strong>Brands</strong></li>
+        </ul>
+    </nav>
+</header>
+
+<div class="toggle-form">
+    <button onclick="toggleForm('add-brand-form')">Add New Brand</button>
+</div>
+
+<article id="add-brand-form" class="hidden">
+    <h2>Add New Brand</h2>
+    <form hx-post="/brands" hx-target="#brands-table tbody" hx-swap="beforeend">
+        <label for="name">
+            Brand Name
+            <input type="text" id="name" name="name" placeholder="Enter brand name" required>
+        </label>
+        <button type="submit">Add Brand</button>
+        <button type="button" onclick="toggleForm('add-brand-form')" class="secondary">Cancel</button>
+    </form>
+</article>
+
+<figure id="brands-table">
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Brands}}
+            <tr id="brand-{{.ID}}">
+                <td>{{.ID}}</td>
+                <td>
+                    <span class="brand-name">{{.Name}}</span>
+                    <form class="hidden edit-form" hx-put="/brands/{{.ID}}" hx-target="#brand-{{.ID}}" hx-swap="outerHTML">
+                        <input type="text" name="name" value="{{.Name}}" required>
+                    </form>
+                </td>
+                <td>
+                    <div class="actions">
+                        <button class="btn-sm secondary" onclick="toggleEdit({{.ID}})">Edit</button>
+                        <button class="btn-sm contrast"
+                                hx-delete="/brands/{{.ID}}"
+                                hx-target="#brand-{{.ID}}"
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to delete this brand?">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</figure>
+
+<script>
+function toggleEdit(id) {
+    const row = document.getElementById('brand-' + id);
+    const nameSpan = row.querySelector('.brand-name');
+    const form = row.querySelector('.edit-form');
+    const editBtn = row.querySelector('.secondary');
+
+    if (form.classList.contains('hidden')) {
+        nameSpan.classList.add('hidden');
+        form.classList.remove('hidden');
+        editBtn.textContent = 'Save';
+        editBtn.onclick = function() {
+            htmx.trigger(form, 'submit');
+        };
+    } else {
+        nameSpan.classList.remove('hidden');
+        form.classList.add('hidden');
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = function() { toggleEdit(id); };
+    }
+}
+</script>
 {{end}}

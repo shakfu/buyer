@@ -1,11 +1,27 @@
 {{define "content"}}
-<h1>GoBuy - Purchasing Management</h1>
+<header>
+    <h1>Buyer - Purchasing Management</h1>
+    <p>Your purchasing support and vendor quote management tool</p>
+</header>
+
 <nav>
-    <a href="/brands">Brands</a>
-    <a href="/products">Products</a>
-    <a href="/vendors">Vendors</a>
-    <a href="/quotes">Quotes</a>
-    <a href="/forex">Forex Rates</a>
+    <ul>
+        <li><a href="/brands" role="button">Brands</a></li>
+        <li><a href="/products" role="button">Products</a></li>
+        <li><a href="/vendors" role="button">Vendors</a></li>
+        <li><a href="/quotes" role="button">Quotes</a></li>
+        <li><a href="/forex" role="button">Forex Rates</a></li>
+    </ul>
 </nav>
-<p>Welcome to GoBuy, your purchasing support and vendor quote management tool.</p>
+
+<article>
+    <h2>Features</h2>
+    <ul>
+        <li><strong>Brand Management</strong>: Track manufacturing brands</li>
+        <li><strong>Product Catalog</strong>: Organize products by brand</li>
+        <li><strong>Vendor Management</strong>: Manage vendors with currency support</li>
+        <li><strong>Quote Tracking</strong>: Compare prices across vendors</li>
+        <li><strong>Multi-Currency</strong>: Automatic forex conversion</li>
+    </ul>
+</article>
 {{end}}
