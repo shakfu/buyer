@@ -68,13 +68,13 @@
 }
 
 .content {
-    padding: 2rem;
+    padding: 0.75rem 2rem 2rem 2rem;
     max-width: 1400px;
 }
 
 /* Breadcrumb spacing */
 nav[aria-label="breadcrumb"] {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.0rem;
 }
 
 /* Reduce main container padding */
