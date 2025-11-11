@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -130,9 +131,19 @@ func setupRoutes(
 		if err != nil {
 			return err
 		}
+		vendors, err := vendorSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		products, err := productSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
 		return renderTemplate(c, "quotes.html", fiber.Map{
-			"Title":  "Quotes",
-			"Quotes": quotes,
+			"Title":    "Quotes",
+			"Quotes":   quotes,
+			"Vendors":  vendors,
+			"Products": products,
 		})
 	})
 
@@ -305,6 +316,200 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := productSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Vendors
+	app.Post("/vendors", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		currency := c.FormValue("currency")
+		discountCode := c.FormValue("discount_code")
+		vendor, err := vendorSvc.Create(name, currency, discountCode)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="vendor-%d">
+			<td>%d</td>
+			<td>
+				<span class="vendor-name">%s</span>
+				<form class="hidden edit-form" hx-put="/vendors/%d" hx-target="#vendor-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleVendorEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/vendors/%d"
+							hx-target="#vendor-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this vendor?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, vendor.ID, vendor.ID, vendor.Name, vendor.ID, vendor.ID, vendor.Name, vendor.Currency, vendor.DiscountCode, vendor.ID, vendor.ID, vendor.ID))
+	})
+
+	app.Put("/vendors/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		name := c.FormValue("name")
+		vendor, err := vendorSvc.Update(uint(id), name)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="vendor-%d">
+			<td>%d</td>
+			<td>
+				<span class="vendor-name">%s</span>
+				<form class="hidden edit-form" hx-put="/vendors/%d" hx-target="#vendor-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleVendorEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/vendors/%d"
+							hx-target="#vendor-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this vendor?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, vendor.ID, vendor.ID, vendor.Name, vendor.ID, vendor.ID, vendor.Name, vendor.Currency, vendor.DiscountCode, vendor.ID, vendor.ID, vendor.ID))
+	})
+
+	app.Delete("/vendors/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := vendorSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Forex
+	app.Post("/forex", func(c *fiber.Ctx) error {
+		fromCurrency := c.FormValue("from_currency")
+		toCurrency := c.FormValue("to_currency")
+		rateStr := c.FormValue("rate")
+		rate, err := strconv.ParseFloat(rateStr, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid rate")
+		}
+		forex, err := forexSvc.Create(fromCurrency, toCurrency, rate, time.Now())
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="forex-%d">
+			<td>%d</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%.4f</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm contrast"
+							hx-delete="/forex/%d"
+							hx-target="#forex-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this forex rate?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, forex.ID, forex.ID, forex.FromCurrency, forex.ToCurrency, forex.Rate, forex.EffectiveDate.Format("2006-01-02"), forex.ID, forex.ID))
+	})
+
+	app.Delete("/forex/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := forexSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Quotes
+	app.Post("/quotes", func(c *fiber.Ctx) error {
+		vendorID, err := strconv.ParseUint(c.FormValue("vendor_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid vendor ID")
+		}
+		productID, err := strconv.ParseUint(c.FormValue("product_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid product ID")
+		}
+		priceStr := c.FormValue("price")
+		price, err := strconv.ParseFloat(priceStr, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid price")
+		}
+		currency := c.FormValue("currency")
+		notes := c.FormValue("notes")
+
+		quote, err := quoteSvc.Create(services.CreateQuoteInput{
+			VendorID:  uint(vendorID),
+			ProductID: uint(productID),
+			Price:     price,
+			Currency:  currency,
+			Notes:     notes,
+		})
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		vendorName := ""
+		if quote.Vendor != nil {
+			vendorName = quote.Vendor.Name
+		}
+		productName := ""
+		if quote.Product != nil {
+			productName = quote.Product.Name
+		}
+
+		return c.SendString(fmt.Sprintf(`<tr id="quote-%d">
+			<td>%d</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%.2f %s</td>
+			<td>%.2f</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm contrast"
+							hx-delete="/quotes/%d"
+							hx-target="#quote-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this quote?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, quote.ID, quote.ID, vendorName, productName, quote.Price, quote.Currency, quote.ConvertedPrice, quote.QuoteDate.Format("2006-01-02"), quote.ID, quote.ID))
+	})
+
+	app.Delete("/quotes/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := quoteSvc.Delete(uint(id)); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 		return c.SendString("")
