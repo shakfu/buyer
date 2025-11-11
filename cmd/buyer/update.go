@@ -11,8 +11,32 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update entities (brand, product, vendor)",
+	Short: "Update entities (specification, brand, product, vendor)",
 	Long:  "Update entity names by ID",
+}
+
+var updateSpecificationCmd = &cobra.Command{
+	Use:   "specification [id] [new_name] --description [text]",
+	Short: "Update a specification's name and/or description",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid ID: %v\n", err)
+			os.Exit(1)
+		}
+
+		description, _ := cmd.Flags().GetString("description")
+
+		svc := services.NewSpecificationService(cfg.DB)
+		spec, err := svc.Update(uint(id), args[1], description)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Specification updated: %s (ID: %d)\n", spec.Name, spec.ID)
+	},
 }
 
 var updateBrandCmd = &cobra.Command{
@@ -82,7 +106,11 @@ var updateVendorCmd = &cobra.Command{
 }
 
 func init() {
+	updateCmd.AddCommand(updateSpecificationCmd)
 	updateCmd.AddCommand(updateBrandCmd)
 	updateCmd.AddCommand(updateProductCmd)
 	updateCmd.AddCommand(updateVendorCmd)
+
+	// Specification flags
+	updateSpecificationCmd.Flags().String("description", "", "New description for the specification")
 }

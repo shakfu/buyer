@@ -11,8 +11,25 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add entities (brand, product, vendor, quote, forex)",
-	Long:  "Add brands, products, vendors, quotes, or forex rates to the database",
+	Short: "Add entities (specification, brand, product, vendor, quote, forex, requisition)",
+	Long:  "Add specifications, brands, products, vendors, quotes, forex rates, or requisitions to the database",
+}
+
+var addSpecificationCmd = &cobra.Command{
+	Use:   "specification [name] --description [text]",
+	Short: "Add a new specification",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		description, _ := cmd.Flags().GetString("description")
+
+		svc := services.NewSpecificationService(cfg.DB)
+		spec, err := svc.Create(args[0], description)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Specification created: %s (ID: %d)\n", spec.Name, spec.ID)
+	},
 }
 
 var addBrandCmd = &cobra.Command{
@@ -153,12 +170,87 @@ var addForexCmd = &cobra.Command{
 	},
 }
 
+var addRequisitionCmd = &cobra.Command{
+	Use:   "requisition [name] --justification [text] --budget [amount]",
+	Short: "Add a new requisition",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		justification, _ := cmd.Flags().GetString("justification")
+		budget, _ := cmd.Flags().GetFloat64("budget")
+
+		svc := services.NewRequisitionService(cfg.DB)
+		req, err := svc.Create(args[0], justification, budget, []services.RequisitionItemInput{})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Requisition created: %s (ID: %d)\n", req.Name, req.ID)
+		if justification != "" {
+			fmt.Printf("  Justification: %s\n", justification)
+		}
+		if budget > 0 {
+			fmt.Printf("  Budget: %.2f\n", budget)
+		}
+		fmt.Println("  Note: Use 'buyer add requisition-item' to add line items to this requisition")
+	},
+}
+
+var addRequisitionItemCmd = &cobra.Command{
+	Use:   "requisition-item --requisition [id] --specification [name] --quantity [num]",
+	Short: "Add a line item to a requisition",
+	Run: func(cmd *cobra.Command, args []string) {
+		requisitionID, _ := cmd.Flags().GetUint("requisition")
+		specificationName, _ := cmd.Flags().GetString("specification")
+		quantity, _ := cmd.Flags().GetInt("quantity")
+		budgetPerUnit, _ := cmd.Flags().GetFloat64("budget-per-unit")
+		description, _ := cmd.Flags().GetString("description")
+
+		if requisitionID == 0 || specificationName == "" || quantity == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --requisition, --specification, and --quantity are required")
+			os.Exit(1)
+		}
+
+		// Get specification by name
+		specSvc := services.NewSpecificationService(cfg.DB)
+		spec, err := specSvc.GetByName(specificationName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		reqSvc := services.NewRequisitionService(cfg.DB)
+		item, err := reqSvc.AddItem(requisitionID, spec.ID, quantity, budgetPerUnit, description)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Line item added to requisition ID %d:\n", requisitionID)
+		fmt.Printf("  Specification: %s (ID: %d)\n", spec.Name, spec.ID)
+		fmt.Printf("  Quantity: %d\n", quantity)
+		if budgetPerUnit > 0 {
+			fmt.Printf("  Budget per unit: %.2f\n", budgetPerUnit)
+		}
+		if description != "" {
+			fmt.Printf("  Description: %s\n", description)
+		}
+		fmt.Printf("  Item ID: %d\n", item.ID)
+	},
+}
+
 func init() {
+	addCmd.AddCommand(addSpecificationCmd)
 	addCmd.AddCommand(addBrandCmd)
 	addCmd.AddCommand(addProductCmd)
 	addCmd.AddCommand(addVendorCmd)
 	addCmd.AddCommand(addQuoteCmd)
 	addCmd.AddCommand(addForexCmd)
+	addCmd.AddCommand(addRequisitionCmd)
+	addCmd.AddCommand(addRequisitionItemCmd)
+
+	// Specification flags
+	addSpecificationCmd.Flags().String("description", "", "Description of the specification")
 
 	// Product flags
 	addProductCmd.Flags().String("brand", "", "Brand name (required)")
@@ -178,4 +270,15 @@ func init() {
 	addForexCmd.Flags().String("from", "", "From currency code (required)")
 	addForexCmd.Flags().String("to", "", "To currency code (required)")
 	addForexCmd.Flags().Float64("rate", 0, "Exchange rate (required)")
+
+	// Requisition flags
+	addRequisitionCmd.Flags().String("justification", "", "Justification for the requisition")
+	addRequisitionCmd.Flags().Float64("budget", 0, "Overall budget limit for the requisition")
+
+	// Requisition item flags
+	addRequisitionItemCmd.Flags().Uint("requisition", 0, "Requisition ID (required)")
+	addRequisitionItemCmd.Flags().String("specification", "", "Specification name (required)")
+	addRequisitionItemCmd.Flags().Int("quantity", 0, "Quantity (required)")
+	addRequisitionItemCmd.Flags().Float64("budget-per-unit", 0, "Budget per unit (optional)")
+	addRequisitionItemCmd.Flags().String("description", "", "Additional description (optional)")
 }

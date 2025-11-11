@@ -11,8 +11,39 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List entities (brands, products, vendors, quotes, forex)",
+	Short: "List entities (specifications, brands, products, vendors, quotes, forex, requisitions)",
 	Long:  "List all entities with optional pagination",
+}
+
+var listSpecificationsCmd = &cobra.Command{
+	Use:   "specifications",
+	Short: "List all specifications",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+
+		svc := services.NewSpecificationService(cfg.DB)
+		specs, err := svc.List(limit, offset)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(specs) == 0 {
+			fmt.Println("No specifications found.")
+			return
+		}
+
+		tbl := table.New("ID", "Name", "Description", "Products")
+		for _, spec := range specs {
+			desc := spec.Description
+			if len(desc) > 50 {
+				desc = desc[:47] + "..."
+			}
+			tbl.AddRow(spec.ID, spec.Name, desc, len(spec.Products))
+		}
+		tbl.Print()
+	},
 }
 
 var listBrandsCmd = &cobra.Command{
@@ -165,15 +196,52 @@ var listForexCmd = &cobra.Command{
 	},
 }
 
+var listRequisitionsCmd = &cobra.Command{
+	Use:   "requisitions",
+	Short: "List all requisitions",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+
+		svc := services.NewRequisitionService(cfg.DB)
+		reqs, err := svc.List(limit, offset)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(reqs) == 0 {
+			fmt.Println("No requisitions found.")
+			return
+		}
+
+		tbl := table.New("ID", "Name", "Items", "Budget", "Justification")
+		for _, req := range reqs {
+			budgetStr := "-"
+			if req.Budget > 0 {
+				budgetStr = fmt.Sprintf("%.2f", req.Budget)
+			}
+			just := req.Justification
+			if len(just) > 40 {
+				just = just[:37] + "..."
+			}
+			tbl.AddRow(req.ID, req.Name, len(req.Items), budgetStr, just)
+		}
+		tbl.Print()
+	},
+}
+
 func init() {
+	listCmd.AddCommand(listSpecificationsCmd)
 	listCmd.AddCommand(listBrandsCmd)
 	listCmd.AddCommand(listProductsCmd)
 	listCmd.AddCommand(listVendorsCmd)
 	listCmd.AddCommand(listQuotesCmd)
 	listCmd.AddCommand(listForexCmd)
+	listCmd.AddCommand(listRequisitionsCmd)
 
 	// Add common pagination flags
-	for _, cmd := range []*cobra.Command{listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listForexCmd} {
+	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listForexCmd, listRequisitionsCmd} {
 		cmd.Flags().Int("limit", 0, "Maximum number of results (0 = no limit)")
 		cmd.Flags().Int("offset", 0, "Number of results to skip")
 	}

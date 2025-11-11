@@ -56,6 +56,20 @@ func (s *SpecificationService) GetByID(id uint) (*models.Specification, error) {
 	return &spec, nil
 }
 
+// GetByName retrieves a specification by name
+func (s *SpecificationService) GetByName(name string) (*models.Specification, error) {
+	name = strings.TrimSpace(name)
+	var spec models.Specification
+	err := s.db.Where("name = ?", name).First(&spec).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, &NotFoundError{Entity: "Specification", ID: name}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &spec, nil
+}
+
 // Update updates a specification's name and description
 func (s *SpecificationService) Update(id uint, name, description string) (*models.Specification, error) {
 	name = strings.TrimSpace(name)

@@ -45,12 +45,7 @@ func (s *RequisitionService) Create(name, justification string, budget float64, 
 		return nil, &DuplicateError{Entity: "Requisition", Name: name}
 	}
 
-	// Validate items
-	if len(items) == 0 {
-		return nil, &ValidationError{Field: "items", Message: "requisition must have at least one item"}
-	}
-
-	// Validate each item
+	// Validate each item (if any items are provided)
 	for _, item := range items {
 		if item.Quantity <= 0 {
 			return nil, &ValidationError{Field: "quantity", Message: "quantity must be positive"}
