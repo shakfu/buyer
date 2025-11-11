@@ -30,6 +30,16 @@
                 {{end}}
             </select>
         </label>
+        <label for="specification_id">
+            Specification (optional)
+            <select id="specification_id" name="specification_id">
+                <option value="">None - Does not meet a specific specification</option>
+                {{range .Specifications}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+            <small>What general product type does this meet?</small>
+        </label>
         <button type="submit">Add Product</button>
         <button type="button" onclick="toggleForm('add-product-form')" class="secondary">Cancel</button>
     </form>
@@ -42,6 +52,7 @@
                 <th>ID</th>
                 <th>Name</th>
                 <th>Brand</th>
+                <th>Specification</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -53,9 +64,16 @@
                     <span class="product-name">{{.Name}}</span>
                     <form class="hidden edit-form" hx-put="/products/{{.ID}}" hx-target="#product-{{.ID}}" hx-swap="outerHTML">
                         <input type="text" name="name" value="{{.Name}}" required>
+                        <select name="specification_id">
+                            <option value="">None</option>
+                            {{range $.Specifications}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
                     </form>
                 </td>
                 <td>{{if .Brand}}{{.Brand.Name}}{{end}}</td>
+                <td>{{if .Specification}}{{.Specification.Name}}{{else}}-{{end}}</td>
                 <td>
                     <div class="actions">
                         <button class="btn-sm secondary" onclick="toggleProductEdit({{.ID}})">Edit</button>

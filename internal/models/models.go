@@ -28,15 +28,52 @@ type Brand struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Product represents an item associated with a brand
+// Specification represents a general description of a type of product
+type Specification struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Name        string    `gorm:"uniqueIndex;not null" json:"name"`
+	Description string    `gorm:"type:text" json:"description,omitempty"`
+	Products    []Product `gorm:"foreignKey:SpecificationID" json:"products,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// Product represents an item associated with a brand and specification
 type Product struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"uniqueIndex;not null" json:"name"`
-	BrandID   uint      `gorm:"not null;index" json:"brand_id"`
-	Brand     *Brand    `gorm:"foreignKey:BrandID" json:"brand,omitempty"`
-	Quotes    []Quote   `gorm:"foreignKey:ProductID" json:"quotes,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              uint            `gorm:"primaryKey" json:"id"`
+	Name            string          `gorm:"uniqueIndex;not null" json:"name"`
+	BrandID         uint            `gorm:"not null;index" json:"brand_id"`
+	Brand           *Brand          `gorm:"foreignKey:BrandID" json:"brand,omitempty"`
+	SpecificationID uint            `gorm:"index" json:"specification_id,omitempty"`
+	Specification   *Specification  `gorm:"foreignKey:SpecificationID" json:"specification,omitempty"`
+	Quotes          []Quote         `gorm:"foreignKey:ProductID" json:"quotes,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+}
+
+// Requisition represents a purchasing requirement
+type Requisition struct {
+	ID            uint              `gorm:"primaryKey" json:"id"`
+	Name          string            `gorm:"uniqueIndex;not null" json:"name"`
+	Justification string            `gorm:"type:text" json:"justification,omitempty"`
+	Budget        float64           `json:"budget,omitempty"` // Optional overall budget limit
+	Items         []RequisitionItem `gorm:"foreignKey:RequisitionID" json:"items,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+}
+
+// RequisitionItem represents a line item in a requisition
+type RequisitionItem struct {
+	ID              uint           `gorm:"primaryKey" json:"id"`
+	RequisitionID   uint           `gorm:"not null;index" json:"requisition_id"`
+	Requisition     *Requisition   `gorm:"foreignKey:RequisitionID" json:"requisition,omitempty"`
+	SpecificationID uint           `gorm:"not null;index" json:"specification_id"`
+	Specification   *Specification `gorm:"foreignKey:SpecificationID" json:"specification,omitempty"`
+	Quantity        int            `gorm:"not null" json:"quantity"`
+	BudgetPerUnit   float64        `json:"budget_per_unit,omitempty"` // Optional budget per unit
+	Description     string         `gorm:"type:text" json:"description,omitempty"` // Optional description for details
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 // Quote represents a price quote from a vendor for a product
@@ -68,11 +105,14 @@ type Forex struct {
 }
 
 // TableName overrides for GORM
-func (Vendor) TableName() string  { return "vendors" }
-func (Brand) TableName() string   { return "brands" }
-func (Product) TableName() string { return "products" }
-func (Quote) TableName() string   { return "quotes" }
-func (Forex) TableName() string   { return "forex" }
+func (Vendor) TableName() string           { return "vendors" }
+func (Brand) TableName() string            { return "brands" }
+func (Specification) TableName() string    { return "specifications" }
+func (Product) TableName() string          { return "products" }
+func (Requisition) TableName() string      { return "requisitions" }
+func (RequisitionItem) TableName() string  { return "requisition_items" }
+func (Quote) TableName() string            { return "quotes" }
+func (Forex) TableName() string            { return "forex" }
 
 // BeforeCreate hook for Vendor
 func (v *Vendor) BeforeCreate(tx *gorm.DB) error {

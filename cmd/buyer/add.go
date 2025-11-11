@@ -50,7 +50,7 @@ var addProductCmd = &cobra.Command{
 		}
 
 		productSvc := services.NewProductService(cfg.DB)
-		product, err := productSvc.Create(args[0], brand.ID)
+		product, err := productSvc.Create(args[0], brand.ID, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

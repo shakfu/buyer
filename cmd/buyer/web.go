@@ -50,14 +50,16 @@ var webCmd = &cobra.Command{
 		}))
 
 		// Services
+		specSvc := services.NewSpecificationService(cfg.DB)
 		brandSvc := services.NewBrandService(cfg.DB)
 		productSvc := services.NewProductService(cfg.DB)
 		vendorSvc := services.NewVendorService(cfg.DB)
+		requisitionSvc := services.NewRequisitionService(cfg.DB)
 		quoteSvc := services.NewQuoteService(cfg.DB)
 		forexSvc := services.NewForexService(cfg.DB)
 
 		// Routes
-		setupRoutes(app, brandSvc, productSvc, vendorSvc, quoteSvc, forexSvc)
+		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
 
 		// Start server
 		addr := fmt.Sprintf(":%d", port)
@@ -71,9 +73,11 @@ var webCmd = &cobra.Command{
 
 func setupRoutes(
 	app *fiber.App,
+	specSvc *services.SpecificationService,
 	brandSvc *services.BrandService,
 	productSvc *services.ProductService,
 	vendorSvc *services.VendorService,
+	requisitionSvc *services.RequisitionService,
 	quoteSvc *services.QuoteService,
 	forexSvc *services.ForexService,
 ) {
@@ -81,6 +85,18 @@ func setupRoutes(
 	app.Get("/", func(c *fiber.Ctx) error {
 		return renderTemplate(c, "index.html", fiber.Map{
 			"Title": "Home",
+		})
+	})
+
+	// Specification routes
+	app.Get("/specifications", func(c *fiber.Ctx) error {
+		specs, err := specSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "specifications.html", fiber.Map{
+			"Title":          "Specifications",
+			"Specifications": specs,
 		})
 	})
 
@@ -106,10 +122,15 @@ func setupRoutes(
 		if err != nil {
 			return err
 		}
+		specs, err := specSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
 		return renderTemplate(c, "products.html", fiber.Map{
-			"Title":    "Products",
-			"Products": products,
-			"Brands":   brands,
+			"Title":          "Products",
+			"Products":       products,
+			"Brands":         brands,
+			"Specifications": specs,
 		})
 	})
 
@@ -144,6 +165,23 @@ func setupRoutes(
 			"Quotes":   quotes,
 			"Vendors":  vendors,
 			"Products": products,
+		})
+	})
+
+	// Requisition routes
+	app.Get("/requisitions", func(c *fiber.Ctx) error {
+		requisitions, err := requisitionSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		specs, err := specSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "requisitions.html", fiber.Map{
+			"Title":          "Requisitions",
+			"Requisitions":   requisitions,
+			"Specifications": specs,
 		})
 	})
 
@@ -240,13 +278,29 @@ func setupRoutes(
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid brand ID")
 		}
-		product, err := productSvc.Create(name, uint(brandID))
+
+		var specIDPtr *uint
+		specIDStr := c.FormValue("specification_id")
+		if specIDStr != "" {
+			specID, err := strconv.ParseUint(specIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid specification ID")
+			}
+			specIDUint := uint(specID)
+			specIDPtr = &specIDUint
+		}
+
+		product, err := productSvc.Create(name, uint(brandID), specIDPtr)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 		brandName := ""
 		if product.Brand != nil {
 			brandName = product.Brand.Name
+		}
+		specName := "-"
+		if product.Specification != nil {
+			specName = product.Specification.Name
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="product-%d">
 			<td>%d</td>
@@ -256,6 +310,7 @@ func setupRoutes(
 					<input type="text" name="name" value="%s" required>
 				</form>
 			</td>
+			<td>%s</td>
 			<td>%s</td>
 			<td>
 				<div class="actions">
@@ -269,7 +324,7 @@ func setupRoutes(
 					</button>
 				</div>
 			</td>
-		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, product.ID, product.ID, product.ID))
+		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, specName, product.ID, product.ID, product.ID))
 	})
 
 	app.Put("/products/:id", func(c *fiber.Ctx) error {
@@ -278,7 +333,19 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		name := c.FormValue("name")
-		product, err := productSvc.Update(uint(id), name)
+
+		var specIDPtr *uint
+		specIDStr := c.FormValue("specification_id")
+		if specIDStr != "" {
+			specID, err := strconv.ParseUint(specIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid specification ID")
+			}
+			specIDUint := uint(specID)
+			specIDPtr = &specIDUint
+		}
+
+		product, err := productSvc.Update(uint(id), name, specIDPtr)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
@@ -286,14 +353,22 @@ func setupRoutes(
 		if product.Brand != nil {
 			brandName = product.Brand.Name
 		}
+		specName := "-"
+		if product.Specification != nil {
+			specName = product.Specification.Name
+		}
 		return c.SendString(fmt.Sprintf(`<tr id="product-%d">
 			<td>%d</td>
 			<td>
 				<span class="product-name">%s</span>
 				<form class="hidden edit-form" hx-put="/products/%d" hx-target="#product-%d" hx-swap="outerHTML">
 					<input type="text" name="name" value="%s" required>
+					<select name="specification_id">
+						<option value="">None</option>
+					</select>
 				</form>
 			</td>
+			<td>%s</td>
 			<td>%s</td>
 			<td>
 				<div class="actions">
@@ -307,7 +382,7 @@ func setupRoutes(
 					</button>
 				</div>
 			</td>
-		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, product.ID, product.ID, product.ID))
+		</tr>`, product.ID, product.ID, product.Name, product.ID, product.ID, product.Name, brandName, specName, product.ID, product.ID, product.ID))
 	})
 
 	app.Delete("/products/:id", func(c *fiber.Ctx) error {
@@ -440,6 +515,494 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := forexSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Specifications
+	app.Post("/specifications", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		description := c.FormValue("description")
+		spec, err := specSvc.Create(name, description)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="spec-%d">
+			<td>%d</td>
+			<td>
+				<span class="spec-name">%s</span>
+				<form class="hidden edit-form" hx-put="/specifications/%d" hx-target="#spec-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+					<textarea name="description" rows="2">%s</textarea>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleSpecEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/specifications/%d"
+							hx-target="#spec-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this specification?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, spec.ID, spec.ID, spec.Name, spec.ID, spec.ID, spec.Name, spec.Description, spec.Description, spec.ID, spec.ID, spec.ID))
+	})
+
+	app.Put("/specifications/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		name := c.FormValue("name")
+		description := c.FormValue("description")
+		spec, err := specSvc.Update(uint(id), name, description)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString(fmt.Sprintf(`<tr id="spec-%d">
+			<td>%d</td>
+			<td>
+				<span class="spec-name">%s</span>
+				<form class="hidden edit-form" hx-put="/specifications/%d" hx-target="#spec-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+					<textarea name="description" rows="2">%s</textarea>
+				</form>
+			</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleSpecEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/specifications/%d"
+							hx-target="#spec-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this specification?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, spec.ID, spec.ID, spec.Name, spec.ID, spec.ID, spec.Name, spec.Description, spec.Description, spec.ID, spec.ID, spec.ID))
+	})
+
+	app.Delete("/specifications/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := specSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// CRUD endpoints for Requisitions
+	app.Post("/requisitions", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		justification := c.FormValue("justification")
+
+		// Parse budget
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			var err error
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		// Parse multiple line items from form data
+		items := []services.RequisitionItemInput{}
+		for i := 0; ; i++ {
+			specIDStr := c.FormValue(fmt.Sprintf("items[%d][specification_id]", i))
+			if specIDStr == "" {
+				break // No more items
+			}
+
+			specID, err := strconv.ParseUint(specIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Invalid specification ID for item %d", i))
+			}
+
+			quantityStr := c.FormValue(fmt.Sprintf("items[%d][quantity]", i))
+			quantity, err := strconv.Atoi(quantityStr)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Invalid quantity for item %d", i))
+			}
+
+			var itemBudget float64
+			itemBudgetStr := c.FormValue(fmt.Sprintf("items[%d][budget_per_unit]", i))
+			if itemBudgetStr != "" {
+				itemBudget, err = strconv.ParseFloat(itemBudgetStr, 64)
+				if err != nil {
+					return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Invalid budget for item %d", i))
+				}
+			}
+
+			description := c.FormValue(fmt.Sprintf("items[%d][description]", i))
+
+			items = append(items, services.RequisitionItemInput{
+				SpecificationID: uint(specID),
+				Quantity:        quantity,
+				BudgetPerUnit:   itemBudget,
+				Description:     description,
+			})
+		}
+
+		if len(items) == 0 {
+			return c.Status(fiber.StatusBadRequest).SendString("At least one line item is required")
+		}
+
+		req, err := requisitionSvc.Create(name, justification, budget, items)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		itemsHTML := ""
+		for _, item := range req.Items {
+			specName := ""
+			if item.Specification != nil {
+				specName = item.Specification.Name
+			}
+			budgetDisplay := ""
+			if item.BudgetPerUnit > 0 {
+				budgetDisplay = fmt.Sprintf(", Budget/unit: %.2f", item.BudgetPerUnit)
+			}
+			descDisplay := ""
+			if item.Description != "" {
+				descDisplay = fmt.Sprintf(" - %s", item.Description)
+			}
+			itemsHTML += fmt.Sprintf("<li>%s (Qty: %d%s)%s</li>", specName, item.Quantity, budgetDisplay, descDisplay)
+		}
+
+		justificationDisplay := ""
+		if req.Justification != "" {
+			justificationDisplay = fmt.Sprintf("<br><small>%s</small>", req.Justification)
+		}
+		budgetDisplay := ""
+		if req.Budget > 0 {
+			budgetDisplay = fmt.Sprintf("<br><strong>Budget: %.2f</strong>", req.Budget)
+		}
+
+		return c.SendString(fmt.Sprintf(`<tr id="req-%d">
+			<td>%d</td>
+			<td>%s%s%s</td>
+			<td><ul>%s</ul></td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm contrast"
+							hx-delete="/requisitions/%d"
+							hx-target="#req-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this requisition?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, req.ID, req.ID, req.Name, justificationDisplay, budgetDisplay, itemsHTML, req.ID, req.ID))
+	})
+
+	app.Put("/requisitions/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		name := c.FormValue("name")
+		justification := c.FormValue("justification")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		req, err := requisitionSvc.Update(uint(id), name, justification, budget)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		itemsHTML := ""
+		for _, item := range req.Items {
+			specName := ""
+			if item.Specification != nil {
+				specName = item.Specification.Name
+			}
+			budgetDisplay := ""
+			if item.BudgetPerUnit > 0 {
+				budgetDisplay = fmt.Sprintf(", Budget/unit: %.2f", item.BudgetPerUnit)
+			}
+			descDisplay := ""
+			if item.Description != "" {
+				descDisplay = fmt.Sprintf(" - %s", item.Description)
+			}
+			itemsHTML += fmt.Sprintf("<li>%s (Qty: %d%s)%s</li>", specName, item.Quantity, budgetDisplay, descDisplay)
+		}
+
+		justificationDisplay := ""
+		if req.Justification != "" {
+			justificationDisplay = fmt.Sprintf("<br><small>%s</small>", req.Justification)
+		}
+		budgetDisplayStr := ""
+		if req.Budget > 0 {
+			budgetDisplayStr = fmt.Sprintf("<br><strong>Budget: %.2f</strong>", req.Budget)
+		}
+
+		return c.SendString(fmt.Sprintf(`<tr id="req-%d">
+			<td>%d</td>
+			<td>
+				<span class="req-name">%s%s%s</span>
+				<form class="hidden edit-form" hx-put="/requisitions/%d" hx-target="#req-%d" hx-swap="outerHTML">
+					<input type="text" name="name" value="%s" required>
+					<textarea name="justification" rows="2" placeholder="Justification...">%s</textarea>
+					<input type="number" name="budget" value="%.2f" step="0.01" min="0" placeholder="Budget...">
+				</form>
+			</td>
+			<td><ul>%s</ul></td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm secondary" onclick="toggleReqEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/requisitions/%d"
+							hx-target="#req-%d"
+							hx-swap="outerHTML"
+							hx-confirm="Are you sure you want to delete this requisition?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`, req.ID, req.ID, req.Name, justificationDisplay, budgetDisplayStr, req.ID, req.ID, req.Name, req.Justification, req.Budget, itemsHTML, req.ID, req.ID, req.ID))
+	})
+
+	// Full requisition update (requisition + all items)
+	app.Put("/requisitions/:id/full", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		name := c.FormValue("name")
+		justification := c.FormValue("justification")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		// Update requisition details
+		req, err := requisitionSvc.Update(uint(id), name, justification, budget)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		// Process line items - track which ones to keep/update/delete
+		existingItemIDs := make(map[uint]bool)
+		for _, item := range req.Items {
+			existingItemIDs[item.ID] = false // Mark as not seen yet
+		}
+
+		// Update or add items
+		for i := 0; ; i++ {
+			itemIDStr := c.FormValue(fmt.Sprintf("items[%d][id]", i))
+			if itemIDStr == "" {
+				break
+			}
+
+			itemID, _ := strconv.ParseUint(itemIDStr, 10, 32)
+			specIDStr := c.FormValue(fmt.Sprintf("items[%d][specification_id]", i))
+			if specIDStr == "" {
+				continue
+			}
+
+			specID, err := strconv.ParseUint(specIDStr, 10, 32)
+			if err != nil {
+				continue
+			}
+
+			quantityStr := c.FormValue(fmt.Sprintf("items[%d][quantity]", i))
+			quantity, err := strconv.Atoi(quantityStr)
+			if err != nil {
+				continue
+			}
+
+			var itemBudget float64
+			itemBudgetStr := c.FormValue(fmt.Sprintf("items[%d][budget_per_unit]", i))
+			if itemBudgetStr != "" {
+				itemBudget, _ = strconv.ParseFloat(itemBudgetStr, 64)
+			}
+
+			description := c.FormValue(fmt.Sprintf("items[%d][description]", i))
+
+			if itemID == 0 {
+				// New item
+				requisitionSvc.AddItem(uint(id), uint(specID), quantity, itemBudget, description)
+			} else {
+				// Update existing item
+				requisitionSvc.UpdateItem(uint(itemID), uint(specID), quantity, itemBudget, description)
+				existingItemIDs[uint(itemID)] = true // Mark as seen
+			}
+		}
+
+		// Delete items that weren't in the form
+		for itemID, wasSeen := range existingItemIDs {
+			if !wasSeen {
+				requisitionSvc.DeleteItem(itemID)
+			}
+		}
+
+		// Reload requisition with updated items
+		req, _ = requisitionSvc.GetByID(uint(id))
+
+		// Return just the main row (details/edit rows will be hidden)
+		return c.SendString(fmt.Sprintf(`<tr id="req-%d">
+			<td>%d</td>
+			<td>
+				<strong>%s</strong>
+				%s
+			</td>
+			<td>%d</td>
+			<td>%s</td>
+			<td>
+				<div class="actions">
+					<button class="btn-sm" onclick="toggleDetails(%d)">Details</button>
+					<button class="btn-sm secondary" onclick="toggleEdit(%d)">Edit</button>
+					<button class="btn-sm contrast"
+							hx-delete="/requisitions/%d"
+							hx-target="#req-%d"
+							hx-swap="delete"
+							hx-confirm="Are you sure you want to delete this requisition?">
+						Delete
+					</button>
+				</div>
+			</td>
+		</tr>`,
+			req.ID,
+			req.ID,
+			req.Name,
+			func() string {
+				if req.Justification != "" {
+					return fmt.Sprintf("<br><small>%s</small>", req.Justification)
+				}
+				return ""
+			}(),
+			len(req.Items),
+			func() string {
+				if req.Budget > 0 {
+					return fmt.Sprintf("%.2f", req.Budget)
+				}
+				return "-"
+			}(),
+			req.ID,
+			req.ID,
+			req.ID,
+			req.ID))
+	})
+
+	app.Delete("/requisitions/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := requisitionSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+		return c.SendString("")
+	})
+
+	// Line item endpoints
+	app.Put("/requisition-items/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		specID, err := strconv.ParseUint(c.FormValue("specification_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid specification ID")
+		}
+
+		quantity, err := strconv.Atoi(c.FormValue("quantity"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid quantity")
+		}
+
+		var budget float64
+		budgetStr := c.FormValue("budget_per_unit")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		description := c.FormValue("description")
+
+		item, err := requisitionSvc.UpdateItem(uint(id), uint(specID), quantity, budget, description)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		}
+
+		specName := ""
+		if item.Specification != nil {
+			specName = item.Specification.Name
+		}
+		budgetDisplay := ""
+		if item.BudgetPerUnit > 0 {
+			budgetDisplay = fmt.Sprintf(", Budget/unit: %.2f", item.BudgetPerUnit)
+		}
+		descDisplay := ""
+		if item.Description != "" {
+			descDisplay = fmt.Sprintf(" - %s", item.Description)
+		}
+
+		// Get specifications for dropdown
+		specs, _ := specSvc.List(0, 0)
+		specsOptions := ""
+		for _, s := range specs {
+			selected := ""
+			if s.ID == item.SpecificationID {
+				selected = "selected"
+			}
+			specsOptions += fmt.Sprintf(`<option value="%d" %s>%s</option>`, s.ID, selected, s.Name)
+		}
+
+		return c.SendString(fmt.Sprintf(`<li id="item-%d">
+			<span class="item-display">%s (Qty: %d%s)%s</span>
+			<form class="hidden item-edit-form" hx-put="/requisition-items/%d" hx-target="#item-%d" hx-swap="outerHTML">
+				<select name="specification_id" required>%s</select>
+				<input type="number" name="quantity" value="%d" min="1" required>
+				<input type="number" name="budget_per_unit" value="%.2f" step="0.01" min="0" placeholder="Budget/unit">
+				<input type="text" name="description" value="%s" placeholder="Description">
+			</form>
+			<button class="btn-sm secondary" onclick="toggleItemEdit(%d)">Edit</button>
+			<button class="btn-sm contrast"
+					hx-delete="/requisition-items/%d"
+					hx-target="#item-%d"
+					hx-swap="outerHTML"
+					hx-confirm="Delete this item?">
+				Delete
+			</button>
+		</li>`, item.ID, specName, item.Quantity, budgetDisplay, descDisplay, item.ID, item.ID, specsOptions, item.Quantity, item.BudgetPerUnit, item.Description, item.ID, item.ID, item.ID))
+	})
+
+	app.Delete("/requisition-items/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := requisitionSvc.DeleteItem(uint(id)); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 		return c.SendString("")

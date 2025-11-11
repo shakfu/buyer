@@ -49,7 +49,7 @@ var updateProductCmd = &cobra.Command{
 		}
 
 		svc := services.NewProductService(cfg.DB)
-		product, err := svc.Update(uint(id), args[1])
+		product, err := svc.Update(uint(id), args[1], nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

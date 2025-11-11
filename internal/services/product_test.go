@@ -52,7 +52,7 @@ func TestProductService_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			product, err := productSvc.Create(tt.pName, tt.brandID)
+			product, err := productSvc.Create(tt.pName, tt.brandID, nil)
 
 			if tt.wantErr {
 				if err == nil {
@@ -82,7 +82,7 @@ func TestProductService_GetByID(t *testing.T) {
 	productSvc := NewProductService(cfg.DB)
 
 	brand, _ := brandSvc.Create("AMD")
-	product, _ := productSvc.Create("Ryzen 9", brand.ID)
+	product, _ := productSvc.Create("Ryzen 9", brand.ID, nil)
 
 	tests := []struct {
 		name    string
@@ -133,7 +133,7 @@ func TestProductService_Update(t *testing.T) {
 	productSvc := NewProductService(cfg.DB)
 
 	brand, _ := brandSvc.Create("NVIDIA")
-	product, _ := productSvc.Create("RTX 3080", brand.ID)
+	product, _ := productSvc.Create("RTX 3080", brand.ID, nil)
 
 	tests := []struct {
 		name    string
@@ -163,7 +163,7 @@ func TestProductService_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := productSvc.Update(tt.id, tt.newName)
+			result, err := productSvc.Update(tt.id, tt.newName, nil)
 
 			if tt.wantErr {
 				if err == nil {
@@ -190,8 +190,8 @@ func TestProductService_ListByBrand(t *testing.T) {
 	productSvc := NewProductService(cfg.DB)
 
 	brand, _ := brandSvc.Create("Microsoft")
-	productSvc.Create("Surface Pro", brand.ID)
-	productSvc.Create("Surface Laptop", brand.ID)
+	productSvc.Create("Surface Pro", brand.ID, nil)
+	productSvc.Create("Surface Laptop", brand.ID, nil)
 
 	products, err := productSvc.ListByBrand(brand.ID)
 	if err != nil {

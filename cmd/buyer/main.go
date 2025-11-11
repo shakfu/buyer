@@ -30,7 +30,10 @@ func initConfig() {
 	if err := cfg.AutoMigrate(
 		&models.Vendor{},
 		&models.Brand{},
+		&models.Specification{},
 		&models.Product{},
+		&models.Requisition{},
+		&models.RequisitionItem{},
 		&models.Quote{},
 		&models.Forex{},
 	); err != nil {

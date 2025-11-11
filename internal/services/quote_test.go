@@ -17,7 +17,7 @@ func TestQuoteService_Create(t *testing.T) {
 
 	// Setup test data
 	brand, _ := brandSvc.Create("Canon")
-	product, _ := productSvc.Create("EOS R5", brand.ID)
+	product, _ := productSvc.Create("EOS R5", brand.ID, nil)
 	vendor, _ := vendorSvc.Create("B&H Photo", "USD", "SAVE10")
 
 	// Create EUR vendor and forex rate
@@ -130,7 +130,7 @@ func TestQuoteService_GetBestQuote(t *testing.T) {
 
 	// Setup test data
 	brand, _ := brandSvc.Create("Nikon")
-	product, _ := productSvc.Create("Z9", brand.ID)
+	product, _ := productSvc.Create("Z9", brand.ID, nil)
 	vendor1, _ := vendorSvc.Create("Adorama", "USD", "")
 	vendor2, _ := vendorSvc.Create("Amazon", "USD", "")
 	forexSvc.Create("USD", "USD", 1.0, time.Now())
@@ -180,8 +180,8 @@ func TestQuoteService_ListByProduct(t *testing.T) {
 
 	// Setup test data
 	brand, _ := brandSvc.Create("Sony")
-	product1, _ := productSvc.Create("A7 IV", brand.ID)
-	product2, _ := productSvc.Create("A7R V", brand.ID)
+	product1, _ := productSvc.Create("A7 IV", brand.ID, nil)
+	product2, _ := productSvc.Create("A7R V", brand.ID, nil)
 	vendor, _ := vendorSvc.Create("Focus Camera", "USD", "")
 	forexSvc.Create("USD", "USD", 1.0, time.Now())
 
@@ -242,7 +242,7 @@ func TestQuoteService_ListByVendor(t *testing.T) {
 
 	// Setup test data
 	brand, _ := brandSvc.Create("Fujifilm")
-	product, _ := productSvc.Create("X-T5", brand.ID)
+	product, _ := productSvc.Create("X-T5", brand.ID, nil)
 	vendor1, _ := vendorSvc.Create("KEH Camera", "USD", "")
 	vendor2, _ := vendorSvc.Create("MPB", "USD", "")
 	forexSvc.Create("USD", "USD", 1.0, time.Now())

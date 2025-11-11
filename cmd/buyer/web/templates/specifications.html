@@ -1,0 +1,95 @@
+{{define "content"}}
+<header>
+    <nav>
+        <ul>
+            <li><a href="/">← Back to Home</a></li>
+        </ul>
+        <ul>
+            <li><strong>Specifications</strong></li>
+        </ul>
+    </nav>
+</header>
+
+<div class="toggle-form">
+    <button onclick="toggleForm('add-spec-form')">Add New Specification</button>
+</div>
+
+<article id="add-spec-form" class="hidden">
+    <h2>Add New Specification</h2>
+    <form hx-post="/specifications" hx-target="#specs-table tbody" hx-swap="beforeend">
+        <label for="name">
+            Name
+            <input type="text" id="name" name="name" placeholder="e.g., smartphone, 17-inch 4K Monitor" required>
+        </label>
+        <label for="description">
+            Description
+            <textarea id="description" name="description" placeholder="General description of this product type" rows="3"></textarea>
+        </label>
+        <button type="submit">Add Specification</button>
+        <button type="button" onclick="toggleForm('add-spec-form')" class="secondary">Cancel</button>
+    </form>
+</article>
+
+<figure id="specs-table">
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Specifications}}
+            <tr id="spec-{{.ID}}">
+                <td>{{.ID}}</td>
+                <td>
+                    <span class="spec-name">{{.Name}}</span>
+                    <form class="hidden edit-form" hx-put="/specifications/{{.ID}}" hx-target="#spec-{{.ID}}" hx-swap="outerHTML">
+                        <input type="text" name="name" value="{{.Name}}" required>
+                        <textarea name="description" rows="2">{{.Description}}</textarea>
+                    </form>
+                </td>
+                <td>{{.Description}}</td>
+                <td>
+                    <div class="actions">
+                        <button class="btn-sm secondary" onclick="toggleSpecEdit({{.ID}})">Edit</button>
+                        <button class="btn-sm contrast"
+                                hx-delete="/specifications/{{.ID}}"
+                                hx-target="#spec-{{.ID}}"
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to delete this specification?">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</figure>
+
+<script>
+function toggleSpecEdit(id) {
+    const row = document.getElementById('spec-' + id);
+    const nameSpan = row.querySelector('.spec-name');
+    const form = row.querySelector('.edit-form');
+    const editBtn = row.querySelector('.secondary');
+
+    if (form.classList.contains('hidden')) {
+        nameSpan.classList.add('hidden');
+        form.classList.remove('hidden');
+        editBtn.textContent = 'Save';
+        editBtn.onclick = function() {
+            htmx.trigger(form, 'submit');
+        };
+    } else {
+        nameSpan.classList.remove('hidden');
+        form.classList.add('hidden');
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = function() { toggleSpecEdit(id); };
+    }
+}
+</script>
+{{end}}

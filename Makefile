@@ -1,4 +1,4 @@
-.PHONY: build test clean install run web coverage lint snap
+.PHONY: build test clean install run web coverage lint snap fixtures reset-db
 
 # Build the binary
 build:
@@ -54,6 +54,22 @@ check: fmt lint test
 snap:
 	@git add --all . && git commit -m 'snap' && git push
 
+# Reset database and load fixtures
+reset-db:
+	@echo "Resetting database..."
+	@rm -f ~/.buyer/buyer.db
+	@echo "Building application to trigger migrations..."
+	@go run ./cmd/buyer list brands > /dev/null 2>&1 || true
+	@echo "Loading fixtures..."
+	@sqlite3 ~/.buyer/buyer.db < fixtures.sql
+	@echo "Database reset complete with fixtures loaded!"
+
+# Load fixtures into existing database (without reset)
+fixtures:
+	@echo "Loading fixtures..."
+	@sqlite3 ~/.buyer/buyer.db < fixtures.sql
+	@echo "Fixtures loaded!"
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -70,3 +86,5 @@ help:
 	@echo "  clean      - Clean build artifacts"
 	@echo "  check      - Run fmt, lint, and test"
 	@echo "  snap       - Create and Push a git snapshot of the code"
+	@echo "  reset-db   - Reset database and load fixtures"
+	@echo "  fixtures   - Load fixtures into existing database"

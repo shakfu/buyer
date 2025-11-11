@@ -19,7 +19,7 @@ func NewProductService(db *gorm.DB) *ProductService {
 }
 
 // Create creates a new product
-func (s *ProductService) Create(name string, brandID uint) (*models.Product, error) {
+func (s *ProductService) Create(name string, brandID uint, specificationID *uint) (*models.Product, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, &ValidationError{Field: "name", Message: "product name cannot be empty"}
@@ -32,6 +32,17 @@ func (s *ProductService) Create(name string, brandID uint) (*models.Product, err
 			return nil, &NotFoundError{Entity: "Brand", ID: brandID}
 		}
 		return nil, err
+	}
+
+	// Verify specification exists if provided
+	if specificationID != nil && *specificationID > 0 {
+		var spec models.Specification
+		if err := s.db.First(&spec, *specificationID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, &NotFoundError{Entity: "Specification", ID: *specificationID}
+			}
+			return nil, err
+		}
 	}
 
 	// Check for duplicate
@@ -48,18 +59,22 @@ func (s *ProductService) Create(name string, brandID uint) (*models.Product, err
 		Name:    name,
 		BrandID: brandID,
 	}
+	if specificationID != nil && *specificationID > 0 {
+		product.SpecificationID = *specificationID
+	}
+
 	if err := s.db.Create(product).Error; err != nil {
 		return nil, err
 	}
 
-	// Reload with brand
+	// Reload with brand and specification
 	return s.GetByID(product.ID)
 }
 
 // GetByID retrieves a product by ID with preloaded relationships
 func (s *ProductService) GetByID(id uint) (*models.Product, error) {
 	var product models.Product
-	err := s.db.Preload("Brand").Preload("Quotes").First(&product, id).Error
+	err := s.db.Preload("Brand").Preload("Specification").Preload("Quotes").First(&product, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, &NotFoundError{Entity: "Product", ID: id}
 	}
@@ -72,7 +87,7 @@ func (s *ProductService) GetByID(id uint) (*models.Product, error) {
 // GetByName retrieves a product by name
 func (s *ProductService) GetByName(name string) (*models.Product, error) {
 	var product models.Product
-	err := s.db.Preload("Brand").Where("name = ?", name).First(&product).Error
+	err := s.db.Preload("Brand").Preload("Specification").Where("name = ?", name).First(&product).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, &NotFoundError{Entity: "Product", ID: name}
 	}
@@ -85,7 +100,7 @@ func (s *ProductService) GetByName(name string) (*models.Product, error) {
 // List retrieves all products with optional pagination
 func (s *ProductService) List(limit, offset int) ([]models.Product, error) {
 	var products []models.Product
-	query := s.db.Preload("Brand").Preload("Quotes").Order("name ASC")
+	query := s.db.Preload("Brand").Preload("Specification").Preload("Quotes").Order("name ASC")
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -101,12 +116,19 @@ func (s *ProductService) List(limit, offset int) ([]models.Product, error) {
 // ListByBrand retrieves all products for a specific brand
 func (s *ProductService) ListByBrand(brandID uint) ([]models.Product, error) {
 	var products []models.Product
-	err := s.db.Preload("Brand").Where("brand_id = ?", brandID).Order("name ASC").Find(&products).Error
+	err := s.db.Preload("Brand").Preload("Specification").Where("brand_id = ?", brandID).Order("name ASC").Find(&products).Error
 	return products, err
 }
 
-// Update updates a product's name
-func (s *ProductService) Update(id uint, newName string) (*models.Product, error) {
+// ListBySpecification retrieves all products for a specific specification
+func (s *ProductService) ListBySpecification(specificationID uint) ([]models.Product, error) {
+	var products []models.Product
+	err := s.db.Preload("Brand").Preload("Specification").Where("specification_id = ?", specificationID).Order("name ASC").Find(&products).Error
+	return products, err
+}
+
+// Update updates a product's name and specification
+func (s *ProductService) Update(id uint, newName string, specificationID *uint) (*models.Product, error) {
 	newName = strings.TrimSpace(newName)
 	if newName == "" {
 		return nil, &ValidationError{Field: "name", Message: "product name cannot be empty"}
@@ -116,6 +138,17 @@ func (s *ProductService) Update(id uint, newName string) (*models.Product, error
 	product, err := s.GetByID(id)
 	if err != nil {
 		return nil, err
+	}
+
+	// Verify specification exists if provided
+	if specificationID != nil && *specificationID > 0 {
+		var spec models.Specification
+		if err := s.db.First(&spec, *specificationID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, &NotFoundError{Entity: "Specification", ID: *specificationID}
+			}
+			return nil, err
+		}
 	}
 
 	// Check for duplicate name
@@ -129,11 +162,20 @@ func (s *ProductService) Update(id uint, newName string) (*models.Product, error
 	}
 
 	product.Name = newName
+	if specificationID != nil {
+		if *specificationID == 0 {
+			// Clear specification
+			product.SpecificationID = 0
+		} else {
+			product.SpecificationID = *specificationID
+		}
+	}
+
 	if err := s.db.Save(product).Error; err != nil {
 		return nil, err
 	}
 
-	return product, nil
+	return s.GetByID(id)
 }
 
 // Delete deletes a product by ID
