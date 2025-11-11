@@ -1,0 +1,342 @@
+{{define "content"}}
+<header>
+    <h1>Help & User Guide</h1>
+    <p>Learn how to use the Buyer purchasing management system</p>
+</header>
+
+<article>
+    <h2>Getting Started</h2>
+    <p>Buyer is a purchasing support and vendor quote management tool that helps you track products, vendors, quotes, and requisitions with multi-currency support.</p>
+
+    <h3>Quick Navigation</h3>
+    <p>Use the <strong>sidebar navigation</strong> on the left to access different sections. The <strong>top navigation bar</strong> provides quick access to:</p>
+    <ul>
+        <li><strong>Home</strong> - Overview and feature list</li>
+        <li><strong>Dashboard</strong> - Analytics and reporting</li>
+        <li><strong>Help</strong> - This guide</li>
+    </ul>
+</article>
+
+<article>
+    <h2>Master Data Setup</h2>
+    <p>Before you can create quotes and requisitions, you need to set up your master data.</p>
+
+    <section>
+        <h3>1. Specifications</h3>
+        <p>Specifications define general product types or categories (e.g., "Laptop", "Smartphone", "Monitor").</p>
+        <ul>
+            <li>Navigate to <strong>Specifications</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Specification"</strong></li>
+            <li>Enter a name and description</li>
+            <li>Click <strong>"Add Specification"</strong></li>
+        </ul>
+        <p><strong>Why?</strong> Specifications allow you to compare quotes from different vendors for products that meet the same functional requirements.</p>
+    </section>
+
+    <section>
+        <h3>2. Brands</h3>
+        <p>Brands are the manufacturers or product lines (e.g., "Apple", "Samsung", "Dell").</p>
+        <ul>
+            <li>Navigate to <strong>Brands</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Brand"</strong></li>
+            <li>Enter the brand name</li>
+            <li>Click <strong>"Add Brand"</strong></li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>3. Products</h3>
+        <p>Products are specific items you want to purchase. Each product belongs to a brand and optionally a specification.</p>
+        <ul>
+            <li>Navigate to <strong>Products</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Product"</strong></li>
+            <li>Enter product name</li>
+            <li>Select a brand</li>
+            <li>Optionally select a specification (e.g., iPhone 15 → Smartphone)</li>
+            <li>Click <strong>"Add Product"</strong></li>
+        </ul>
+        <p><strong>Example:</strong> Product: "iPhone 15 Pro" | Brand: "Apple" | Specification: "Smartphone"</p>
+    </section>
+
+    <section>
+        <h3>4. Vendors</h3>
+        <p>Vendors are the suppliers you get quotes from.</p>
+        <ul>
+            <li>Navigate to <strong>Vendors</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Vendor"</strong></li>
+            <li>Enter vendor name</li>
+            <li>Select their default currency (USD, EUR, GBP, etc.)</li>
+            <li>Optionally add a discount code</li>
+            <li>Click <strong>"Add Vendor"</strong></li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>5. Forex Rates</h3>
+        <p>If you're working with multiple currencies, set up exchange rates for automatic conversion to USD.</p>
+        <ul>
+            <li>Navigate to <strong>Forex Rates</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Rate"</strong></li>
+            <li>Select "From Currency" (e.g., EUR)</li>
+            <li>Select "To Currency" (usually USD)</li>
+            <li>Enter the exchange rate</li>
+            <li>Click <strong>"Add Rate"</strong></li>
+        </ul>
+        <p><strong>Example:</strong> EUR → USD = 1.10 means 1 EUR = 1.10 USD</p>
+    </section>
+</article>
+
+<article>
+    <h2>Working with Requisitions</h2>
+    <p>Requisitions represent your purchasing requirements.</p>
+
+    <section>
+        <h3>Creating a Requisition</h3>
+        <ol>
+            <li>Navigate to <strong>Requisitions</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Requisition"</strong></li>
+            <li>Enter a name (e.g., "Q1 2025 Office Equipment")</li>
+            <li>Set a budget (optional)</li>
+            <li>Add a justification (e.g., "Replace aging equipment")</li>
+            <li>Click <strong>"Add Requisition"</strong></li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Adding Items to Requisition</h3>
+        <ol>
+            <li>Find your requisition in the list</li>
+            <li>Click <strong>"Add Item"</strong></li>
+            <li>Select a <strong>specification</strong> (not a specific product)</li>
+            <li>Enter the quantity needed (e.g., 10 laptops)</li>
+            <li>Set budget per unit (optional)</li>
+            <li>Add a description (optional)</li>
+            <li>Click <strong>"Add Item"</strong></li>
+        </ol>
+        <p><strong>Why specifications?</strong> This allows vendors to propose different products (brands/models) that meet your requirements.</p>
+        <p><strong>Example:</strong> Specification: "Laptop" | Quantity: 10 | Budget/Unit: $1,200</p>
+    </section>
+</article>
+
+<article>
+    <h2>Managing Quotes</h2>
+    <p>Quotes are price offers from vendors for specific products.</p>
+
+    <section>
+        <h3>Adding a Quote</h3>
+        <ol>
+            <li>Navigate to <strong>Quotes</strong> in the sidebar</li>
+            <li>Click <strong>"Add New Quote"</strong></li>
+            <li>Select the <strong>vendor</strong></li>
+            <li>Select the <strong>product</strong></li>
+            <li>Enter the <strong>price</strong></li>
+            <li>Select the <strong>currency</strong></li>
+            <li>Optionally set <strong>"Valid Until"</strong> date</li>
+            <li>Add notes if needed</li>
+            <li>Click <strong>"Add Quote"</strong></li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Understanding Quote Expiration</h3>
+        <p>The "Expires (Days)" column shows:</p>
+        <ul>
+            <li><strong style="color: red;">Negative number (red)</strong> - Quote expired (e.g., -5 means expired 5 days ago)</li>
+            <li><strong style="color: red;">0-6 (red)</strong> - Expires within a week (urgent)</li>
+            <li><strong style="color: orange;">7-29 (orange)</strong> - Expires within a month (warning)</li>
+            <li><strong style="color: green;">30+ (green)</strong> - Valid for 30+ days</li>
+            <li><strong style="color: gray;">— (gray)</strong> - No expiration set</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Quote Comparison</h2>
+    <p>The most powerful feature - compare quotes for all items in a requisition.</p>
+
+    <section>
+        <h3>How to Compare Quotes</h3>
+        <ol>
+            <li>Navigate to <strong>Compare Quotes</strong> in the sidebar</li>
+            <li>Select a requisition from the dropdown</li>
+            <li>Click <strong>"Compare Quotes"</strong></li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>What You'll See</h3>
+        <p><strong>Summary Section:</strong></p>
+        <ul>
+            <li>Total items in requisition</li>
+            <li>Best quote total (sum of lowest prices)</li>
+            <li>Budget vs. estimate comparison</li>
+            <li>Savings or overrun</li>
+            <li>Warning if any items lack quotes</li>
+        </ul>
+
+        <p><strong>For Each Requisition Item:</strong></p>
+        <ul>
+            <li>Specification name and quantity</li>
+            <li><strong style="color: green;">Best quote</strong> highlighted with product and vendor</li>
+            <li>Total cost (unit price × quantity)</li>
+            <li>Savings vs. item budget (if set)</li>
+            <li>Expandable list showing all competing quotes</li>
+        </ul>
+
+        <p><strong>Example Scenario:</strong></p>
+        <p>Requisition needs "10 × Laptops":</p>
+        <ul>
+            <li>Dell XPS 13 - Vendor A: $1,100/unit → Total: $11,000 ✓ Best</li>
+            <li>HP Spectre - Vendor B: $1,250/unit → Total: $12,500 (+$1,500)</li>
+            <li>MacBook Air - Vendor C: $1,400/unit → Total: $14,000 (+$3,000)</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Dashboard Analytics</h2>
+    <p>Navigate to <strong>Dashboard</strong> to view system-wide analytics.</p>
+
+    <section>
+        <h3>Available Reports</h3>
+        <ul>
+            <li><strong>Quick Stats</strong> - Total counts of quotes, requisitions, vendors, products</li>
+            <li><strong>Spending by Vendor</strong> - Total quoted values ranked by vendor</li>
+            <li><strong>Product Price Comparison</strong> - Products with multiple quotes showing price ranges and spreads</li>
+            <li><strong>Quote Expiration Summary</strong> - Breakdown of quote validity status</li>
+            <li><strong>Recent Activity</strong> - Latest quotes added to the system</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Understanding Price Spread</h3>
+        <p>Price spread shows the difference between highest and lowest quotes for a product:</p>
+        <ul>
+            <li><strong style="color: green;">0-10% (green)</strong> - Consistent pricing</li>
+            <li><strong style="color: orange;">10-20% (orange)</strong> - Moderate variance</li>
+            <li><strong style="color: red;">20%+ (red)</strong> - High variance (investigate why)</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Best Practices</h2>
+
+    <section>
+        <h3>Setting Up Your Workflow</h3>
+        <ol>
+            <li><strong>Define specifications first</strong> - These are the foundation for comparison</li>
+            <li><strong>Set up vendors with correct currencies</strong> - Ensures accurate price conversion</li>
+            <li><strong>Add forex rates</strong> - Required for multi-currency quotes</li>
+            <li><strong>Create products linked to specifications</strong> - Enables specification-based comparison</li>
+            <li><strong>Create requisitions with specification items</strong> - Not specific products</li>
+            <li><strong>Gather quotes from multiple vendors</strong> - More quotes = better comparison</li>
+            <li><strong>Set quote expiration dates</strong> - Track validity and avoid stale pricing</li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Tips for Effective Quote Management</h3>
+        <ul>
+            <li><strong>Always set expiration dates</strong> - Vendors typically honor quotes for 30-90 days</li>
+            <li><strong>Update forex rates regularly</strong> - Currency fluctuations affect pricing</li>
+            <li><strong>Use the dashboard</strong> - Monitor for quotes expiring soon</li>
+            <li><strong>Compare at specification level</strong> - Don't lock into specific brands too early</li>
+            <li><strong>Track multiple quotes per product</strong> - Identifies pricing outliers</li>
+            <li><strong>Set realistic budgets</strong> - Helps identify cost overruns early</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Common Workflows</h2>
+
+    <section>
+        <h3>Scenario 1: New Office Equipment Purchase</h3>
+        <ol>
+            <li>Create specifications: "Laptop", "Monitor", "Keyboard"</li>
+            <li>Add brands: "Dell", "HP", "Lenovo", "LG", "Samsung"</li>
+            <li>Add products for each brand/spec combination</li>
+            <li>Set up vendors: "TechSupply Co", "OfficeMax", "Amazon Business"</li>
+            <li>Create requisition: "Q1 Office Equipment" with items:
+                <ul>
+                    <li>10 × Laptop (budget: $1,200/unit)</li>
+                    <li>10 × Monitor (budget: $300/unit)</li>
+                    <li>10 × Keyboard (budget: $50/unit)</li>
+                </ul>
+            </li>
+            <li>Request quotes from all vendors for their laptop/monitor/keyboard options</li>
+            <li>Enter all quotes with expiration dates</li>
+            <li>Go to "Compare Quotes", select requisition</li>
+            <li>Review best options for each item</li>
+            <li>Total estimate shown automatically</li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Scenario 2: Tracking Multiple Currency Quotes</h3>
+        <ol>
+            <li>Add forex rate: EUR → USD = 1.10</li>
+            <li>Add vendor: "EuroTech" (currency: EUR)</li>
+            <li>Add vendor: "USASupply" (currency: USD)</li>
+            <li>Add quote from EuroTech: €1,000 → Automatically converts to $1,100</li>
+            <li>Add quote from USASupply: $1,050</li>
+            <li>System compares both in USD: $1,050 vs. $1,100</li>
+            <li>USASupply is $50 cheaper despite EUR quote appearing lower</li>
+        </ol>
+    </section>
+</article>
+
+<article>
+    <h2>Keyboard Shortcuts & Tips</h2>
+    <ul>
+        <li>Use <strong>browser back button</strong> to return to previous pages</li>
+        <li>Forms have <strong>Cancel</strong> buttons to hide them without page reload (HTMX)</li>
+        <li>Table rows are <strong>clickable</strong> for inline editing (where supported)</li>
+        <li>Delete operations require <strong>confirmation</strong> to prevent accidents</li>
+        <li>All prices are automatically <strong>converted to USD</strong> for consistent comparison</li>
+    </ul>
+</article>
+
+<article>
+    <h2>Troubleshooting</h2>
+
+    <section>
+        <h3>No quotes appear in comparison</h3>
+        <ul>
+            <li>Ensure quotes are linked to products</li>
+            <li>Ensure products have specifications assigned</li>
+            <li>Requisition items must reference specifications (not products)</li>
+            <li>Check that quotes haven't expired</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Currency conversion not working</h3>
+        <ul>
+            <li>Verify forex rate exists for the currency pair</li>
+            <li>Format should be: FROM currency → TO currency (usually USD)</li>
+            <li>Rate should be decimal (e.g., 1.10, not 110)</li>
+        </ul>
+    </section>
+
+    <section>
+        <h3>Can't add items to requisition</h3>
+        <ul>
+            <li>Create the requisition first</li>
+            <li>Create at least one specification</li>
+            <li>Specifications are required for requisition items</li>
+        </ul>
+    </section>
+</article>
+
+<article>
+    <h2>Need More Help?</h2>
+    <p>For technical issues, code contributions, or feature requests:</p>
+    <ul>
+        <li><strong>Project Documentation</strong>: See README.md and CLAUDE.md in the repository</li>
+        <li><strong>Architecture Guide</strong>: Review CODE_REVIEW.md for system design details</li>
+        <li><strong>GitHub</strong>: Report issues or contribute at the project repository</li>
+    </ul>
+</article>
+{{end}}

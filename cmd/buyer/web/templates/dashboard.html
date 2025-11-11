@@ -1,0 +1,180 @@
+{{define "content"}}
+<header>
+    <h1>Dashboard</h1>
+    <p>Analytics and reporting overview</p>
+</header>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <article style="margin: 0;">
+        <h3>Total Quotes</h3>
+        <h2 style="margin: 0;">{{.Stats.TotalQuotes}}</h2>
+        <small>{{.Stats.ActiveQuotes}} active</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Total Requisitions</h3>
+        <h2 style="margin: 0;">{{.Stats.TotalRequisitions}}</h2>
+        <small>Pending fulfillment</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Vendors</h3>
+        <h2 style="margin: 0;">{{.Stats.TotalVendors}}</h2>
+        <small>Active vendors</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Products</h3>
+        <h2 style="margin: 0;">{{.Stats.TotalProducts}}</h2>
+        <small>In catalog</small>
+    </article>
+</div>
+
+<article>
+    <h2>Spending by Vendor</h2>
+    <p>Total quoted prices by vendor (converted to USD)</p>
+    {{if .VendorSpending}}
+    <figure>
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Vendor</th>
+                    <th>Total Quotes</th>
+                    <th>Total Value (USD)</th>
+                    <th>Average Quote (USD)</th>
+                    <th>Currency</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $vendor := .VendorSpending}}
+                <tr>
+                    <td><strong>{{add $index 1}}</strong></td>
+                    <td>{{$vendor.VendorName}}</td>
+                    <td>{{$vendor.QuoteCount}}</td>
+                    <td style="color: green; font-weight: bold;">${{printf "%.2f" $vendor.TotalValue}}</td>
+                    <td>${{printf "%.2f" $vendor.AvgValue}}</td>
+                    <td>{{$vendor.Currency}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <p><em>No quote data available</em></p>
+    {{end}}
+</article>
+
+<article>
+    <h2>Product Price Comparison</h2>
+    <p>Products with multiple quotes showing price ranges</p>
+    {{if .ProductPrices}}
+    <figure>
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>Quotes</th>
+                    <th>Min Price (USD)</th>
+                    <th>Max Price (USD)</th>
+                    <th>Price Spread</th>
+                    <th>Avg Price (USD)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .ProductPrices}}
+                <tr>
+                    <td>{{.ProductName}}</td>
+                    <td>{{.BrandName}}</td>
+                    <td>{{.QuoteCount}}</td>
+                    <td style="color: green;">${{printf "%.2f" .MinPrice}}</td>
+                    <td style="color: red;">${{printf "%.2f" .MaxPrice}}</td>
+                    <td>
+                        {{$spread := sub .MaxPrice .MinPrice}}
+                        {{$spreadPercent := div (mul $spread 100.0) .MinPrice}}
+                        <span style="color: {{if gt $spreadPercent 20.0}}red{{else if gt $spreadPercent 10.0}}orange{{else}}green{{end}};">
+                            {{printf "%.1f" $spreadPercent}}%
+                        </span>
+                    </td>
+                    <td>${{printf "%.2f" .AvgPrice}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <p><em>No products with multiple quotes</em></p>
+    {{end}}
+</article>
+
+<article>
+    <h2>Quote Expiration Summary</h2>
+    <p>Overview of quote validity status</p>
+    {{if .ExpiryStats}}
+    <figure>
+        <table>
+            <tr>
+                <td><strong>Expiring Soon (&lt; 7 days)</strong></td>
+                <td style="color: red; font-weight: bold;">{{.ExpiryStats.ExpiringSoon}}</td>
+            </tr>
+            <tr>
+                <td><strong>Expiring This Month (&lt; 30 days)</strong></td>
+                <td style="color: orange; font-weight: bold;">{{.ExpiryStats.ExpiringMonth}}</td>
+            </tr>
+            <tr>
+                <td><strong>Already Expired</strong></td>
+                <td style="color: red;">{{.ExpiryStats.Expired}}</td>
+            </tr>
+            <tr>
+                <td><strong>Valid (30+ days)</strong></td>
+                <td style="color: green;">{{.ExpiryStats.Valid}}</td>
+            </tr>
+            <tr>
+                <td><strong>No Expiry Set</strong></td>
+                <td style="color: gray;">{{.ExpiryStats.NoExpiry}}</td>
+            </tr>
+        </table>
+    </figure>
+    {{end}}
+</article>
+
+<article>
+    <h2>Recent Activity</h2>
+    <p>Latest quotes added to the system</p>
+    {{if .RecentQuotes}}
+    <figure>
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th>Product</th>
+                    <th>Price (USD)</th>
+                    <th>Expires (Days)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .RecentQuotes}}
+                <tr>
+                    <td>{{.QuoteDate.Format "2006-01-02"}}</td>
+                    <td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+                    <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+                    <td>${{printf "%.2f" .ConvertedPrice}}</td>
+                    <td>
+                        {{if .ValidUntil}}
+                            {{$days := .DaysUntilExpiration}}
+                            <span style="color: {{if lt $days 0}}red{{else if lt $days 7}}red{{else if lt $days 30}}orange{{else}}green{{end}};">
+                                {{$days}}
+                            </span>
+                        {{else}}
+                            <span style="color: gray;">—</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+    {{else}}
+    <p><em>No recent quotes</em></p>
+    {{end}}
+</article>
+{{end}}

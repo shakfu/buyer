@@ -1,10 +1,20 @@
 /* Custom styles to complement Pico CSS */
 
+/* Top Navigation */
+.topnav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: var(--pico-background-color);
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    padding: 0 1rem;
+}
+
 /* Sidebar Layout */
 .layout {
     display: grid;
     grid-template-columns: 250px 1fr;
-    min-height: 100vh;
+    min-height: calc(100vh - 60px);
 }
 
 .sidebar {
@@ -13,13 +23,8 @@
     padding: 1rem;
     position: sticky;
     top: 0;
-    height: 100vh;
+    height: calc(100vh - 60px);
     overflow-y: auto;
-}
-
-.sidebar nav h2 {
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
 }
 
 .sidebar nav ul {

@@ -57,9 +57,10 @@ var webCmd = &cobra.Command{
 		requisitionSvc := services.NewRequisitionService(cfg.DB)
 		quoteSvc := services.NewQuoteService(cfg.DB)
 		forexSvc := services.NewForexService(cfg.DB)
+		dashboardSvc := services.NewDashboardService(cfg.DB)
 
 		// Routes
-		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
+		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc)
 
 		// Start server
 		addr := fmt.Sprintf(":%d", port)
@@ -80,11 +81,56 @@ func setupRoutes(
 	requisitionSvc *services.RequisitionService,
 	quoteSvc *services.QuoteService,
 	forexSvc *services.ForexService,
+	dashboardSvc *services.DashboardService,
 ) {
 	// Home page
 	app.Get("/", func(c *fiber.Ctx) error {
 		return renderTemplate(c, "index.html", fiber.Map{
 			"Title": "Home",
+		})
+	})
+
+	// Dashboard page
+	app.Get("/dashboard", func(c *fiber.Ctx) error {
+		stats, err := dashboardSvc.GetStats()
+		if err != nil {
+			return err
+		}
+
+		vendorSpending, err := dashboardSvc.GetVendorSpending()
+		if err != nil {
+			return err
+		}
+
+		productPrices, err := dashboardSvc.GetProductPriceComparison()
+		if err != nil {
+			return err
+		}
+
+		expiryStats, err := dashboardSvc.GetExpiryStats()
+		if err != nil {
+			return err
+		}
+
+		recentQuotes, err := dashboardSvc.GetRecentQuotes(10)
+		if err != nil {
+			return err
+		}
+
+		return renderTemplate(c, "dashboard.html", fiber.Map{
+			"Title":          "Dashboard",
+			"Stats":          stats,
+			"VendorSpending": vendorSpending,
+			"ProductPrices":  productPrices,
+			"ExpiryStats":    expiryStats,
+			"RecentQuotes":   recentQuotes,
+		})
+	})
+
+	// Help page
+	app.Get("/help", func(c *fiber.Ctx) error {
+		return renderTemplate(c, "help.html", fiber.Map{
+			"Title": "Help & User Guide",
 		})
 	})
 
@@ -1328,8 +1374,21 @@ func setupRoutes(
 }
 
 func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
+	// Create template with custom functions
+	tmpl := template.New("base.html").Funcs(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+		"sub": func(a, b float64) float64 { return a - b },
+		"mul": func(a, b float64) float64 { return a * b },
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+	})
+
 	// Parse base, components, and specific template
-	tmpl, err := template.ParseFS(templateFS, "web/templates/base.html", "web/templates/components.html", "web/templates/"+templateName)
+	tmpl, err := tmpl.ParseFS(templateFS, "web/templates/base.html", "web/templates/components.html", "web/templates/"+templateName)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
@@ -1337,7 +1396,7 @@ func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
 	c.Set("Content-Type", "text/html; charset=utf-8")
 
 	// Execute the base template
-	return tmpl.Execute(c.Response().BodyWriter(), data)
+	return tmpl.ExecuteTemplate(c.Response().BodyWriter(), "base.html", data)
 }
 
 func init() {
