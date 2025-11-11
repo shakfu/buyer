@@ -19,13 +19,15 @@
     <form hx-post="/forex" hx-target="#forex-table tbody" hx-swap="beforeend">
         <label for="from_currency">
             From Currency
-            <input type="text" id="from_currency" name="from_currency" placeholder="EUR" maxlength="3" pattern="[A-Z]{3}" required>
-            <small>3-letter ISO currency code</small>
+            <select id="from_currency" name="from_currency" required>
+                {{template "currency-select"}}
+            </select>
         </label>
         <label for="to_currency">
             To Currency
-            <input type="text" id="to_currency" name="to_currency" placeholder="USD" maxlength="3" pattern="[A-Z]{3}" required>
-            <small>3-letter ISO currency code</small>
+            <select id="to_currency" name="to_currency" required>
+                {{template "currency-select"}}
+            </select>
         </label>
         <label for="rate">
             Exchange Rate

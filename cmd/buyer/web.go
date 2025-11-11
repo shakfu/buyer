@@ -487,7 +487,8 @@ func setupRoutes(
 			<td>%d</td>
 			<td>%s</td>
 			<td>%s</td>
-			<td>%.2f %s</td>
+			<td>%.2f</td>
+			<td>%s</td>
 			<td>%.2f</td>
 			<td>%s</td>
 			<td>
@@ -517,8 +518,8 @@ func setupRoutes(
 }
 
 func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
-	// Parse both base and specific template
-	tmpl, err := template.ParseFS(templateFS, "web/templates/base.html", "web/templates/"+templateName)
+	// Parse base, components, and specific template
+	tmpl, err := template.ParseFS(templateFS, "web/templates/base.html", "web/templates/components.html", "web/templates/"+templateName)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}

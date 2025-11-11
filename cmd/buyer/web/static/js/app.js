@@ -26,3 +26,9 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
         event.detail.target.reset();
     }
 });
+
+// Display error messages from server
+document.body.addEventListener('htmx:responseError', function(event) {
+    const errorText = event.detail.xhr.responseText || 'An error occurred';
+    alert('Error: ' + errorText);
+});

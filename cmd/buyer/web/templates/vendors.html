@@ -23,8 +23,9 @@
         </label>
         <label for="currency">
             Currency
-            <input type="text" id="currency" name="currency" placeholder="USD" maxlength="3" pattern="[A-Z]{3}" required>
-            <small>3-letter ISO currency code (e.g., USD, EUR, GBP)</small>
+            <select id="currency" name="currency" required>
+                {{template "currency-select"}}
+            </select>
         </label>
         <label for="discount_code">
             Discount Code
