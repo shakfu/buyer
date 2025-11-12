@@ -1,7 +1,7 @@
 # Code Review: buyer
 
 **Project:** buyer - Purchasing Support and Vendor Quote Management Tool
-**Language:** Go 1.25.4
+**Language:** Go 1.24+
 **Framework:** GORM, Cobra, Fiber, Wails
 **Review Date:** 2025-11-12
 **Architecture:** Clean Architecture (3-layer)

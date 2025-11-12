@@ -19,7 +19,7 @@ A purchasing support and vendor quote management tool written in Go.
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.24 or higher
 
 ### Build from Source
 

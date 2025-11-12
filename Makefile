@@ -1,4 +1,4 @@
-.PHONY: build test clean install run web coverage lint snap fixtures reset-db version
+.PHONY: build test clean install run web coverage coverage-ci lint snap fixtures reset-db version
 
 # Version information
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -31,6 +31,11 @@ coverage:
 	@go test -v -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
+
+# Run tests with coverage (CI-friendly, no HTML generation)
+coverage-ci:
+	@go test -v -coverprofile=coverage.out ./...
+	@go tool cover -func=coverage.out
 
 # Run tests with race detection
 test-race:
