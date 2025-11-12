@@ -926,10 +926,10 @@ func setupRoutes(
 
 			if itemID == 0 {
 				// New item
-				requisitionSvc.AddItem(uint(id), uint(specID), quantity, itemBudget, description)
+				_, _ = requisitionSvc.AddItem(uint(id), uint(specID), quantity, itemBudget, description)
 			} else {
 				// Update existing item
-				requisitionSvc.UpdateItem(uint(itemID), uint(specID), quantity, itemBudget, description)
+				_, _ = requisitionSvc.UpdateItem(uint(itemID), uint(specID), quantity, itemBudget, description)
 				existingItemIDs[uint(itemID)] = true // Mark as seen
 			}
 		}
@@ -937,7 +937,7 @@ func setupRoutes(
 		// Delete items that weren't in the form
 		for itemID, wasSeen := range existingItemIDs {
 			if !wasSeen {
-				requisitionSvc.DeleteItem(itemID)
+				_ = requisitionSvc.DeleteItem(itemID)
 			}
 		}
 
