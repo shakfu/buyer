@@ -28,32 +28,117 @@
     <h2>Spending by Vendor</h2>
     <p>Total quoted prices by vendor (converted to USD)</p>
     {{if .VendorSpending}}
-    <figure>
-        <table role="grid">
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Vendor</th>
-                    <th>Total Quotes</th>
-                    <th>Total Value (USD)</th>
-                    <th>Average Quote (USD)</th>
-                    <th>Currency</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range $index, $vendor := .VendorSpending}}
-                <tr>
-                    <td><strong>{{add $index 1}}</strong></td>
-                    <td>{{$vendor.VendorName}}</td>
-                    <td>{{$vendor.QuoteCount}}</td>
-                    <td style="color: green; font-weight: bold;">${{printf "%.2f" $vendor.TotalValue}}</td>
-                    <td>${{printf "%.2f" $vendor.AvgValue}}</td>
-                    <td>{{$vendor.Currency}}</td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
-    </figure>
+
+    <!-- Visualization -->
+    <div id="vendor-spending-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <!-- Detailed Table -->
+    <details>
+        <summary>View detailed table</summary>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Vendor</th>
+                        <th>Total Quotes</th>
+                        <th>Total Value (USD)</th>
+                        <th>Average Quote (USD)</th>
+                        <th>Currency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $vendor := .VendorSpending}}
+                    <tr>
+                        <td><strong>{{add $index 1}}</strong></td>
+                        <td>{{$vendor.VendorName}}</td>
+                        <td>{{$vendor.QuoteCount}}</td>
+                        <td style="color: green; font-weight: bold;">${{printf "%.2f" $vendor.TotalValue}}</td>
+                        <td>${{printf "%.2f" $vendor.AvgValue}}</td>
+                        <td>{{$vendor.Currency}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </details>
+
+    <script>
+    // Vendor Spending Bar Chart
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug: Check if Vega libraries are loaded
+        // console.log('Vega loaded:', typeof vega !== 'undefined');
+        // console.log('VegaLite loaded:', typeof vegaLite !== 'undefined');
+        // console.log('VegaEmbed loaded:', typeof vegaEmbed !== 'undefined');
+
+        // Check if vegaEmbed is a function
+        if (typeof vegaEmbed !== 'function') {
+            console.error('vegaEmbed is not a function:', vegaEmbed);
+            return;
+        }
+
+        const vendorData = [
+            {{range .VendorSpending}}
+            {
+                vendor: "{{.VendorName}}",
+                total: {{.TotalValue}},
+                quotes: {{.QuoteCount}}
+            },
+            {{end}}
+        ];
+
+        console.log('Vendor data:', vendorData);
+
+        // Check if we have data
+        if (vendorData.length === 0) {
+            document.getElementById('vendor-spending-chart').innerHTML = '<p>No data available for chart</p>';
+            return;
+        }
+
+        const vendorSpec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Vendor spending comparison",
+            "width": 600,
+            "height": 300,
+            "data": {"values": vendorData},
+            "mark": "bar",
+            "encoding": {
+                "x": {
+                    "field": "vendor",
+                    "type": "nominal",
+                    "title": "Vendor"
+                    // "axis": {"labelAngle": -45}
+                },
+                "y": {
+                    "field": "total",
+                    "type": "quantitative",
+                    "title": "Total Value (USD)"
+                },
+                "color": {
+                    "field": "total",
+                    "type": "quantitative",
+                    "scale": {"scheme": "blues"},
+                    "legend": null
+                },
+                "tooltip": [
+                    {"field": "vendor", "type": "nominal", "title": "Vendor"},
+                    {"field": "total", "type": "quantitative", "title": "Total Value (USD)", "format": "$,.2f"},
+                    {"field": "quotes", "type": "quantitative", "title": "Number of Quotes"}
+                ]
+            }
+        };
+
+        console.log('About to call vegaEmbed with spec:', vendorSpec);
+        vegaEmbed('#vendor-spending-chart', vendorSpec, {
+            actions: false,
+            theme: 'latimes'
+        }).then(result => {
+            console.log('vegaEmbed success:', result);
+        }).catch(error => {
+            console.error('vegaEmbed error:', error);
+        });
+    });
+    </script>
     {{else}}
     <p><em>No quote data available</em></p>
     {{end}}
