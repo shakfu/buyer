@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Run tests
+      run: make test
+
+    - name: Build binaries
+      run: |
+        # Linux AMD64
+        GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ github.ref_name }}" -o bin/buyer-linux-amd64 ./cmd/buyer
+
+        # Linux ARM64
+        GOOS=linux GOARCH=arm64 go build -ldflags "-X main.Version=${{ github.ref_name }}" -o bin/buyer-linux-arm64 ./cmd/buyer
+
+        # macOS AMD64
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${{ github.ref_name }}" -o bin/buyer-darwin-amd64 ./cmd/buyer
+
+        # macOS ARM64 (Apple Silicon)
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${{ github.ref_name }}" -o bin/buyer-darwin-arm64 ./cmd/buyer
+
+        # Windows AMD64
+        GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${{ github.ref_name }}" -o bin/buyer-windows-amd64.exe ./cmd/buyer
+
+    - name: Create checksums
+      run: |
+        cd bin
+        sha256sum buyer-* > checksums.txt
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          bin/buyer-linux-amd64
+          bin/buyer-linux-arm64
+          bin/buyer-darwin-amd64
+          bin/buyer-darwin-arm64
+          bin/buyer-windows-amd64.exe
+          bin/checksums.txt
+        generate_release_notes: true
+        draft: false
+        prerelease: false

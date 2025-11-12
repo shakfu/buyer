@@ -160,6 +160,45 @@ buyer web --port 3000
 
 Then visit http://localhost:8080 in your browser.
 
+## Configuration
+
+buyer supports configuration through environment variables. See [CONFIGURATION.md](CONFIGURATION.md) for detailed documentation.
+
+### Quick Configuration Examples
+
+**Custom database path:**
+```bash
+BUYER_DB_PATH=/var/lib/buyer/buyer.db buyer web
+```
+
+**Custom web port:**
+```bash
+BUYER_WEB_PORT=3000 buyer web
+# Or using flag:
+buyer web --port 3000
+```
+
+**Production deployment with security:**
+```bash
+export BUYER_ENV=production
+export BUYER_ENABLE_AUTH=true
+export BUYER_USERNAME=admin
+export BUYER_PASSWORD=your-secure-password
+export BUYER_ENABLE_CSRF=true
+buyer web
+```
+
+**All available environment variables:**
+- `BUYER_ENV` - Environment mode (development/production/testing)
+- `BUYER_DB_PATH` - Database file path
+- `BUYER_WEB_PORT` - Web server port
+- `BUYER_ENABLE_AUTH` - Enable HTTP basic authentication
+- `BUYER_USERNAME` - Basic auth username
+- `BUYER_PASSWORD` - Basic auth password
+- `BUYER_ENABLE_CSRF` - Enable CSRF protection
+
+See [CONFIGURATION.md](CONFIGURATION.md) for comprehensive configuration guide.
+
 ## Project Structure
 
 ```

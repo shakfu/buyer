@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation (not needed in container)
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Environment
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Agents
+.claude/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+
+# Wails artifacts
+build/
+internal/frontend/dist/
+wails.json

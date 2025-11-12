@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -40,9 +41,15 @@ var addBrandCmd = &cobra.Command{
 		svc := services.NewBrandService(cfg.DB)
 		brand, err := svc.Create(args[0])
 		if err != nil {
+			slog.Error("failed to create brand",
+				slog.String("name", args[0]),
+				slog.String("error", err.Error()))
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		slog.Info("brand created successfully",
+			slog.String("name", brand.Name),
+			slog.Uint64("id", uint64(brand.ID)))
 		fmt.Printf("Brand created: %s (ID: %d)\n", brand.Name, brand.ID)
 	},
 }

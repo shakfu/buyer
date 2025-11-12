@@ -1,12 +1,18 @@
-.PHONY: build test clean install run web coverage lint snap fixtures reset-db
+.PHONY: build test clean install run web coverage lint snap fixtures reset-db version
 
-# Build the binary
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS := -X main.Version=$(VERSION)
+
+# Build the binary with version info
 build:
-	@go build -o bin/buyer ./cmd/buyer
+	@echo "Building buyer $(VERSION)..."
+	@go build -ldflags "$(LDFLAGS)" -o bin/buyer ./cmd/buyer
 
-# Install the binary to $GOPATH/bin
+# Install the binary to $GOPATH/bin with version info
 install:
-	@go install ./cmd/buyer
+	@echo "Installing buyer $(VERSION)..."
+	@go install -ldflags "$(LDFLAGS)" ./cmd/buyer
 
 # Run the CLI
 run:
@@ -71,21 +77,69 @@ fixtures:
 	@sqlite3 ~/.buyer/buyer.db < fixtures.sql
 	@echo "Fixtures loaded!"
 
+# Build for all platforms
+build-all: build-linux build-darwin build-windows
+	@echo "All platform builds complete!"
+
+# Build for Linux (AMD64 and ARM64)
+build-linux:
+	@echo "Building for Linux AMD64..."
+	@GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/buyer-linux-amd64 ./cmd/buyer
+	@echo "Building for Linux ARM64..."
+	@GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/buyer-linux-arm64 ./cmd/buyer
+
+# Build for macOS (AMD64 and ARM64)
+build-darwin:
+	@echo "Building for macOS AMD64..."
+	@GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/buyer-darwin-amd64 ./cmd/buyer
+	@echo "Building for macOS ARM64 (Apple Silicon)..."
+	@GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/buyer-darwin-arm64 ./cmd/buyer
+
+# Build for Windows (AMD64)
+build-windows:
+	@echo "Building for Windows AMD64..."
+	@GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/buyer-windows-amd64.exe ./cmd/buyer
+
+# Build Docker image
+docker-build:
+	@echo "Building Docker image..."
+	@docker build --build-arg VERSION=$(VERSION) -t buyer:$(VERSION) -t buyer:latest .
+
+# Run Docker container
+docker-run:
+	@docker-compose up -d
+
+# Stop Docker container
+docker-stop:
+	@docker-compose down
+
+# Print version
+version:
+	@echo "Version: $(VERSION)"
+
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  build      - Build the binary"
-	@echo "  install    - Install the binary to GOPATH/bin"
-	@echo "  run        - Run the CLI"
-	@echo "  web        - Start the web server"
-	@echo "  test       - Run tests"
-	@echo "  coverage   - Run tests with coverage report"
-	@echo "  test-race  - Run tests with race detection"
-	@echo "  lint       - Lint the code"
-	@echo "  fmt        - Format code"
-	@echo "  tidy       - Tidy dependencies"
-	@echo "  clean      - Clean build artifacts"
-	@echo "  check      - Run fmt, lint, and test"
-	@echo "  snap       - Create and Push a git snapshot of the code"
-	@echo "  reset-db   - Reset database and load fixtures"
-	@echo "  fixtures   - Load fixtures into existing database"
+	@echo "  build        - Build the binary for current platform"
+	@echo "  build-all    - Build for all platforms (Linux, macOS, Windows)"
+	@echo "  build-linux  - Build for Linux (AMD64, ARM64)"
+	@echo "  build-darwin - Build for macOS (AMD64, ARM64)"
+	@echo "  build-windows- Build for Windows (AMD64)"
+	@echo "  install      - Install the binary to GOPATH/bin"
+	@echo "  run          - Run the CLI"
+	@echo "  web          - Start the web server"
+	@echo "  test         - Run tests"
+	@echo "  coverage     - Run tests with coverage report"
+	@echo "  test-race    - Run tests with race detection"
+	@echo "  lint         - Lint the code"
+	@echo "  fmt          - Format code"
+	@echo "  tidy         - Tidy dependencies"
+	@echo "  clean        - Clean build artifacts"
+	@echo "  check        - Run fmt, lint, and test"
+	@echo "  docker-build - Build Docker image"
+	@echo "  docker-run   - Run Docker container with docker-compose"
+	@echo "  docker-stop  - Stop Docker container"
+	@echo "  version      - Print version information"
+	@echo "  snap         - Create and push a git snapshot"
+	@echo "  reset-db     - Reset database and load fixtures"
+	@echo "  fixtures     - Load fixtures into existing database"

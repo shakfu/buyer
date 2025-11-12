@@ -2,9 +2,10 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -22,8 +23,9 @@ const (
 
 // Config holds application configuration
 type Config struct {
-	Environment Environment
+	Environment  Environment
 	DatabasePath string
+	WebPort      int
 	LogLevel     logger.LogLevel
 	DB           *gorm.DB
 }
@@ -34,36 +36,32 @@ func NewConfig(env Environment, verbose bool) (*Config, error) {
 		Environment: env,
 	}
 
+	// Set web port from environment variable or default
+	config.WebPort = getEnvInt("BUYER_WEB_PORT", 8080)
+
 	// Set database path based on environment
 	switch env {
 	case Testing:
 		config.DatabasePath = ":memory:"
 		config.LogLevel = logger.Silent
-	case Development:
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		buyerDir := filepath.Join(homeDir, ".buyer")
-		if err := os.MkdirAll(buyerDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create .buyer directory: %w", err)
-		}
-		config.DatabasePath = filepath.Join(buyerDir, "buyer.db")
-		if verbose {
-			config.LogLevel = logger.Info
+	case Development, Production:
+		// Check for custom database path from environment
+		if dbPath := os.Getenv("BUYER_DB_PATH"); dbPath != "" {
+			config.DatabasePath = dbPath
 		} else {
-			config.LogLevel = logger.Silent
+			// Default path: ~/.buyer/buyer.db
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get home directory: %w", err)
+			}
+			buyerDir := filepath.Join(homeDir, ".buyer")
+			if err := os.MkdirAll(buyerDir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create .buyer directory: %w", err)
+			}
+			config.DatabasePath = filepath.Join(buyerDir, "buyer.db")
 		}
-	case Production:
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		buyerDir := filepath.Join(homeDir, ".buyer")
-		if err := os.MkdirAll(buyerDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create .buyer directory: %w", err)
-		}
-		config.DatabasePath = filepath.Join(buyerDir, "buyer.db")
+
+		// Set log level
 		if verbose {
 			config.LogLevel = logger.Info
 		} else {
@@ -126,16 +124,66 @@ func GetEnv() Environment {
 	}
 }
 
-// SetupLogger configures application logging
-func SetupLogger(env Environment) {
-	var logLevel int
+// getEnvInt returns an integer from an environment variable or a default value
+func getEnvInt(key string, defaultValue int) int {
+	if val := os.Getenv(key); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
+
+// getEnvString returns a string from an environment variable or a default value
+func getEnvString(key, defaultValue string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultValue
+}
+
+// SetupLogger configures structured logging with slog
+func SetupLogger(env Environment, verbose bool) *slog.Logger {
+	var handler slog.Handler
+	var level slog.Level
+
+	// Set log level based on environment and verbose flag
 	switch env {
 	case Production:
-		logLevel = log.LstdFlags
+		if verbose {
+			level = slog.LevelInfo
+		} else {
+			level = slog.LevelWarn
+		}
+		// Production: JSON format for structured logging
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})
 	case Development:
-		logLevel = log.LstdFlags | log.Lshortfile
+		if verbose {
+			level = slog.LevelDebug
+		} else {
+			level = slog.LevelInfo
+		}
+		// Development: Text format with source location for debugging
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level:     level,
+			AddSource: true,
+		})
 	case Testing:
-		logLevel = 0
+		// Testing: Silent (only errors and above)
+		level = slog.LevelError
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})
+	default:
+		level = slog.LevelInfo
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})
 	}
-	log.SetFlags(logLevel)
+
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+	return logger
 }

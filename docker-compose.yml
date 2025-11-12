@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  buyer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+    container_name: buyer
+    restart: unless-stopped
+    ports:
+      - "${BUYER_WEB_PORT:-8080}:8080"
+    volumes:
+      - buyer-data:/data
+    environment:
+      - BUYER_ENV=${BUYER_ENV:-production}
+      - BUYER_DB_PATH=/data/buyer.db
+      - BUYER_WEB_PORT=8080
+      - BUYER_ENABLE_AUTH=${BUYER_ENABLE_AUTH:-true}
+      - BUYER_USERNAME=${BUYER_USERNAME:-admin}
+      - BUYER_PASSWORD=${BUYER_PASSWORD:-admin}
+      - BUYER_ENABLE_CSRF=${BUYER_ENABLE_CSRF:-true}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  buyer-data:
+    driver: local

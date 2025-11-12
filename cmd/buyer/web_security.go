@@ -416,7 +416,7 @@ func RenderRequisitionRow(req *models.Requisition) (SafeHTML, error) {
 }
 
 // RenderRequisitionComparison safely renders the requisition comparison results
-func RenderRequisitionComparison(comparison *services.QuoteComparison) (SafeHTML, error) {
+func RenderRequisitionComparison(comparison *services.RequisitionQuoteComparison) (SafeHTML, error) {
 	// Build comprehensive comparison HTML using template
 	tmpl := template.Must(template.New("comparison").Funcs(template.FuncMap{
 		"formatPrice": func(price float64) string {
