@@ -469,3 +469,213 @@ func RenderRequisitionComparison(comparison *services.RequisitionQuoteComparison
 	}
 	return SafeHTML{content: buf.String()}, nil
 }
+
+// RenderProjectRow safely renders a project table row
+func RenderProjectRow(project *models.Project) (SafeHTML, error) {
+	tmpl := template.Must(template.New("projectRow").Parse(`<tr id="project-{{.ID}}">
+		<td>{{.ID}}</td>
+		<td>
+			<strong>{{.Name}}</strong>
+			{{if .Description}}<br><small>{{.Description}}</small>{{end}}
+		</td>
+		<td>
+			<span class="badge {{if eq .Status "planning"}}secondary{{else if eq .Status "active"}}primary{{else if eq .Status "completed"}}success{{else}}contrast{{end}}">
+				{{.Status}}
+			</span>
+		</td>
+		<td>{{.BudgetDisplay}}</td>
+		<td>{{.DeadlineDisplay}}</td>
+		<td>{{.BOMItemCount}}</td>
+		<td>{{.RequisitionCount}}</td>
+		<td>
+			<div class="actions">
+				<button class="btn-sm" onclick="viewProject({{.ID}})">View</button>
+				<button class="btn-sm secondary" onclick="toggleProjectEdit({{.ID}})">Edit</button>
+				<button class="btn-sm contrast"
+						hx-delete="/projects/{{.ID}}"
+						hx-target="#project-{{.ID}}"
+						hx-swap="outerHTML"
+						hx-confirm="Are you sure you want to delete this project and its Bill of Materials?">
+					Delete
+				</button>
+			</div>
+		</td>
+	</tr>`))
+
+	budgetDisplay := "-"
+	if project.Budget > 0 {
+		budgetDisplay = fmt.Sprintf("$%.2f", project.Budget)
+	}
+
+	deadlineDisplay := "-"
+	if project.Deadline != nil {
+		deadlineDisplay = project.Deadline.Format("2006-01-02")
+	}
+
+	bomItemCount := 0
+	if project.BillOfMaterials != nil {
+		bomItemCount = len(project.BillOfMaterials.Items)
+	}
+
+	data := struct {
+		ID               uint
+		Name             string
+		Description      string
+		Status           string
+		BudgetDisplay    string
+		DeadlineDisplay  string
+		BOMItemCount     int
+		RequisitionCount int
+	}{
+		ID:               project.ID,
+		Name:             project.Name,
+		Description:      project.Description,
+		Status:           project.Status,
+		BudgetDisplay:    budgetDisplay,
+		DeadlineDisplay:  deadlineDisplay,
+		BOMItemCount:     bomItemCount,
+		RequisitionCount: len(project.Requisitions),
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return SafeHTML{}, err
+	}
+	return SafeHTML{content: buf.String()}, nil
+}
+
+// RenderBOMItemRow safely renders a BOM item table row
+func RenderBOMItemRow(item *models.BillOfMaterialsItem) (SafeHTML, error) {
+	tmpl := template.Must(template.New("bomItemRow").Parse(`<tr id="bom-item-{{.ID}}">
+		<td>{{.SpecName}}</td>
+		<td>{{.Quantity}}</td>
+		<td>{{.Notes}}</td>
+		<td>
+			<div class="actions">
+				<button class="btn-sm secondary" onclick="toggleBOMItemEdit({{.ID}})">Edit</button>
+				<button class="btn-sm contrast"
+						hx-delete="/bom-items/{{.ID}}"
+						hx-target="#bom-item-{{.ID}}"
+						hx-swap="outerHTML"
+						hx-confirm="Delete this item from the BOM?">
+					Delete
+				</button>
+			</div>
+		</td>
+	</tr>`))
+
+	specName := ""
+	if item.Specification != nil {
+		specName = item.Specification.Name
+	}
+
+	notes := item.Notes
+	if notes == "" {
+		notes = "-"
+	}
+
+	data := struct {
+		ID       uint
+		SpecName string
+		Quantity int
+		Notes    string
+	}{
+		ID:       item.ID,
+		SpecName: specName,
+		Quantity: item.Quantity,
+		Notes:    notes,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return SafeHTML{}, err
+	}
+	return SafeHTML{content: buf.String()}, nil
+}
+
+// RenderProjectRequisitionRow safely renders a project requisition table row
+// TODO: Update this function for new ProjectRequisition schema
+func RenderProjectRequisitionRow(projectReq *models.ProjectRequisition) (SafeHTML, error) {
+	tmpl := template.Must(template.New("projectReqRow").Parse(`<tr id="project-req-{{.ID}}">
+		<td>{{.Name}}</td>
+		<td>{{.Budget}}</td>
+		<td>{{.ItemCount}}</td>
+		<td>
+			<div class="actions">
+				<button class="btn-sm secondary" onclick="editProjectRequisition({{.ID}})">Edit</button>
+				<button class="btn-sm contrast"
+						hx-delete="/project-requisitions/{{.ID}}"
+						hx-target="#project-req-{{.ID}}"
+						hx-swap="outerHTML"
+						hx-confirm="Delete this project requisition?">
+					Delete
+				</button>
+			</div>
+		</td>
+	</tr>`))
+
+	itemCount := 0
+	if projectReq.Items != nil {
+		itemCount = len(projectReq.Items)
+	}
+
+	data := struct {
+		ID        uint
+		Name      string
+		Budget    float64
+		ItemCount int
+	}{
+		ID:        projectReq.ID,
+		Name:      projectReq.Name,
+		Budget:    projectReq.Budget,
+		ItemCount: itemCount,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return SafeHTML{}, err
+	}
+	return SafeHTML{content: buf.String()}, nil
+}
+
+// RenderBOMItemsList safely renders the full BOM items list for HTMX partial loading
+func RenderBOMItemsList(bom *models.BillOfMaterials, specSvc *services.SpecificationService) (SafeHTML, error) {
+	if bom == nil || len(bom.Items) == 0 {
+		return SafeHTML{content: "<p>No items in the Bill of Materials yet.</p>"}, nil
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("<table><thead><tr><th>Specification</th><th>Quantity</th><th>Notes</th><th>Actions</th></tr></thead><tbody>")
+
+	for _, item := range bom.Items {
+		html, err := RenderBOMItemRow(&item)
+		if err != nil {
+			return SafeHTML{}, err
+		}
+		buf.WriteString(html.String())
+	}
+
+	buf.WriteString("</tbody></table>")
+	return SafeHTML{content: buf.String()}, nil
+}
+
+// RenderProjectRequisitionsList safely renders the full project requisitions list
+func RenderProjectRequisitionsList(projectReqs []models.ProjectRequisition) (SafeHTML, error) {
+	if len(projectReqs) == 0 {
+		return SafeHTML{content: "<p>No project requisitions yet.</p>"}, nil
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("<table><thead><tr><th>Name</th><th>Budget</th><th>Items</th><th>Actions</th></tr></thead><tbody>")
+
+	for _, projectReq := range projectReqs {
+		html, err := RenderProjectRequisitionRow(&projectReq)
+		if err != nil {
+			return SafeHTML{}, err
+		}
+		buf.WriteString(html.String())
+	}
+
+	buf.WriteString("</tbody></table>")
+	return SafeHTML{content: buf.String()}, nil
+}

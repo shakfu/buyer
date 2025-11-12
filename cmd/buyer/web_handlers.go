@@ -390,3 +390,304 @@ func SetupCRUDHandlers(
 		return c.SendString("")
 	})
 }
+
+// SetupProjectHandlers sets up all project-related CRUD endpoints
+func SetupProjectHandlers(
+	app *fiber.App,
+	projectSvc *services.ProjectService,
+	specSvc *services.SpecificationService,
+	reqSvc *services.RequisitionService,
+	projectReqSvc *services.ProjectRequisitionService,
+) {
+	// CRUD endpoints for Projects
+	app.Post("/projects", func(c *fiber.Ctx) error {
+		name := c.FormValue("name")
+		description := c.FormValue("description")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			var err error
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		var deadline *time.Time
+		deadlineStr := c.FormValue("deadline")
+		if deadlineStr != "" {
+			parsed, err := time.Parse("2006-01-02", deadlineStr)
+			if err == nil {
+				deadline = &parsed
+			}
+		}
+
+		project, err := projectSvc.Create(name, description, budget, deadline)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		html, err := RenderProjectRow(project)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Put("/projects/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		name := c.FormValue("name")
+		description := c.FormValue("description")
+		status := c.FormValue("status")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		var deadline *time.Time
+		deadlineStr := c.FormValue("deadline")
+		if deadlineStr != "" {
+			parsed, err := time.Parse("2006-01-02", deadlineStr)
+			if err == nil {
+				deadline = &parsed
+			}
+		}
+
+		project, err := projectSvc.Update(uint(id), name, description, budget, deadline, status)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		html, err := RenderProjectRow(project)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/projects/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := projectSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
+
+	// BOM item endpoints
+	app.Post("/projects/:id/bom-items", func(c *fiber.Ctx) error {
+		projectID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		specID, err := strconv.ParseUint(c.FormValue("specification_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid specification ID")
+		}
+
+		quantity, err := strconv.Atoi(c.FormValue("quantity"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid quantity")
+		}
+
+		notes := c.FormValue("notes")
+
+		bomItem, err := projectSvc.AddBillOfMaterialsItem(uint(projectID), uint(specID), quantity, notes)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		html, err := RenderBOMItemRow(bomItem)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Put("/bom-items/:id", func(c *fiber.Ctx) error {
+		itemID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid item ID")
+		}
+
+		quantity, err := strconv.Atoi(c.FormValue("quantity"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid quantity")
+		}
+
+		notes := c.FormValue("notes")
+
+		bomItem, err := projectSvc.UpdateBillOfMaterialsItem(uint(itemID), quantity, notes)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		html, err := RenderBOMItemRow(bomItem)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/bom-items/:id", func(c *fiber.Ctx) error {
+		itemID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid item ID")
+		}
+		if err := projectSvc.DeleteBillOfMaterialsItem(uint(itemID)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
+
+	// Project Requisition endpoints
+	app.Post("/project-requisitions", func(c *fiber.Ctx) error {
+		projectID, err := strconv.ParseUint(c.FormValue("project_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		name := c.FormValue("name")
+		justification := c.FormValue("justification")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		// Parse multiple BOM items from form data
+		items := []services.ProjectRequisitionItemInput{}
+		for i := 0; ; i++ {
+			bomItemIDStr := c.FormValue(fmt.Sprintf("items[%d][bom_item_id]", i))
+			if bomItemIDStr == "" {
+				break // No more items
+			}
+
+			bomItemID, err := strconv.ParseUint(bomItemIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Invalid BOM item ID for item %d", i))
+			}
+
+			quantityStr := c.FormValue(fmt.Sprintf("items[%d][quantity_requested]", i))
+			quantity, err := strconv.Atoi(quantityStr)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Invalid quantity for item %d", i))
+			}
+
+			notes := c.FormValue(fmt.Sprintf("items[%d][notes]", i))
+
+			items = append(items, services.ProjectRequisitionItemInput{
+				BOMItemID:         uint(bomItemID),
+				QuantityRequested: quantity,
+				Notes:             notes,
+			})
+		}
+
+		if len(items) == 0 {
+			return c.Status(fiber.StatusBadRequest).SendString("At least one BOM item is required")
+		}
+
+		projectReq, err := projectReqSvc.Create(uint(projectID), name, justification, budget, items)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderProjectRequisitionRow(projectReq)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Put("/project-requisitions/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		name := c.FormValue("name")
+		justification := c.FormValue("justification")
+
+		var budget float64
+		budgetStr := c.FormValue("budget")
+		if budgetStr != "" {
+			budget, err = strconv.ParseFloat(budgetStr, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid budget")
+			}
+		}
+
+		projectReq, err := projectReqSvc.Update(uint(id), name, justification, budget)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderProjectRequisitionRow(projectReq)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/project-requisitions/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := projectReqSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
+
+	// Get project requisitions for a project (for HTMX partial loading)
+	app.Get("/projects/:id/project-requisitions", func(c *fiber.Ctx) error {
+		projectID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		projectReqs, err := projectReqSvc.ListByProject(uint(projectID))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderProjectRequisitionsList(projectReqs)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	// Get BOM items for a project (for HTMX partial loading)
+	app.Get("/projects/:id/bom-items", func(c *fiber.Ctx) error {
+		projectID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		project, err := projectSvc.GetByID(uint(projectID))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderBOMItemsList(project.BillOfMaterials, specSvc)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+}

@@ -47,6 +47,11 @@ func initConfig() {
 		&models.RequisitionItem{},
 		&models.Quote{},
 		&models.Forex{},
+		&models.Project{},
+		&models.BillOfMaterials{},
+		&models.BillOfMaterialsItem{},
+		&models.ProjectRequisition{},
+		&models.ProjectRequisitionItem{},
 	); err != nil {
 		logger.Error("failed to run migrations", slog.String("error", err.Error()))
 		fmt.Fprintf(os.Stderr, "Failed to run migrations: %v\n", err)

@@ -105,15 +105,86 @@ type Forex struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// Project represents a project with budget, deadline, and associated Bill of Materials
+type Project struct {
+	ID              uint                  `gorm:"primaryKey" json:"id"`
+	Name            string                `gorm:"uniqueIndex;not null" json:"name"`
+	Description     string                `gorm:"type:text" json:"description,omitempty"`
+	Budget          float64               `json:"budget,omitempty"`          // Overall project budget
+	Deadline        *time.Time            `json:"deadline,omitempty"`        // Project deadline
+	Status          string                `gorm:"size:20;default:'planning'" json:"status"` // planning, active, completed, cancelled
+	BillOfMaterials *BillOfMaterials      `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
+	Requisitions    []ProjectRequisition  `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"requisitions,omitempty"` // Project-based requisitions
+	CreatedAt       time.Time             `json:"created_at"`
+	UpdatedAt       time.Time             `json:"updated_at"`
+}
+
+// BillOfMaterials represents the master list of specifications needed for a project
+type BillOfMaterials struct {
+	ID        uint                   `gorm:"primaryKey" json:"id"`
+	ProjectID uint                   `gorm:"uniqueIndex;not null" json:"project_id"` // One BillOfMaterials per project
+	Project   *Project               `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
+	Notes     string                 `gorm:"type:text" json:"notes,omitempty"`
+	Items     []BillOfMaterialsItem  `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
+}
+
+// BillOfMaterialsItem represents a line item in a Bill of Materials
+type BillOfMaterialsItem struct {
+	ID                uint              `gorm:"primaryKey" json:"id"`
+	BillOfMaterialsID uint              `gorm:"not null;index:idx_bom_spec,priority:1" json:"bill_of_materials_id"`
+	BillOfMaterials   *BillOfMaterials  `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
+	SpecificationID   uint              `gorm:"not null;index:idx_bom_spec,priority:2;uniqueIndex:idx_bom_spec_unique,composite:bom_spec" json:"specification_id"`
+	Specification     *Specification    `gorm:"foreignKey:SpecificationID;constraint:OnDelete:RESTRICT" json:"specification,omitempty"`
+	Quantity          int               `gorm:"not null" json:"quantity"`
+	Notes             string            `gorm:"type:text" json:"notes,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
+}
+
+// ProjectRequisition represents a procurement request created from a project's BOM
+// Unlike standalone Requisitions, these are always tied to a project and reference BOM items
+type ProjectRequisition struct {
+	ID            uint                       `gorm:"primaryKey" json:"id"`
+	ProjectID     uint                       `gorm:"not null;index" json:"project_id"`
+	Project       *Project                   `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
+	Name          string                     `gorm:"not null" json:"name"`
+	Justification string                     `gorm:"type:text" json:"justification,omitempty"`
+	Budget        float64                    `json:"budget,omitempty"`
+	Items         []ProjectRequisitionItem   `gorm:"foreignKey:ProjectRequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	CreatedAt     time.Time                  `json:"created_at"`
+	UpdatedAt     time.Time                  `json:"updated_at"`
+}
+
+// ProjectRequisitionItem represents a line item in a project requisition
+// Links to specific BOM items rather than general specifications
+type ProjectRequisitionItem struct {
+	ID                    uint                 `gorm:"primaryKey" json:"id"`
+	ProjectRequisitionID  uint                 `gorm:"not null;index" json:"project_requisition_id"`
+	ProjectRequisition    *ProjectRequisition  `gorm:"foreignKey:ProjectRequisitionID;constraint:OnDelete:CASCADE" json:"project_requisition,omitempty"`
+	BillOfMaterialsItemID uint                 `gorm:"not null;index" json:"bill_of_materials_item_id"`
+	BOMItem               *BillOfMaterialsItem `gorm:"foreignKey:BillOfMaterialsItemID;constraint:OnDelete:RESTRICT" json:"bom_item,omitempty"`
+	QuantityRequested     int                  `gorm:"not null" json:"quantity_requested"` // How much of this BOM item to procure
+	Notes                 string               `gorm:"type:text" json:"notes,omitempty"`
+	CreatedAt             time.Time            `json:"created_at"`
+	UpdatedAt             time.Time            `json:"updated_at"`
+}
+
 // TableName overrides for GORM
-func (Vendor) TableName() string           { return "vendors" }
-func (Brand) TableName() string            { return "brands" }
-func (Specification) TableName() string    { return "specifications" }
-func (Product) TableName() string          { return "products" }
-func (Requisition) TableName() string      { return "requisitions" }
-func (RequisitionItem) TableName() string  { return "requisition_items" }
-func (Quote) TableName() string            { return "quotes" }
-func (Forex) TableName() string            { return "forex" }
+func (Vendor) TableName() string                  { return "vendors" }
+func (Brand) TableName() string                   { return "brands" }
+func (Specification) TableName() string           { return "specifications" }
+func (Product) TableName() string                 { return "products" }
+func (Requisition) TableName() string             { return "requisitions" }
+func (RequisitionItem) TableName() string         { return "requisition_items" }
+func (Quote) TableName() string                   { return "quotes" }
+func (Forex) TableName() string                   { return "forex" }
+func (Project) TableName() string                 { return "projects" }
+func (BillOfMaterials) TableName() string         { return "bills_of_materials" }
+func (BillOfMaterialsItem) TableName() string     { return "bill_of_materials_items" }
+func (ProjectRequisition) TableName() string      { return "project_requisitions" }
+func (ProjectRequisitionItem) TableName() string  { return "project_requisition_items" }
 
 // BeforeCreate hook for Vendor
 func (v *Vendor) BeforeCreate(tx *gorm.DB) error {
@@ -127,6 +198,14 @@ func (v *Vendor) BeforeCreate(tx *gorm.DB) error {
 func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 	if q.QuoteDate.IsZero() {
 		q.QuoteDate = time.Now()
+	}
+	return nil
+}
+
+// BeforeCreate hook for Project - sets default status if not provided
+func (p *Project) BeforeCreate(tx *gorm.DB) error {
+	if p.Status == "" {
+		p.Status = "planning"
 	}
 	return nil
 }

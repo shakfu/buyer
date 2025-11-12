@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shakfu/buyer/internal/services"
@@ -12,8 +14,8 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add entities (specification, brand, product, vendor, quote, forex, requisition)",
-	Long:  "Add specifications, brands, products, vendors, quotes, forex rates, or requisitions to the database",
+	Short: "Add entities (specification, brand, product, vendor, quote, forex, requisition, project)",
+	Long:  "Add specifications, brands, products, vendors, quotes, forex rates, requisitions, or projects to the database",
 }
 
 var addSpecificationCmd = &cobra.Command{
@@ -246,6 +248,209 @@ var addRequisitionItemCmd = &cobra.Command{
 	},
 }
 
+var addProjectCmd = &cobra.Command{
+	Use:   "project [name] --budget [amount] --deadline [date] --description [text]",
+	Short: "Add a new project",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		description, _ := cmd.Flags().GetString("description")
+		budget, _ := cmd.Flags().GetFloat64("budget")
+		deadlineStr, _ := cmd.Flags().GetString("deadline")
+
+		var deadline *time.Time
+		if deadlineStr != "" {
+			t, err := time.Parse("2006-01-02", deadlineStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Invalid deadline format. Use YYYY-MM-DD\n")
+				os.Exit(1)
+			}
+			deadline = &t
+		}
+
+		svc := services.NewProjectService(cfg.DB)
+		project, err := svc.Create(args[0], description, budget, deadline)
+		if err != nil {
+			slog.Error("failed to create project",
+				slog.String("name", args[0]),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("project created successfully",
+			slog.String("name", project.Name),
+			slog.Uint64("id", uint64(project.ID)))
+
+		fmt.Printf("Project created: %s (ID: %d)\n", project.Name, project.ID)
+		fmt.Printf("  Status: %s\n", project.Status)
+		if project.Budget > 0 {
+			fmt.Printf("  Budget: $%.2f\n", project.Budget)
+		}
+		if project.Deadline != nil {
+			fmt.Printf("  Deadline: %s\n", project.Deadline.Format("2006-01-02"))
+		}
+		if project.Description != "" {
+			fmt.Printf("  Description: %s\n", project.Description)
+		}
+		fmt.Printf("  Bill of Materials: Created (ID: %d)\n", project.BillOfMaterials.ID)
+	},
+}
+
+var addBOMItemCmd = &cobra.Command{
+	Use:   "bom-item --project [project_id] --spec [specification_name] --quantity [num] --notes [text]",
+	Short: "Add an item to a project's Bill of Materials",
+	Run: func(cmd *cobra.Command, args []string) {
+		projectID, _ := cmd.Flags().GetUint("project")
+		specName, _ := cmd.Flags().GetString("spec")
+		quantity, _ := cmd.Flags().GetInt("quantity")
+		notes, _ := cmd.Flags().GetString("notes")
+
+		if projectID == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --project flag is required")
+			os.Exit(1)
+		}
+		if specName == "" {
+			fmt.Fprintln(os.Stderr, "Error: --spec flag is required")
+			os.Exit(1)
+		}
+		if quantity <= 0 {
+			fmt.Fprintln(os.Stderr, "Error: --quantity must be greater than 0")
+			os.Exit(1)
+		}
+
+		// Get specification by name
+		specSvc := services.NewSpecificationService(cfg.DB)
+		spec, err := specSvc.GetByName(specName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		projectSvc := services.NewProjectService(cfg.DB)
+		bomItem, err := projectSvc.AddBillOfMaterialsItem(projectID, spec.ID, quantity, notes)
+		if err != nil {
+			slog.Error("failed to add BOM item",
+				slog.Uint64("project_id", uint64(projectID)),
+				slog.String("specification", specName),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("BOM item added successfully",
+			slog.Uint64("project_id", uint64(projectID)),
+			slog.Uint64("item_id", uint64(bomItem.ID)))
+
+		fmt.Printf("Bill of Materials item added to project ID %d:\n", projectID)
+		fmt.Printf("  Specification: %s (ID: %d)\n", bomItem.Specification.Name, bomItem.Specification.ID)
+		fmt.Printf("  Quantity: %d\n", bomItem.Quantity)
+		if bomItem.Notes != "" {
+			fmt.Printf("  Notes: %s\n", bomItem.Notes)
+		}
+		fmt.Printf("  Item ID: %d\n", bomItem.ID)
+	},
+}
+
+var addProjectRequisitionCmd = &cobra.Command{
+	Use:   "project-requisition [name] --project [id] --justification [text] --budget [amount] --bom-items [id:qty,id:qty,...]",
+	Short: "Create a project requisition from BOM items",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+		projectID, _ := cmd.Flags().GetUint("project")
+		justification, _ := cmd.Flags().GetString("justification")
+		budget, _ := cmd.Flags().GetFloat64("budget")
+		bomItemsStr, _ := cmd.Flags().GetString("bom-items")
+		notesStr, _ := cmd.Flags().GetString("notes")
+
+		if projectID == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --project flag is required")
+			os.Exit(1)
+		}
+
+		if bomItemsStr == "" {
+			fmt.Fprintln(os.Stderr, "Error: --bom-items flag is required (format: id:qty,id:qty,...)")
+			os.Exit(1)
+		}
+
+		// Parse BOM items (format: "id:qty,id:qty,...")
+		items := []services.ProjectRequisitionItemInput{}
+		itemPairs := strings.Split(bomItemsStr, ",")
+		notesList := []string{}
+		if notesStr != "" {
+			notesList = strings.Split(notesStr, "|")
+		}
+
+		for i, pair := range itemPairs {
+			parts := strings.Split(strings.TrimSpace(pair), ":")
+			if len(parts) != 2 {
+				fmt.Fprintf(os.Stderr, "Error: invalid bom-item format '%s' (expected id:qty)\n", pair)
+				os.Exit(1)
+			}
+
+			bomItemID, err := strconv.ParseUint(parts[0], 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid BOM item ID '%s': %v\n", parts[0], err)
+				os.Exit(1)
+			}
+
+			quantity, err := strconv.Atoi(parts[1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid quantity '%s': %v\n", parts[1], err)
+				os.Exit(1)
+			}
+
+			notes := ""
+			if i < len(notesList) {
+				notes = notesList[i]
+			}
+
+			items = append(items, services.ProjectRequisitionItemInput{
+				BOMItemID:         uint(bomItemID),
+				QuantityRequested: quantity,
+				Notes:             notes,
+			})
+		}
+
+		projectReqSvc := services.NewProjectRequisitionService(cfg.DB)
+		projectReq, err := projectReqSvc.Create(projectID, name, justification, budget, items)
+		if err != nil {
+			slog.Error("failed to create project requisition",
+				slog.String("name", name),
+				slog.Uint64("project_id", uint64(projectID)),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("project requisition created successfully",
+			slog.Uint64("id", uint64(projectReq.ID)),
+			slog.String("name", projectReq.Name))
+
+		fmt.Printf("Project Requisition created successfully:\n")
+		fmt.Printf("  ID: %d\n", projectReq.ID)
+		fmt.Printf("  Name: %s\n", projectReq.Name)
+		fmt.Printf("  Project ID: %d\n", projectReq.ProjectID)
+		if projectReq.Justification != "" {
+			fmt.Printf("  Justification: %s\n", projectReq.Justification)
+		}
+		if projectReq.Budget > 0 {
+			fmt.Printf("  Budget: $%.2f\n", projectReq.Budget)
+		}
+		fmt.Printf("  Items: %d\n", len(projectReq.Items))
+		for _, item := range projectReq.Items {
+			fmt.Printf("    - BOM Item ID %d: %d units", item.BillOfMaterialsItemID, item.QuantityRequested)
+			if item.BOMItem != nil && item.BOMItem.Specification != nil {
+				fmt.Printf(" (%s)", item.BOMItem.Specification.Name)
+			}
+			if item.Notes != "" {
+				fmt.Printf(" - %s", item.Notes)
+			}
+			fmt.Println()
+		}
+	},
+}
+
 func init() {
 	addCmd.AddCommand(addSpecificationCmd)
 	addCmd.AddCommand(addBrandCmd)
@@ -255,6 +460,9 @@ func init() {
 	addCmd.AddCommand(addForexCmd)
 	addCmd.AddCommand(addRequisitionCmd)
 	addCmd.AddCommand(addRequisitionItemCmd)
+	addCmd.AddCommand(addProjectCmd)
+	addCmd.AddCommand(addBOMItemCmd)
+	addCmd.AddCommand(addProjectRequisitionCmd)
 
 	// Specification flags
 	addSpecificationCmd.Flags().String("description", "", "Description of the specification")
@@ -288,4 +496,22 @@ func init() {
 	addRequisitionItemCmd.Flags().Int("quantity", 0, "Quantity (required)")
 	addRequisitionItemCmd.Flags().Float64("budget-per-unit", 0, "Budget per unit (optional)")
 	addRequisitionItemCmd.Flags().String("description", "", "Additional description (optional)")
+
+	// Project flags
+	addProjectCmd.Flags().String("description", "", "Project description")
+	addProjectCmd.Flags().Float64("budget", 0, "Overall project budget")
+	addProjectCmd.Flags().String("deadline", "", "Project deadline (YYYY-MM-DD format)")
+
+	// BOM item flags
+	addBOMItemCmd.Flags().Uint("project", 0, "Project ID (required)")
+	addBOMItemCmd.Flags().String("spec", "", "Specification name (required)")
+	addBOMItemCmd.Flags().Int("quantity", 0, "Quantity (required)")
+	addBOMItemCmd.Flags().String("notes", "", "Additional notes")
+
+	// Project requisition flags
+	addProjectRequisitionCmd.Flags().Uint("project", 0, "Project ID (required)")
+	addProjectRequisitionCmd.Flags().String("justification", "", "Justification for the requisition")
+	addProjectRequisitionCmd.Flags().Float64("budget", 0, "Budget for this requisition")
+	addProjectRequisitionCmd.Flags().String("bom-items", "", "BOM items in format id:qty,id:qty,... (required)")
+	addProjectRequisitionCmd.Flags().String("notes", "", "Notes for items, separated by | (optional)")
 }

@@ -23,6 +23,10 @@ func setupTestDB(t *testing.T) *config.Config {
 		&models.Forex{},
 		&models.Requisition{},
 		&models.RequisitionItem{},
+		&models.Project{},
+		&models.BillOfMaterials{},
+		&models.BillOfMaterialsItem{},
+		&models.ProjectRequisition{},
 	); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

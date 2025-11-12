@@ -5,13 +5,14 @@ import (
 	"os"
 
 	"github.com/rodaine/table"
+	"github.com/shakfu/buyer/internal/models"
 	"github.com/shakfu/buyer/internal/services"
 	"github.com/spf13/cobra"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List entities (specifications, brands, products, vendors, quotes, forex, requisitions)",
+	Short: "List entities (specifications, brands, products, vendors, quotes, forex, requisitions, projects)",
 	Long:  "List all entities with optional pagination",
 }
 
@@ -231,6 +232,141 @@ var listRequisitionsCmd = &cobra.Command{
 	},
 }
 
+var listProjectsCmd = &cobra.Command{
+	Use:   "projects",
+	Short: "List all projects",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+
+		svc := services.NewProjectService(cfg.DB)
+		projects, err := svc.List(limit, offset)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(projects) == 0 {
+			fmt.Println("No projects found.")
+			return
+		}
+
+		tbl := table.New("ID", "Name", "Status", "Budget", "Deadline", "BOM Items", "Requisitions")
+		for _, proj := range projects {
+			budgetStr := "-"
+			if proj.Budget > 0 {
+				budgetStr = fmt.Sprintf("$%.2f", proj.Budget)
+			}
+
+			deadlineStr := "-"
+			if proj.Deadline != nil {
+				deadlineStr = proj.Deadline.Format("2006-01-02")
+			}
+
+			bomItemCount := 0
+			if proj.BillOfMaterials != nil {
+				bomItemCount = len(proj.BillOfMaterials.Items)
+			}
+
+			tbl.AddRow(proj.ID, proj.Name, proj.Status, budgetStr, deadlineStr, bomItemCount, len(proj.Requisitions))
+		}
+		tbl.Print()
+	},
+}
+
+var listBOMCmd = &cobra.Command{
+	Use:   "bom [project_id]",
+	Short: "List Bill of Materials items for a project",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		var projectID uint
+		_, err := fmt.Sscanf(args[0], "%d", &projectID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Invalid project ID\n")
+			os.Exit(1)
+		}
+
+		svc := services.NewProjectService(cfg.DB)
+		project, err := svc.GetByID(projectID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if project.BillOfMaterials == nil || len(project.BillOfMaterials.Items) == 0 {
+			fmt.Printf("No Bill of Materials items for project '%s' (ID: %d)\n", project.Name, project.ID)
+			return
+		}
+
+		fmt.Printf("Bill of Materials for project: %s (ID: %d)\n\n", project.Name, project.ID)
+
+		tbl := table.New("Item ID", "Specification", "Quantity", "Notes")
+		for _, item := range project.BillOfMaterials.Items {
+			notes := item.Notes
+			if len(notes) > 40 {
+				notes = notes[:37] + "..."
+			}
+			tbl.AddRow(item.ID, item.Specification.Name, item.Quantity, notes)
+		}
+		tbl.Print()
+	},
+}
+
+var listProjectRequisitionsCmd = &cobra.Command{
+	Use:   "project-requisitions [project_id]",
+	Short: "List project requisitions (optionally filtered by project)",
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := services.NewProjectRequisitionService(cfg.DB)
+
+		var requisitions []models.ProjectRequisition
+		var err error
+
+		if len(args) == 1 {
+			// List for specific project
+			var projectID uint
+			_, err := fmt.Sscanf(args[0], "%d", &projectID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: Invalid project ID\n")
+				os.Exit(1)
+			}
+			requisitions, err = svc.ListByProject(projectID)
+		} else {
+			// List all
+			limit, _ := cmd.Flags().GetInt("limit")
+			offset, _ := cmd.Flags().GetInt("offset")
+			requisitions, err = svc.List(limit, offset)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(requisitions) == 0 {
+			if len(args) == 1 {
+				fmt.Println("No project requisitions found for this project.")
+			} else {
+				fmt.Println("No project requisitions found.")
+			}
+			return
+		}
+
+		tbl := table.New("ID", "Project ID", "Name", "Budget", "Items", "Created")
+		for _, req := range requisitions {
+			budgetStr := "-"
+			if req.Budget > 0 {
+				budgetStr = fmt.Sprintf("$%.2f", req.Budget)
+			}
+
+			createdStr := req.CreatedAt.Format("2006-01-02")
+
+			tbl.AddRow(req.ID, req.ProjectID, req.Name, budgetStr, len(req.Items), createdStr)
+		}
+		tbl.Print()
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listSpecificationsCmd)
 	listCmd.AddCommand(listBrandsCmd)
@@ -239,9 +375,12 @@ func init() {
 	listCmd.AddCommand(listQuotesCmd)
 	listCmd.AddCommand(listForexCmd)
 	listCmd.AddCommand(listRequisitionsCmd)
+	listCmd.AddCommand(listProjectsCmd)
+	listCmd.AddCommand(listBOMCmd)
+	listCmd.AddCommand(listProjectRequisitionsCmd)
 
 	// Add common pagination flags
-	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listForexCmd, listRequisitionsCmd} {
+	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listForexCmd, listRequisitionsCmd, listProjectsCmd, listProjectRequisitionsCmd} {
 		cmd.Flags().Int("limit", 0, "Maximum number of results (0 = no limit)")
 		cmd.Flags().Int("offset", 0, "Number of results to skip")
 	}

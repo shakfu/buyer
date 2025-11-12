@@ -13,7 +13,7 @@ import (
 
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete entities (specification, brand, product, vendor, quote, forex, requisition)",
+	Short: "Delete entities (specification, brand, product, vendor, quote, forex, requisition, project, bom-item, project-requisition)",
 	Long:  "Delete entities by ID with confirmation",
 }
 
@@ -238,6 +238,90 @@ var deleteForexCmd = &cobra.Command{
 	},
 }
 
+var deleteProjectCmd = &cobra.Command{
+	Use:   "project [id]",
+	Short: "Delete a project (also deletes associated BOM and project requisitions)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		force, _ := cmd.Flags().GetBool("force")
+
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid ID: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !force && !confirmDelete("project", uint(id)) {
+			fmt.Println("Deletion cancelled.")
+			return
+		}
+
+		svc := services.NewProjectService(cfg.DB)
+		if err := svc.Delete(uint(id)); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Project deleted (ID: %d)\n", id)
+	},
+}
+
+var deleteBOMItemCmd = &cobra.Command{
+	Use:   "bom-item [item_id]",
+	Short: "Delete a Bill of Materials item",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		force, _ := cmd.Flags().GetBool("force")
+
+		itemID, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid item ID: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !force && !confirmDelete("BOM item", uint(itemID)) {
+			fmt.Println("Deletion cancelled.")
+			return
+		}
+
+		svc := services.NewProjectService(cfg.DB)
+		if err := svc.DeleteBillOfMaterialsItem(uint(itemID)); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Bill of Materials item deleted (ID: %d)\n", itemID)
+	},
+}
+
+var deleteProjectRequisitionCmd = &cobra.Command{
+	Use:   "project-requisition [id]",
+	Short: "Delete a project requisition",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		force, _ := cmd.Flags().GetBool("force")
+
+		reqID, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid project requisition ID: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !force && !confirmDelete("project requisition", uint(reqID)) {
+			fmt.Println("Deletion cancelled.")
+			return
+		}
+
+		svc := services.NewProjectRequisitionService(cfg.DB)
+		if err := svc.Delete(uint(reqID)); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Project requisition deleted (ID: %d)\n", reqID)
+	},
+}
+
 func confirmDelete(entity string, id uint) bool {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("Are you sure you want to delete %s with ID %d? (y/N): ", entity, id)
@@ -255,9 +339,12 @@ func init() {
 	deleteCmd.AddCommand(deleteForexCmd)
 	deleteCmd.AddCommand(deleteRequisitionCmd)
 	deleteCmd.AddCommand(deleteRequisitionItemCmd)
+	deleteCmd.AddCommand(deleteProjectCmd)
+	deleteCmd.AddCommand(deleteBOMItemCmd)
+	deleteCmd.AddCommand(deleteProjectRequisitionCmd)
 
 	// Add force flag to all delete commands
-	for _, cmd := range []*cobra.Command{deleteSpecificationCmd, deleteBrandCmd, deleteProductCmd, deleteVendorCmd, deleteQuoteCmd, deleteForexCmd, deleteRequisitionCmd, deleteRequisitionItemCmd} {
+	for _, cmd := range []*cobra.Command{deleteSpecificationCmd, deleteBrandCmd, deleteProductCmd, deleteVendorCmd, deleteQuoteCmd, deleteForexCmd, deleteRequisitionCmd, deleteRequisitionItemCmd, deleteProjectCmd, deleteBOMItemCmd, deleteProjectRequisitionCmd} {
 		cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
 	}
 }

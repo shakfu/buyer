@@ -80,11 +80,13 @@ var webCmd = &cobra.Command{
 		quoteSvc := services.NewQuoteService(cfg.DB)
 		forexSvc := services.NewForexService(cfg.DB)
 		dashboardSvc := services.NewDashboardService(cfg.DB)
+		projectSvc := services.NewProjectService(cfg.DB)
+		projectReqSvc := services.NewProjectRequisitionService(cfg.DB)
 
 		slog.Debug("services initialized successfully")
 
 		// Routes
-		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc)
+		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc)
 
 		// Start server
 		addr := fmt.Sprintf(":%d", port)
@@ -110,6 +112,8 @@ func setupRoutes(
 	quoteSvc *services.QuoteService,
 	forexSvc *services.ForexService,
 	dashboardSvc *services.DashboardService,
+	projectSvc *services.ProjectService,
+	projectReqSvc *services.ProjectRequisitionService,
 ) {
 	// Home page
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -291,6 +295,59 @@ func setupRoutes(
 			"Rates": rates,
 			"Breadcrumb": []map[string]interface{}{
 				{"Name": "Forex Rates", "Active": true},
+			},
+		})
+	})
+
+	// Project routes
+	app.Get("/projects", func(c *fiber.Ctx) error {
+		projects, err := projectSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		specs, err := specSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "projects.html", fiber.Map{
+			"Title":          "Projects",
+			"Projects":       projects,
+			"Specifications": specs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Projects", "Active": true},
+			},
+		})
+	})
+
+	app.Get("/projects/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		project, err := projectSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).SendString("Project not found")
+		}
+
+		specs, err := specSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+
+		projectReqs, err := projectReqSvc.ListByProject(uint(id))
+		if err != nil {
+			return err
+		}
+
+		return renderTemplate(c, "project-detail.html", fiber.Map{
+			"Title":               project.Name,
+			"Project":             project,
+			"Specifications":      specs,
+			"ProjectRequisitions": projectReqs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Projects", "URL": "/projects"},
+				{"Name": project.Name, "Active": true},
 			},
 		})
 	})
@@ -1184,6 +1241,9 @@ func setupRoutes(
 		}
 		return c.SendString("")
 	})
+
+	// Setup project handlers
+	SetupProjectHandlers(app, projectSvc, specSvc, requisitionSvc, projectReqSvc)
 }
 
 func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {

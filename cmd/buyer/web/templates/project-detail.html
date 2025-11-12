@@ -1,0 +1,314 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>{{.Project.Name}}</h1>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span class="badge {{if eq .Project.Status "planning"}}secondary{{else if eq .Project.Status "active"}}primary{{else if eq .Project.Status "completed"}}success{{else}}contrast{{end}}">
+                {{.Project.Status}}
+            </span>
+            <button class="secondary" onclick="toggleEditMode()">Edit Project</button>
+            <a href="/projects" role="button" class="outline">Back to Projects</a>
+        </div>
+    </header>
+
+    <div id="project-details-view">
+        {{if .Project.Description}}
+        <p>{{.Project.Description}}</p>
+        {{end}}
+
+        <div class="grid">
+            <div>
+                <strong>Budget:</strong>
+                {{if gt .Project.Budget 0.0}}${{printf "%.2f" .Project.Budget}}{{else}}Not set{{end}}
+            </div>
+            <div>
+                <strong>Deadline:</strong>
+                {{if .Project.Deadline}}{{.Project.Deadline.Format "2006-01-02"}}{{else}}Not set{{end}}
+            </div>
+            <div>
+                <strong>Created:</strong> {{.Project.CreatedAt.Format "2006-01-02"}}
+            </div>
+        </div>
+    </div>
+
+    <article id="project-edit-form" class="hidden">
+        <h3>Edit Project</h3>
+        <form hx-put="/projects/{{.Project.ID}}" hx-target="#project-{{.Project.ID}}" hx-swap="outerHTML">
+            <label>
+                Project Name
+                <input type="text" name="name" value="{{.Project.Name}}" required>
+            </label>
+            <label>
+                Description
+                <textarea name="description" rows="3">{{.Project.Description}}</textarea>
+            </label>
+            <div class="grid">
+                <label>
+                    Budget
+                    <input type="number" name="budget" value="{{.Project.Budget}}" step="0.01" min="0">
+                </label>
+                <label>
+                    Deadline
+                    <input type="date" name="deadline" value="{{if .Project.Deadline}}{{.Project.Deadline.Format "2006-01-02"}}{{end}}">
+                </label>
+                <label>
+                    Status
+                    <select name="status">
+                        <option value="planning" {{if eq .Project.Status "planning"}}selected{{end}}>Planning</option>
+                        <option value="active" {{if eq .Project.Status "active"}}selected{{end}}>Active</option>
+                        <option value="completed" {{if eq .Project.Status "completed"}}selected{{end}}>Completed</option>
+                        <option value="cancelled" {{if eq .Project.Status "cancelled"}}selected{{end}}>Cancelled</option>
+                    </select>
+                </label>
+            </div>
+            <button type="submit">Save Changes</button>
+            <button type="button" onclick="toggleEditMode()" class="secondary">Cancel</button>
+        </form>
+    </article>
+</article>
+
+<section>
+    <header>
+        <h2>Bill of Materials</h2>
+        <button onclick="toggleForm('add-bom-item-form')">Add BOM Item</button>
+    </header>
+
+    <article id="add-bom-item-form" class="hidden">
+        <h3>Add BOM Item</h3>
+        <form hx-post="/projects/{{.Project.ID}}/bom-items" hx-target="#bom-items-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-bom-item-form')">
+            <label>
+                Specification
+                <select name="specification_id" required>
+                    <option value="">Select a specification...</option>
+                    {{range .Specifications}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </label>
+            <label>
+                Quantity
+                <input type="number" name="quantity" min="1" placeholder="1" required>
+            </label>
+            <label>
+                Notes
+                <input type="text" name="notes" placeholder="Optional notes">
+            </label>
+            <button type="submit">Add Item</button>
+            <button type="button" onclick="toggleForm('add-bom-item-form')" class="secondary">Cancel</button>
+        </form>
+    </article>
+
+    <figure id="bom-items-table">
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Specification</th>
+                    <th>Quantity</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .Project.BillOfMaterials}}
+                    {{range .Project.BillOfMaterials.Items}}
+                    <tr id="bom-item-{{.ID}}">
+                        <td><strong>{{.Specification.Name}}</strong></td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{.Notes}}</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-sm secondary" onclick="editBOMItem({{.ID}}, {{.Quantity}}, '{{.Notes}}')">Edit</button>
+                                <button class="btn-sm contrast"
+                                        hx-delete="/bom-items/{{.ID}}"
+                                        hx-target="#bom-item-{{.ID}}"
+                                        hx-swap="outerHTML"
+                                        hx-confirm="Delete this BOM item?">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                {{else}}
+                    <tr>
+                        <td colspan="4" style="text-align: center;">No BOM items yet. Add items to define what's needed for this project.</td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+</section>
+
+<section>
+    <header>
+        <h2>Project Requisitions</h2>
+        <button onclick="toggleForm('add-project-requisition-form')">Create Requisition from BOM</button>
+    </header>
+
+    <article id="add-project-requisition-form" class="hidden">
+        <h3>Create Project Requisition</h3>
+        <form hx-post="/project-requisitions" hx-target="#project-requisitions-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-project-requisition-form')">
+            <input type="hidden" name="project_id" value="{{.Project.ID}}">
+            <label>
+                Requisition Name
+                <input type="text" name="name" placeholder="e.g., Phase 1 Equipment" required>
+            </label>
+            <label>
+                Justification
+                <textarea name="justification" placeholder="Explain why this requisition is needed" rows="2"></textarea>
+            </label>
+            <label>
+                Budget
+                <input type="number" name="budget" placeholder="0.00" step="0.01" min="0">
+            </label>
+
+            <fieldset>
+                <legend>Select BOM Items</legend>
+                <div id="bom-items-selection">
+                    {{if .Project.BillOfMaterials}}
+                        {{if .Project.BillOfMaterials.Items}}
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            {{range $index, $item := .Project.BillOfMaterials.Items}}
+                            <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="checkbox" name="bom_item_{{$item.ID}}" onchange="toggleBOMItemFields({{$item.ID}})" style="margin-right: 0.5rem;">
+                                <strong>{{$item.Specification.Name}}</strong> (Available: {{$item.Quantity}})
+                            </label>
+                            <div id="bom-item-fields-{{$item.ID}}" style="display: none; margin-left: 2rem; margin-bottom: 1rem;">
+                                <input type="hidden" name="items[{{$index}}][bom_item_id]" value="{{$item.ID}}" disabled>
+                                <label style="margin-bottom: 0.5rem;">
+                                    Quantity
+                                    <input type="number" name="items[{{$index}}][quantity_requested]" min="1" max="{{$item.Quantity}}" placeholder="1" disabled>
+                                </label>
+                                <label>
+                                    Notes
+                                    <input type="text" name="items[{{$index}}][notes]" placeholder="Optional notes" disabled>
+                                </label>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{else}}
+                        <p>No BOM items available. Please add BOM items first.</p>
+                        {{end}}
+                    {{else}}
+                    <p>No BOM items available. Please add BOM items first.</p>
+                    {{end}}
+                </div>
+            </fieldset>
+
+            <button type="submit">Create Requisition</button>
+            <button type="button" onclick="toggleForm('add-project-requisition-form')" class="secondary">Cancel</button>
+        </form>
+    </article>
+
+    <figure id="project-requisitions-table">
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Justification</th>
+                    <th>Budget</th>
+                    <th>Items</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .ProjectRequisitions}}
+                    {{range .ProjectRequisitions}}
+                    <tr id="project-req-{{.ID}}">
+                        <td><strong>{{.Name}}</strong></td>
+                        <td>{{if .Justification}}{{.Justification}}{{else}}-{{end}}</td>
+                        <td>{{if gt .Budget 0.0}}${{printf "%.2f" .Budget}}{{else}}-{{end}}</td>
+                        <td>{{len .Items}}</td>
+                        <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-sm secondary" onclick="editProjectRequisition({{.ID}}, '{{.Name}}', '{{.Justification}}', {{.Budget}})">Edit</button>
+                                <button class="btn-sm contrast"
+                                        hx-delete="/project-requisitions/{{.ID}}"
+                                        hx-target="#project-req-{{.ID}}"
+                                        hx-swap="outerHTML"
+                                        hx-confirm="Delete this requisition?">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                {{else}}
+                    <tr>
+                        <td colspan="6" style="text-align: center;">No requisitions yet. Create requisitions from BOM items to procure materials.</td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </figure>
+</section>
+
+<script>
+function toggleEditMode() {
+    const view = document.getElementById('project-details-view');
+    const form = document.getElementById('project-edit-form');
+    view.classList.toggle('hidden');
+    form.classList.toggle('hidden');
+}
+
+function editBOMItem(id, currentQuantity, currentNotes) {
+    const quantity = prompt("Enter new quantity:", currentQuantity);
+    if (!quantity || quantity < 1) return;
+
+    const notes = prompt("Enter notes:", currentNotes);
+
+    const formData = new FormData();
+    formData.append('quantity', quantity);
+    formData.append('notes', notes || '');
+
+    fetch(`/bom-items/${id}`, {
+        method: 'PUT',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        document.getElementById(`bom-item-${id}`).outerHTML = html;
+    });
+}
+
+function editProjectRequisition(id, currentName, currentJustification, currentBudget) {
+    const name = prompt("Enter new requisition name:", currentName);
+    if (!name) return;
+
+    const justification = prompt("Enter justification:", currentJustification);
+    const budget = prompt("Enter budget:", currentBudget);
+
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('justification', justification || '');
+    formData.append('budget', budget || '0');
+
+    fetch(`/project-requisitions/${id}`, {
+        method: 'PUT',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        document.getElementById(`project-req-${id}`).outerHTML = html;
+    });
+}
+
+function toggleBOMItemFields(itemId) {
+    const checkbox = document.querySelector(`input[name="bom_item_${itemId}"]`);
+    const fieldsDiv = document.getElementById(`bom-item-fields-${itemId}`);
+    const inputs = fieldsDiv.querySelectorAll('input');
+
+    if (checkbox.checked) {
+        fieldsDiv.style.display = 'block';
+        inputs.forEach(input => input.disabled = false);
+    } else {
+        fieldsDiv.style.display = 'none';
+        inputs.forEach(input => input.disabled = true);
+    }
+}
+</script>
+{{end}}

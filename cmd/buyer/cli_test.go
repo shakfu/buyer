@@ -27,6 +27,10 @@ func setupTestDB(t *testing.T) *config.Config {
 		&models.RequisitionItem{},
 		&models.Quote{},
 		&models.Forex{},
+		&models.Project{},
+		&models.BillOfMaterials{},
+		&models.BillOfMaterialsItem{},
+		&models.ProjectRequisition{},
 	); err != nil {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -437,3 +441,163 @@ func TestCLI_ErrorHandling(t *testing.T) {
 		t.Error("Expected error for deleting non-existent brand, got nil")
 	}
 }
+
+// TestCLI_AddProject tests project creation workflow
+func TestCLI_AddProject(t *testing.T) {
+	testCfg := setupTestDB(t)
+	defer testCfg.DB.Exec("DELETE FROM bill_of_materials_items")
+	defer testCfg.DB.Exec("DELETE FROM bills_of_materials")
+	defer testCfg.DB.Exec("DELETE FROM project_requisitions")
+	defer testCfg.DB.Exec("DELETE FROM projects")
+
+	oldCfg := cfg
+	cfg = testCfg
+	defer func() { cfg = oldCfg }()
+
+	svc := services.NewProjectService(testCfg.DB)
+
+	// Create project with deadline
+	deadline := time.Now().Add(60 * 24 * time.Hour)
+	project, err := svc.Create("Office Renovation", "Complete office renovation", 100000.0, &deadline)
+	if err != nil {
+		t.Fatalf("Failed to create project: %v", err)
+	}
+
+	if project.Name != "Office Renovation" {
+		t.Errorf("Expected project name 'Office Renovation', got %q", project.Name)
+	}
+
+	if project.Description != "Complete office renovation" {
+		t.Errorf("Expected description 'Complete office renovation', got %q", project.Description)
+	}
+
+	if project.Budget != 100000.0 {
+		t.Errorf("Expected budget 100000.0, got %.2f", project.Budget)
+	}
+
+	if project.Status != "planning" {
+		t.Errorf("Expected status 'planning', got %q", project.Status)
+	}
+
+	if project.BillOfMaterials == nil {
+		t.Error("Expected BillOfMaterials to be automatically created")
+	}
+
+	// List projects
+	projects, err := svc.List(0, 0)
+	if err != nil {
+		t.Fatalf("Failed to list projects: %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(projects))
+	}
+
+	// Test update
+	updatedProject, err := svc.Update(project.ID, "Office Renovation Phase 1", "First phase", 80000.0, nil, "active")
+	if err != nil {
+		t.Fatalf("Failed to update project: %v", err)
+	}
+
+	if updatedProject.Name != "Office Renovation Phase 1" {
+		t.Errorf("Expected updated name 'Office Renovation Phase 1', got %q", updatedProject.Name)
+	}
+
+	if updatedProject.Status != "active" {
+		t.Errorf("Expected status 'active', got %q", updatedProject.Status)
+	}
+
+	// Test delete
+	if err := svc.Delete(project.ID); err != nil {
+		t.Fatalf("Failed to delete project: %v", err)
+	}
+
+	// Verify deletion
+	projects, err = svc.List(0, 0)
+	if err != nil {
+		t.Fatalf("Failed to list projects after deletion: %v", err)
+	}
+
+	if len(projects) != 0 {
+		t.Errorf("Expected 0 projects after deletion, got %d", len(projects))
+	}
+}
+
+// TestCLI_AddBOMItem tests Bill of Materials item workflow
+func TestCLI_AddBOMItem(t *testing.T) {
+	testCfg := setupTestDB(t)
+	defer testCfg.DB.Exec("DELETE FROM bill_of_materials_items")
+	defer testCfg.DB.Exec("DELETE FROM bills_of_materials")
+	defer testCfg.DB.Exec("DELETE FROM projects")
+	defer testCfg.DB.Exec("DELETE FROM specifications")
+
+	oldCfg := cfg
+	cfg = testCfg
+	defer func() { cfg = oldCfg }()
+
+	projectSvc := services.NewProjectService(testCfg.DB)
+	specSvc := services.NewSpecificationService(testCfg.DB)
+
+	// Create project
+	project, err := projectSvc.Create("Test Project", "Test", 50000.0, nil)
+	if err != nil {
+		t.Fatalf("Failed to create project: %v", err)
+	}
+
+	// Create specification
+	spec, err := specSvc.Create("Laptop - Intel i7", "High-performance laptop")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+
+	// Add BOM item
+	bomItem, err := projectSvc.AddBillOfMaterialsItem(project.ID, spec.ID, 10, "For development team")
+	if err != nil {
+		t.Fatalf("Failed to add BOM item: %v", err)
+	}
+
+	if bomItem.Quantity != 10 {
+		t.Errorf("Expected quantity 10, got %d", bomItem.Quantity)
+	}
+
+	if bomItem.Notes != "For development team" {
+		t.Errorf("Expected notes 'For development team', got %q", bomItem.Notes)
+	}
+
+	if bomItem.Specification.Name != "Laptop - Intel i7" {
+		t.Errorf("Expected specification 'Laptop - Intel i7', got %q", bomItem.Specification.Name)
+	}
+
+	// Update BOM item
+	updatedBOMItem, err := projectSvc.UpdateBillOfMaterialsItem(bomItem.ID, 15, "Updated quantity")
+	if err != nil {
+		t.Fatalf("Failed to update BOM item: %v", err)
+	}
+
+	if updatedBOMItem.Quantity != 15 {
+		t.Errorf("Expected quantity 15, got %d", updatedBOMItem.Quantity)
+	}
+
+	if updatedBOMItem.Notes != "Updated quantity" {
+		t.Errorf("Expected notes 'Updated quantity', got %q", updatedBOMItem.Notes)
+	}
+
+	// Delete BOM item
+	if err := projectSvc.DeleteBillOfMaterialsItem(bomItem.ID); err != nil {
+		t.Fatalf("Failed to delete BOM item: %v", err)
+	}
+
+	// Verify deletion by getting project
+	projectWithBOM, err := projectSvc.GetByID(project.ID)
+	if err != nil {
+		t.Fatalf("Failed to get project: %v", err)
+	}
+
+	if len(projectWithBOM.BillOfMaterials.Items) != 0 {
+		t.Errorf("Expected 0 BOM items after deletion, got %d", len(projectWithBOM.BillOfMaterials.Items))
+	}
+}
+
+// TestCLI_AddProjectRequisition tests project requisition linking workflow
+
+// TestCLI_ProjectCompleteWorkflow tests complete project workflow
