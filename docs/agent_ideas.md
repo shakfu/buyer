@@ -665,6 +665,75 @@ Open-source framework for building, deploying, and managing LLM agents with a fo
 
 ---
 
+### 15. SwarmGo
+
+**Language:** Go
+
+SwarmGo is a Go implementation inspired by OpenAI's Swarm framework for building multi-agent systems. It provides lightweight, ergonomic orchestration of multiple agents with handoffs and context management.
+
+**Links:**
+- [SwarmGo GitHub](https://github.com/prathyushnallamothu/swarmgo)
+- [OpenAI Swarm (Python original)](https://github.com/openai/swarm)
+
+**Pros:**
+- Pure Go implementation (native to buyer stack)
+- Lightweight and minimal abstractions
+- Multi-agent coordination with handoffs
+- Context management across agents
+- Educational and easy to understand
+- No external dependencies beyond LLM APIs
+- Good for experimenting with agent patterns
+
+**Cons:**
+- Newer project (less battle-tested)
+- Smaller community and ecosystem
+- Limited documentation compared to mature frameworks
+- Experimental/educational focus (not production-hardened)
+- Less feature-rich than LangChain or ADK
+
+**Best For:** Learning multi-agent patterns, prototyping agent interactions in pure Go
+
+**Technical Highlights:**
+- **Agent Handoffs:** Agents can transfer control to other specialized agents
+- **Context Variables:** Shared state across agent interactions
+- **Function Calling:** Direct integration with LLM tool/function calling
+- **Minimal API:** Simple, understandable interface
+
+**Example Use Case:**
+```go
+// SwarmGo multi-agent procurement workflow
+import "github.com/prathyushnallamothu/swarmgo"
+
+// Define specialized agents
+sourcingAgent := swarmgo.Agent{
+    Name: "Sourcing Agent",
+    Instructions: "Find and collect vendor quotes",
+    Functions: []swarmgo.Function{collectQuotes, searchVendors},
+}
+
+priceAgent := swarmgo.Agent{
+    Name: "Price Comparison Agent",
+    Instructions: "Analyze quotes and recommend best option",
+    Functions: []swarmgo.Function{compareQuotes, calculateTotal},
+}
+
+// Agent handoff workflow
+response := swarmgo.Run(
+    client,
+    sourcingAgent,
+    "Find quotes for 10 laptops under $1000",
+    contextVariables,
+)
+```
+
+**Recommendation for buyer:**
+- **Good for:** Prototyping multi-agent patterns in Phase 1-2
+- **Use case:** Experiment with Sourcing Agent → Price Comparison Agent workflows
+- **Caution:** Consider more mature frameworks (Eino, ADK) for production
+- **Best approach:** Use SwarmGo for learning, then migrate to Eino or ADK for production deployment
+
+---
+
 ## Tentative Roadmap
 
 ### Phase 1: Foundation (Months 1-2)

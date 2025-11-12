@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -40,13 +42,62 @@ var webCmd = &cobra.Command{
 		app.Use(logger.New())
 
 		// Security middleware
-		securityConfig := SecurityConfig{
-			EnableAuth:        os.Getenv("BUYER_ENABLE_AUTH") == "true",
-			EnableCSRF:        os.Getenv("BUYER_ENABLE_CSRF") == "true",
-			EnableRateLimiter: true, // Always enabled for security
-			Username:          getEnvOrDefault("BUYER_USERNAME", "admin"),
-			Password:          getEnvOrDefault("BUYER_PASSWORD", "admin"),
+		enableAuth := os.Getenv("BUYER_ENABLE_AUTH") == "true"
+		var securityConfig SecurityConfig
+
+		if enableAuth {
+			// If auth is enabled, username and password are required (no defaults)
+			username := os.Getenv("BUYER_USERNAME")
+			password := os.Getenv("BUYER_PASSWORD")
+
+			if username == "" {
+				slog.Error("BUYER_USERNAME is required when BUYER_ENABLE_AUTH=true")
+				fmt.Fprintln(os.Stderr, "Error: BUYER_USERNAME environment variable is required when authentication is enabled")
+				os.Exit(1)
+			}
+
+			if password == "" {
+				slog.Error("BUYER_PASSWORD is required when BUYER_ENABLE_AUTH=true")
+				fmt.Fprintln(os.Stderr, "Error: BUYER_PASSWORD environment variable is required when authentication is enabled")
+				os.Exit(1)
+			}
+
+			// Validate password strength
+			if err := ValidatePassword(password); err != nil {
+				slog.Error("invalid password", slog.String("error", err.Error()))
+				fmt.Fprintf(os.Stderr, "Error: Invalid password - %v\n", err)
+				fmt.Fprintln(os.Stderr, "Password requirements:")
+				fmt.Fprintln(os.Stderr, "  - At least 12 characters long")
+				fmt.Fprintln(os.Stderr, "  - Contains at least one uppercase letter")
+				fmt.Fprintln(os.Stderr, "  - Contains at least one lowercase letter")
+				fmt.Fprintln(os.Stderr, "  - Contains at least one digit")
+				fmt.Fprintln(os.Stderr, "  - Contains at least one special character")
+				os.Exit(1)
+			}
+
+			// Hash the password
+			passwordHash, err := HashPassword(password)
+			if err != nil {
+				slog.Error("failed to hash password", slog.String("error", err.Error()))
+				fmt.Fprintf(os.Stderr, "Error: Failed to hash password - %v\n", err)
+				os.Exit(1)
+			}
+
+			securityConfig = SecurityConfig{
+				EnableAuth:        true,
+				EnableCSRF:        os.Getenv("BUYER_ENABLE_CSRF") == "true",
+				EnableRateLimiter: true, // Always enabled for security
+				Username:          username,
+				PasswordHash:      passwordHash,
+			}
+		} else {
+			securityConfig = SecurityConfig{
+				EnableAuth:        false,
+				EnableCSRF:        os.Getenv("BUYER_ENABLE_CSRF") == "true",
+				EnableRateLimiter: true, // Always enabled for security
+			}
 		}
+
 		SetupSecurityMiddleware(app, securityConfig)
 
 		// Static files - extract subdirectory from embedded FS
@@ -82,16 +133,33 @@ var webCmd = &cobra.Command{
 		// Routes
 		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc)
 
-		// Start server
+		// Setup graceful shutdown
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+		// Start server in a goroutine
 		addr := fmt.Sprintf(":%d", port)
 		slog.Info("starting web server",
 			slog.String("address", addr),
 			slog.String("url", fmt.Sprintf("http://localhost%s", addr)))
 
-		if err := app.Listen(addr); err != nil {
-			slog.Error("failed to start server", slog.String("error", err.Error()))
-			fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
-			os.Exit(1)
+		go func() {
+			if err := app.Listen(addr); err != nil {
+				slog.Error("failed to start server", slog.String("error", err.Error()))
+				fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
+			}
+		}()
+
+		// Wait for interrupt signal
+		<-c
+		slog.Info("shutting down server gracefully...")
+
+		// Shutdown with timeout
+		if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+			slog.Error("server shutdown failed", slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Server shutdown error: %v\n", err)
+		} else {
+			slog.Info("server stopped gracefully")
 		}
 	},
 }
@@ -517,7 +585,7 @@ func setupRoutes(
 
 		product, err := productSvc.Update(uint(id), name, specIDPtr)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		brandName := ""
 		if product.Brand != nil {
@@ -561,7 +629,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := productSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -573,7 +641,7 @@ func setupRoutes(
 		discountCode := c.FormValue("discount_code")
 		vendor, err := vendorSvc.Create(name, currency, discountCode)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="vendor-%d">
 			<td>%d</td>
@@ -608,7 +676,7 @@ func setupRoutes(
 		name := c.FormValue("name")
 		vendor, err := vendorSvc.Update(uint(id), name)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="vendor-%d">
 			<td>%d</td>
@@ -641,7 +709,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := vendorSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -657,7 +725,7 @@ func setupRoutes(
 		}
 		forex, err := forexSvc.Create(fromCurrency, toCurrency, rate, time.Now())
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="forex-%d">
 			<td>%d</td>
@@ -685,7 +753,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := forexSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -696,7 +764,7 @@ func setupRoutes(
 		description := c.FormValue("description")
 		spec, err := specSvc.Create(name, description)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="spec-%d">
 			<td>%d</td>
@@ -732,7 +800,7 @@ func setupRoutes(
 		description := c.FormValue("description")
 		spec, err := specSvc.Update(uint(id), name, description)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString(fmt.Sprintf(`<tr id="spec-%d">
 			<td>%d</td>
@@ -765,7 +833,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := specSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -830,7 +898,7 @@ func setupRoutes(
 
 		req, err := requisitionSvc.Create(name, justification, budget, items)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 
 		itemsHTML := ""
@@ -897,7 +965,7 @@ func setupRoutes(
 
 		req, err := requisitionSvc.Update(uint(id), name, justification, budget)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 
 		itemsHTML := ""
@@ -974,7 +1042,7 @@ func setupRoutes(
 		// Update requisition details
 		req, err := requisitionSvc.Update(uint(id), name, justification, budget)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 
 		// Process line items - track which ones to keep/update/delete
@@ -1086,7 +1154,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := requisitionSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -1121,7 +1189,7 @@ func setupRoutes(
 
 		item, err := requisitionSvc.UpdateItem(uint(id), uint(specID), quantity, budget, description)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 
 		specName := ""
@@ -1173,7 +1241,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := requisitionSvc.DeleteItem(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})
@@ -1215,7 +1283,7 @@ func setupRoutes(
 			Notes:      notes,
 		})
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 
 		vendorName := ""
@@ -1271,7 +1339,7 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := quoteSvc.Delete(uint(id)); err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
 	})

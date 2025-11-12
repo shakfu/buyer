@@ -162,7 +162,22 @@ Then visit http://localhost:8080 in your browser.
 
 ## Configuration
 
-buyer supports configuration through environment variables. See [CONFIGURATION.md](CONFIGURATION.md) for detailed documentation.
+buyer supports configuration through environment variables and `.env` files. See [CONFIG.md](CONFIG.md) for detailed documentation.
+
+### Using .env File (Recommended)
+
+```bash
+# Copy the example configuration
+cp .env.example .env
+
+# Edit .env with your settings
+nano .env
+
+# Run the application (it will automatically load .env)
+buyer web
+```
+
+**Note:** `.env` file is optional. Environment variables already set take precedence over `.env` file values.
 
 ### Quick Configuration Examples
 
@@ -183,21 +198,23 @@ buyer web --port 3000
 export BUYER_ENV=production
 export BUYER_ENABLE_AUTH=true
 export BUYER_USERNAME=admin
-export BUYER_PASSWORD=your-secure-password
+export BUYER_PASSWORD=YourSecureP@ss123!
 export BUYER_ENABLE_CSRF=true
 buyer web
 ```
+
+**Security Note:** When `BUYER_ENABLE_AUTH=true`, you **must** provide `BUYER_USERNAME` and `BUYER_PASSWORD` (no defaults). Password must meet requirements: 12+ chars, uppercase, lowercase, digit, special character.
 
 **All available environment variables:**
 - `BUYER_ENV` - Environment mode (development/production/testing)
 - `BUYER_DB_PATH` - Database file path
 - `BUYER_WEB_PORT` - Web server port
-- `BUYER_ENABLE_AUTH` - Enable HTTP basic authentication
-- `BUYER_USERNAME` - Basic auth username
-- `BUYER_PASSWORD` - Basic auth password
-- `BUYER_ENABLE_CSRF` - Enable CSRF protection
+- `BUYER_ENABLE_AUTH` - Enable HTTP basic authentication (default: false)
+- `BUYER_USERNAME` - Basic auth username (required if auth enabled, no default)
+- `BUYER_PASSWORD` - Basic auth password (required if auth enabled, no default)
+- `BUYER_ENABLE_CSRF` - Enable CSRF protection (default: false)
 
-See [CONFIGURATION.md](CONFIGURATION.md) for comprehensive configuration guide.
+See [CONFIG.md](CONFIG.md) for comprehensive configuration guide including defaults, loading sequence, and troubleshooting.
 
 ## Project Structure
 

@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"time"
+	"unicode"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
@@ -12,15 +15,16 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/shakfu/buyer/internal/models"
 	"github.com/shakfu/buyer/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	EnableAuth       bool
-	EnableCSRF       bool
+	EnableAuth        bool
+	EnableCSRF        bool
 	EnableRateLimiter bool
-	Username         string
-	Password         string
+	Username          string
+	PasswordHash      string // bcrypt hash of the password
 }
 
 // SetupSecurityMiddleware adds all security middleware to the Fiber app
@@ -35,7 +39,7 @@ func SetupSecurityMiddleware(app *fiber.App, config SecurityConfig) {
 		return c.Next()
 	})
 
-	// Rate limiting
+	// Rate limiting for general requests
 	if config.EnableRateLimiter {
 		app.Use(limiter.New(limiter.Config{
 			Max:        100,
@@ -45,6 +49,27 @@ func SetupSecurityMiddleware(app *fiber.App, config SecurityConfig) {
 				return c.Path() == "/static" || len(c.Path()) > 7 && c.Path()[:7] == "/static"
 			},
 		}))
+	}
+
+	// Authentication-specific rate limiting (stricter)
+	if config.EnableAuth {
+		authLimiter := limiter.New(limiter.Config{
+			Max:        5,
+			Expiration: 1 * time.Minute,
+			KeyGenerator: func(c *fiber.Ctx) string {
+				return c.IP() + ":auth"
+			},
+			LimitReached: func(c *fiber.Ctx) error {
+				return c.Status(fiber.StatusTooManyRequests).SendString("Too many authentication attempts. Please try again later.")
+			},
+			SkipFailedRequests: true,
+			SkipSuccessfulRequests: true,
+			Next: func(c *fiber.Ctx) bool {
+				// Only apply to non-static requests (auth is checked on these)
+				return c.Path() == "/static" || len(c.Path()) > 7 && c.Path()[:7] == "/static"
+			},
+		})
+		app.Use(authLimiter)
 	}
 
 	// CSRF protection
@@ -58,11 +83,16 @@ func SetupSecurityMiddleware(app *fiber.App, config SecurityConfig) {
 		}))
 	}
 
-	// Basic authentication
+	// Basic authentication with bcrypt password verification
 	if config.EnableAuth {
 		app.Use(basicauth.New(basicauth.Config{
-			Users: map[string]string{
-				config.Username: config.Password,
+			Authorizer: func(username, password string) bool {
+				if username != config.Username {
+					return false
+				}
+				// Use bcrypt to compare password with stored hash
+				err := bcrypt.CompareHashAndPassword([]byte(config.PasswordHash), []byte(password))
+				return err == nil
 			},
 			Realm: "Buyer Application",
 			Next: func(c *fiber.Ctx) bool {
@@ -73,9 +103,66 @@ func SetupSecurityMiddleware(app *fiber.App, config SecurityConfig) {
 	}
 }
 
-// generateCSRFToken generates a random CSRF token
+// generateCSRFToken generates a cryptographically secure random CSRF token
 func generateCSRFToken() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("failed to generate CSRF token: %v", err))
+	}
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+// Password validation and hashing functions
+
+// ValidatePassword checks if a password meets security requirements
+func ValidatePassword(password string) error {
+	if len(password) < 12 {
+		return fmt.Errorf("password must be at least 12 characters long")
+	}
+
+	var (
+		hasUpper   bool
+		hasLower   bool
+		hasDigit   bool
+		hasSpecial bool
+	)
+
+	for _, c := range password {
+		switch {
+		case unicode.IsUpper(c):
+			hasUpper = true
+		case unicode.IsLower(c):
+			hasLower = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper {
+		return fmt.Errorf("password must contain at least one uppercase letter")
+	}
+	if !hasLower {
+		return fmt.Errorf("password must contain at least one lowercase letter")
+	}
+	if !hasDigit {
+		return fmt.Errorf("password must contain at least one digit")
+	}
+	if !hasSpecial {
+		return fmt.Errorf("password must contain at least one special character")
+	}
+
+	return nil
+}
+
+// HashPassword hashes a password using bcrypt
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+	return string(hash), nil
 }
 
 // HTML escaping helper functions

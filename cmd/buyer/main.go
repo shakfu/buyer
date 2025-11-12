@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/shakfu/buyer/internal/config"
 	"github.com/shakfu/buyer/internal/models"
 	"github.com/spf13/cobra"
@@ -62,6 +63,10 @@ func initConfig() {
 }
 
 func main() {
+	// Load .env file if it exists (silently ignore if not present)
+	// Environment variables already set take precedence over .env file
+	_ = godotenv.Load()
+
 	// Execute root command
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
