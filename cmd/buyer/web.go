@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -16,14 +15,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/shakfu/buyer/internal/services"
+	"github.com/shakfu/buyer/web"
 	"github.com/spf13/cobra"
 )
-
-//go:embed web/templates/*.html
-var templateFS embed.FS
-
-//go:embed web/static
-var staticFS embed.FS
 
 var webCmd = &cobra.Command{
 	Use:   "web",
@@ -56,7 +50,7 @@ var webCmd = &cobra.Command{
 		SetupSecurityMiddleware(app, securityConfig)
 
 		// Static files - extract subdirectory from embedded FS
-		staticSubFS, err := fs.Sub(staticFS, "web/static")
+		staticSubFS, err := fs.Sub(web.StaticFS, "static")
 		if err != nil {
 			slog.Error("failed to extract static files", slog.String("error", err.Error()))
 			fmt.Fprintf(os.Stderr, "Failed to extract static files: %v\n", err)
@@ -1301,7 +1295,7 @@ func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
 	})
 
 	// Parse base, components, and specific template
-	tmpl, err := tmpl.ParseFS(templateFS, "web/templates/base.html", "web/templates/components.html", "web/templates/"+templateName)
+	tmpl, err := tmpl.ParseFS(web.TemplateFS, "templates/base.html", "templates/components.html", "templates/"+templateName)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
