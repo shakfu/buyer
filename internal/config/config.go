@@ -134,13 +134,6 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// getEnvString returns a string from an environment variable or a default value
-func getEnvString(key, defaultValue string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultValue
-}
 
 // SetupLogger configures structured logging with slog
 func SetupLogger(env Environment, verbose bool) *slog.Logger {

@@ -19,20 +19,41 @@ func TestDashboardService_GetStats(t *testing.T) {
 	forexSvc := NewForexService(cfg.DB)
 
 	// Create test data
-	brand, _ := brandSvc.Create("Test Brand")
-	spec, _ := specSvc.Create("Test Spec", "Description")
-	product, _ := productSvc.Create("Test Product", brand.ID, &spec.ID)
-	vendor, _ := vendorSvc.Create("Test Vendor", "USD", "")
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	brand, err := brandSvc.Create("Test Brand")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	spec, err := specSvc.Create("Test Spec", "Description")
+	if err != nil {
+		t.Fatalf("Failed to create spec: %v", err)
+	}
+	product, err := productSvc.Create("Test Product", brand.ID, &spec.ID)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor, err := vendorSvc.Create("Test Vendor", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = forexSvc.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product.ID,
 		Price:     100.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
-	reqSvc.Create("Test Req", "Justification", 1000.0, []RequisitionItemInput{})
+	_, err = reqSvc.Create("Test Req", "Justification", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
 
 	// Get stats
 	stats, err := dashboardSvc.GetStats()
@@ -86,34 +107,58 @@ func TestDashboardService_GetVendorSpending(t *testing.T) {
 	forexSvc := NewForexService(cfg.DB)
 
 	// Create test data
-	brand, _ := brandSvc.Create("Vendor Test Brand")
-	product, _ := productSvc.Create("Vendor Test Product", brand.ID, nil)
-	vendor1, _ := vendorSvc.Create("Vendor 1", "USD", "")
-	vendor2, _ := vendorSvc.Create("Vendor 2", "USD", "")
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	brand, err := brandSvc.Create("Vendor Test Brand")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("Vendor Test Product", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor1, err := vendorSvc.Create("Vendor 1", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	vendor2, err := vendorSvc.Create("Vendor 2", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = forexSvc.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	// Create quotes for vendor1
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor1.ID,
 		ProductID: product.ID,
 		Price:     100.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor1.ID,
 		ProductID: product.ID,
 		Price:     200.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create quote for vendor2
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor2.ID,
 		ProductID: product.ID,
 		Price:     150.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Get vendor spending
 	spending, err := dashboardSvc.GetVendorSpending()
@@ -157,41 +202,68 @@ func TestDashboardService_GetProductPriceComparison(t *testing.T) {
 	forexSvc := NewForexService(cfg.DB)
 
 	// Create test data
-	brand, _ := brandSvc.Create("Price Comparison Brand")
-	product1, _ := productSvc.Create("Product with Multiple Quotes", brand.ID, nil)
-	product2, _ := productSvc.Create("Product with One Quote", brand.ID, nil)
-	vendor, _ := vendorSvc.Create("Price Vendor", "USD", "")
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	brand, err := brandSvc.Create("Price Comparison Brand")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product1, err := productSvc.Create("Product with Multiple Quotes", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	product2, err := productSvc.Create("Product with One Quote", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor, err := vendorSvc.Create("Price Vendor", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = forexSvc.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	// Create multiple quotes for product1
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product1.ID,
 		Price:     100.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product1.ID,
 		Price:     150.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product1.ID,
 		Price:     125.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create single quote for product2 (should not appear in results)
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product2.ID,
 		Price:     200.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Get product price comparison
 	comparison, err := dashboardSvc.GetProductPriceComparison()
@@ -237,58 +309,85 @@ func TestDashboardService_GetExpiryStats(t *testing.T) {
 	forexSvc := NewForexService(cfg.DB)
 
 	// Create test data
-	brand, _ := brandSvc.Create("Expiry Test Brand")
-	product, _ := productSvc.Create("Expiry Test Product", brand.ID, nil)
-	vendor, _ := vendorSvc.Create("Expiry Vendor", "USD", "")
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	brand, err := brandSvc.Create("Expiry Test Brand")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("Expiry Test Product", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor, err := vendorSvc.Create("Expiry Vendor", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = forexSvc.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	// Create quote with no expiry
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product.ID,
 		Price:     100.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create quote expiring soon (5 days)
 	expireSoon := time.Now().AddDate(0, 0, 5)
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor.ID,
 		ProductID:  product.ID,
 		Price:      100.0,
 		Currency:   "USD",
 		ValidUntil: &expireSoon,
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create quote expiring this month (20 days)
 	expireMonth := time.Now().AddDate(0, 0, 20)
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor.ID,
 		ProductID:  product.ID,
 		Price:      100.0,
 		Currency:   "USD",
 		ValidUntil: &expireMonth,
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create expired quote
 	expired := time.Now().AddDate(0, 0, -5)
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor.ID,
 		ProductID:  product.ID,
 		Price:      100.0,
 		Currency:   "USD",
 		ValidUntil: &expired,
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create valid quote (40 days)
 	valid := time.Now().AddDate(0, 0, 40)
-	quoteSvc.Create(CreateQuoteInput{
+	_, err = quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor.ID,
 		ProductID:  product.ID,
 		Price:      100.0,
 		Currency:   "USD",
 		ValidUntil: &valid,
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Get expiry stats
 	stats, err := dashboardSvc.GetExpiryStats()
@@ -334,19 +433,34 @@ func TestDashboardService_GetRecentQuotes(t *testing.T) {
 	forexSvc := NewForexService(cfg.DB)
 
 	// Create test data
-	brand, _ := brandSvc.Create("Recent Test Brand")
-	product, _ := productSvc.Create("Recent Test Product", brand.ID, nil)
-	vendor, _ := vendorSvc.Create("Recent Vendor", "USD", "")
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	brand, err := brandSvc.Create("Recent Test Brand")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("Recent Test Product", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor, err := vendorSvc.Create("Recent Vendor", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = forexSvc.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	// Create 15 quotes
 	for i := 0; i < 15; i++ {
-		quoteSvc.Create(CreateQuoteInput{
+		_, err = quoteSvc.Create(CreateQuoteInput{
 			VendorID:  vendor.ID,
 			ProductID: product.ID,
 			Price:     float64(100 + i),
 			Currency:  "USD",
 		})
+		if err != nil {
+			t.Fatalf("Failed to create quote: %v", err)
+		}
 	}
 
 	tests := []struct {

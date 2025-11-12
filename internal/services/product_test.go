@@ -12,7 +12,10 @@ func TestProductService_Create(t *testing.T) {
 	productSvc := NewProductService(cfg.DB)
 
 	// Create a brand first
-	brand, _ := brandSvc.Create("Intel")
+	brand, err := brandSvc.Create("Intel")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -81,8 +84,14 @@ func TestProductService_GetByID(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("AMD")
-	product, _ := productSvc.Create("Ryzen 9", brand.ID, nil)
+	brand, err := brandSvc.Create("AMD")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("Ryzen 9", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -132,8 +141,14 @@ func TestProductService_Update(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("NVIDIA")
-	product, _ := productSvc.Create("RTX 3080", brand.ID, nil)
+	brand, err := brandSvc.Create("NVIDIA")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("RTX 3080", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -189,8 +204,14 @@ func TestProductService_GetByName(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("Apple")
-	productSvc.Create("MacBook Pro", brand.ID, nil)
+	brand, err := brandSvc.Create("Apple")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = productSvc.Create("MacBook Pro", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	tests := []struct {
 		name        string
@@ -239,10 +260,22 @@ func TestProductService_List(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("Sony")
-	productSvc.Create("PlayStation 5", brand.ID, nil)
-	productSvc.Create("PlayStation 4", brand.ID, nil)
-	productSvc.Create("PlayStation VR", brand.ID, nil)
+	brand, err := brandSvc.Create("Sony")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = productSvc.Create("PlayStation 5", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	_, err = productSvc.Create("PlayStation 4", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	_, err = productSvc.Create("PlayStation VR", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -292,9 +325,18 @@ func TestProductService_ListByBrand(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("Microsoft")
-	productSvc.Create("Surface Pro", brand.ID, nil)
-	productSvc.Create("Surface Laptop", brand.ID, nil)
+	brand, err := brandSvc.Create("Microsoft")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = productSvc.Create("Surface Pro", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	_, err = productSvc.Create("Surface Laptop", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	products, err := productSvc.ListByBrand(brand.ID)
 	if err != nil {
@@ -315,11 +357,23 @@ func TestProductService_ListBySpecification(t *testing.T) {
 	productSvc := NewProductService(cfg.DB)
 	specSvc := NewSpecificationService(cfg.DB)
 
-	brand, _ := brandSvc.Create("Samsung")
-	spec, _ := specSvc.Create("Smartphone", "Mobile phone device")
+	brand, err := brandSvc.Create("Samsung")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	spec, err := specSvc.Create("Smartphone", "Mobile phone device")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
-	productSvc.Create("Galaxy S21", brand.ID, &spec.ID)
-	productSvc.Create("Galaxy S22", brand.ID, &spec.ID)
+	_, err = productSvc.Create("Galaxy S21", brand.ID, &spec.ID)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	_, err = productSvc.Create("Galaxy S22", brand.ID, &spec.ID)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	products, err := productSvc.ListBySpecification(spec.ID)
 	if err != nil {
@@ -339,8 +393,14 @@ func TestProductService_Delete(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("LG")
-	product, _ := productSvc.Create("OLED TV", brand.ID, nil)
+	brand, err := brandSvc.Create("LG")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productSvc.Create("OLED TV", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -396,9 +456,18 @@ func TestProductService_Count(t *testing.T) {
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
 
-	brand, _ := brandSvc.Create("HP")
-	productSvc.Create("EliteBook", brand.ID, nil)
-	productSvc.Create("ProBook", brand.ID, nil)
+	brand, err := brandSvc.Create("HP")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = productSvc.Create("EliteBook", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	_, err = productSvc.Create("ProBook", brand.ID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
 
 	count, err := productSvc.Count()
 	if err != nil {

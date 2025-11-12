@@ -171,8 +171,14 @@ func TestBrandService_Update(t *testing.T) {
 	svc := NewBrandService(cfg.DB)
 
 	// Create brands
-	brand1, _ := svc.Create("Sony")
-	svc.Create("LG")
+	brand1, err := svc.Create("Sony")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = svc.Create("LG")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -239,7 +245,10 @@ func TestBrandService_Delete(t *testing.T) {
 	svc := NewBrandService(cfg.DB)
 
 	// Create a brand
-	brand, _ := svc.Create("Dell")
+	brand, err := svc.Create("Dell")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -284,9 +293,18 @@ func TestBrandService_List(t *testing.T) {
 	svc := NewBrandService(cfg.DB)
 
 	// Create some brands
-	svc.Create("HP")
-	svc.Create("Lenovo")
-	svc.Create("Asus")
+	_, err := svc.Create("HP")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = svc.Create("Lenovo")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	_, err = svc.Create("Asus")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
 
 	tests := []struct {
 		name     string

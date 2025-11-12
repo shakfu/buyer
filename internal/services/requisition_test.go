@@ -11,8 +11,14 @@ func TestRequisitionService_Create(t *testing.T) {
 	specService := NewSpecificationService(cfg.DB)
 
 	// Create test specifications
-	spec1, _ := specService.Create("Laptop", "Portable computer")
-	spec2, _ := specService.Create("Monitor", "Display device")
+	spec1, err := specService.Create("Laptop", "Portable computer")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	spec2, err := specService.Create("Monitor", "Display device")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
 	tests := []struct {
 		name          string
@@ -224,8 +230,14 @@ func TestRequisitionService_Update(t *testing.T) {
 	reqService := NewRequisitionService(cfg.DB)
 
 	// Create test requisitions
-	req1, _ := reqService.Create("Original Req", "Original", 1000.0, []RequisitionItemInput{})
-	_, _ = reqService.Create("Other Req", "Other", 2000.0, []RequisitionItemInput{})
+	req1, err := reqService.Create("Original Req", "Original", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	_, err = reqService.Create("Other Req", "Other", 2000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
 
 	tests := []struct {
 		name          string
@@ -330,8 +342,14 @@ func TestRequisitionService_AddItem(t *testing.T) {
 	specService := NewSpecificationService(cfg.DB)
 
 	// Create test data
-	req, _ := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
-	spec, _ := specService.Create("Test Spec", "Test")
+	req, err := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	spec, err := specService.Create("Test Spec", "Test")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
 	tests := []struct {
 		name            string
@@ -438,10 +456,22 @@ func TestRequisitionService_UpdateItem(t *testing.T) {
 	specService := NewSpecificationService(cfg.DB)
 
 	// Create test data
-	req, _ := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
-	spec1, _ := specService.Create("Spec 1", "Test")
-	spec2, _ := specService.Create("Spec 2", "Test")
-	item, _ := reqService.AddItem(req.ID, spec1.ID, 2, 100.0, "Original")
+	req, err := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	spec1, err := specService.Create("Spec 1", "Test")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	spec2, err := specService.Create("Spec 2", "Test")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	item, err := reqService.AddItem(req.ID, spec1.ID, 2, 100.0, "Original")
+	if err != nil {
+		t.Fatalf("Failed to add item: %v", err)
+	}
 
 	tests := []struct {
 		name            string
@@ -535,9 +565,18 @@ func TestRequisitionService_DeleteItem(t *testing.T) {
 	specService := NewSpecificationService(cfg.DB)
 
 	// Create test data
-	req, _ := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
-	spec, _ := specService.Create("Test Spec", "Test")
-	item, _ := reqService.AddItem(req.ID, spec.ID, 1, 100.0, "")
+	req, err := reqService.Create("Test Req", "Test", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	spec, err := specService.Create("Test Spec", "Test")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	item, err := reqService.AddItem(req.ID, spec.ID, 1, 100.0, "")
+	if err != nil {
+		t.Fatalf("Failed to add item: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -580,10 +619,16 @@ func TestRequisitionService_Delete(t *testing.T) {
 	specService := NewSpecificationService(cfg.DB)
 
 	// Create test data
-	spec, _ := specService.Create("Test Spec", "Test")
-	req, _ := reqService.Create("To Delete", "Test", 1000.0, []RequisitionItemInput{
+	spec, err := specService.Create("Test Spec", "Test")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	req, err := reqService.Create("To Delete", "Test", 1000.0, []RequisitionItemInput{
 		{SpecificationID: spec.ID, Quantity: 1, BudgetPerUnit: 100.0},
 	})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -631,9 +676,18 @@ func TestRequisitionService_List(t *testing.T) {
 	reqService := NewRequisitionService(cfg.DB)
 
 	// Create test requisitions
-	reqService.Create("Req A", "Test A", 1000.0, []RequisitionItemInput{})
-	reqService.Create("Req B", "Test B", 2000.0, []RequisitionItemInput{})
-	reqService.Create("Req C", "Test C", 3000.0, []RequisitionItemInput{})
+	_, err := reqService.Create("Req A", "Test A", 1000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	_, err = reqService.Create("Req B", "Test B", 2000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
+	_, err = reqService.Create("Req C", "Test C", 3000.0, []RequisitionItemInput{})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -687,26 +741,47 @@ func TestRequisitionService_GetQuoteComparison(t *testing.T) {
 	quoteService := NewQuoteService(cfg.DB)
 
 	// Create test data
-	spec, _ := specService.Create("Laptop", "Portable computer")
-	brand, _ := brandService.Create("Dell")
-	product, _ := productService.Create("Dell Latitude", brand.ID, &spec.ID)
-	vendor, _ := vendorService.Create("Vendor A", "USD", "")
+	spec, err := specService.Create("Laptop", "Portable computer")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	brand, err := brandService.Create("Dell")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
+	product, err := productService.Create("Dell Latitude", brand.ID, &spec.ID)
+	if err != nil {
+		t.Fatalf("Failed to create product: %v", err)
+	}
+	vendor, err := vendorService.Create("Vendor A", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
 
 	// Create a forex rate
-	forexService.Create("USD", "USD", 1.0, time.Now())
+	_, err = forexService.Create("USD", "USD", 1.0, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	// Create a quote
-	quoteService.Create(CreateQuoteInput{
+	_, err = quoteService.Create(CreateQuoteInput{
 		VendorID:  vendor.ID,
 		ProductID: product.ID,
 		Price:     1200.0,
 		Currency:  "USD",
 	})
+	if err != nil {
+		t.Fatalf("Failed to create quote: %v", err)
+	}
 
 	// Create requisition with item
-	req, _ := reqService.Create("Office Equipment", "Need laptops", 3000.0, []RequisitionItemInput{
+	req, err := reqService.Create("Office Equipment", "Need laptops", 3000.0, []RequisitionItemInput{
 		{SpecificationID: spec.ID, Quantity: 2, BudgetPerUnit: 1500.0},
 	})
+	if err != nil {
+		t.Fatalf("Failed to create requisition: %v", err)
+	}
 
 	comparison, err := reqService.GetQuoteComparison(req.ID, quoteService)
 	if err != nil {

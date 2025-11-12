@@ -202,8 +202,14 @@ func TestSpecificationService_Update(t *testing.T) {
 	service := NewSpecificationService(cfg.DB)
 
 	// Create test specifications
-	spec1, _ := service.Create("Original", "Original description")
-	_, _ = service.Create("Other", "Other description")
+	spec1, err := service.Create("Original", "Original description")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	_, err = service.Create("Other", "Other description")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
 	tests := []struct {
 		name           string
@@ -293,7 +299,10 @@ func TestSpecificationService_Delete(t *testing.T) {
 	service := NewSpecificationService(cfg.DB)
 
 	// Create a test specification
-	spec, _ := service.Create("ToDelete", "Will be deleted")
+	spec, err := service.Create("ToDelete", "Will be deleted")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -347,9 +356,18 @@ func TestSpecificationService_List(t *testing.T) {
 	service := NewSpecificationService(cfg.DB)
 
 	// Create test specifications
-	service.Create("Spec A", "Description A")
-	service.Create("Spec B", "Description B")
-	service.Create("Spec C", "Description C")
+	_, err := service.Create("Spec A", "Description A")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	_, err = service.Create("Spec B", "Description B")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
+	_, err = service.Create("Spec C", "Description C")
+	if err != nil {
+		t.Fatalf("Failed to create specification: %v", err)
+	}
 
 	tests := []struct {
 		name      string

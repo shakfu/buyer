@@ -238,8 +238,14 @@ func TestVendorService_Update(t *testing.T) {
 	service := NewVendorService(cfg.DB)
 
 	// Create test vendors
-	vendor1, _ := service.Create("Original Vendor", "USD", "CODE1")
-	_, _ = service.Create("Other Vendor", "EUR", "CODE2")
+	vendor1, err := service.Create("Original Vendor", "USD", "CODE1")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = service.Create("Other Vendor", "EUR", "CODE2")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -321,7 +327,10 @@ func TestVendorService_Delete(t *testing.T) {
 	service := NewVendorService(cfg.DB)
 
 	// Create a test vendor
-	vendor, _ := service.Create("ToDelete", "USD", "")
+	vendor, err := service.Create("ToDelete", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
 
 	tests := []struct {
 		name    string
@@ -375,9 +384,18 @@ func TestVendorService_List(t *testing.T) {
 	service := NewVendorService(cfg.DB)
 
 	// Create test vendors
-	service.Create("Vendor 1", "USD", "")
-	service.Create("Vendor 2", "EUR", "")
-	service.Create("Vendor 3", "GBP", "")
+	_, err := service.Create("Vendor 1", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = service.Create("Vendor 2", "EUR", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = service.Create("Vendor 3", "GBP", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -503,11 +521,20 @@ func TestVendorService_RemoveBrand(t *testing.T) {
 	brandService := NewBrandService(cfg.DB)
 
 	// Create test vendor and brand
-	vendor, _ := vendorService.Create("Test Vendor 2", "USD", "")
-	brand, _ := brandService.Create("Test Brand 2")
+	vendor, err := vendorService.Create("Test Vendor 2", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	brand, err := brandService.Create("Test Brand 2")
+	if err != nil {
+		t.Fatalf("Failed to create brand: %v", err)
+	}
 
 	// Add brand to vendor first
-	vendorService.AddBrand(vendor.ID, brand.ID)
+	err = vendorService.AddBrand(vendor.ID, brand.ID)
+	if err != nil {
+		t.Fatalf("Failed to add brand: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -552,8 +579,14 @@ func TestVendorService_Count(t *testing.T) {
 	service := NewVendorService(cfg.DB)
 
 	// Create test vendors
-	service.Create("Count Vendor 1", "USD", "")
-	service.Create("Count Vendor 2", "EUR", "")
+	_, err := service.Create("Count Vendor 1", "USD", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
+	_, err = service.Create("Count Vendor 2", "EUR", "")
+	if err != nil {
+		t.Fatalf("Failed to create vendor: %v", err)
+	}
 
 	count, err := service.Count()
 	if err != nil {

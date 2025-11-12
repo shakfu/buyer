@@ -89,8 +89,14 @@ func TestForexService_GetLatestRate(t *testing.T) {
 	svc := NewForexService(cfg.DB)
 
 	// Create some rates
-	svc.Create("EUR", "USD", 1.18, time.Now().Add(-24*time.Hour))
-	svc.Create("EUR", "USD", 1.20, time.Now())
+	_, err := svc.Create("EUR", "USD", 1.18, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
+	_, err = svc.Create("EUR", "USD", 1.20, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -149,7 +155,10 @@ func TestForexService_Convert(t *testing.T) {
 	svc := NewForexService(cfg.DB)
 
 	// Create a rate
-	svc.Create("EUR", "USD", 1.20, time.Now())
+	_, err := svc.Create("EUR", "USD", 1.20, time.Now())
+	if err != nil {
+		t.Fatalf("Failed to create forex: %v", err)
+	}
 
 	tests := []struct {
 		name           string
