@@ -193,3 +193,89 @@ func (s *DashboardService) GetRecentQuotes(limit int) ([]models.Quote, error) {
 
 	return quotes, err
 }
+
+// ProjectStats holds project-level statistics
+type ProjectStats struct {
+	TotalBOMItems        int64
+	TotalRequisitions    int64
+	TotalBudget          float64
+	AllocatedBudget      float64
+	BudgetUtilization    float64 // percentage
+	TotalBOMQuantity     int
+}
+
+// BOMItemQuantity holds BOM item quantity data for visualization
+type BOMItemQuantity struct {
+	SpecificationName string
+	Quantity          int
+}
+
+// RequisitionBudgetData holds requisition budget data for visualization
+type RequisitionBudgetData struct {
+	RequisitionName string
+	Budget          float64
+}
+
+// GetProjectStats returns statistics for a specific project
+func (s *DashboardService) GetProjectStats(projectID uint) (*ProjectStats, error) {
+	stats := &ProjectStats{}
+
+	// Get project
+	var project models.Project
+	if err := s.db.Preload("BillOfMaterials.Items").Preload("Requisitions").First(&project, projectID).Error; err != nil {
+		return nil, err
+	}
+
+	stats.TotalBudget = project.Budget
+
+	// Count BOM items
+	if project.BillOfMaterials != nil {
+		stats.TotalBOMItems = int64(len(project.BillOfMaterials.Items))
+
+		// Calculate total quantity across all BOM items
+		for _, item := range project.BillOfMaterials.Items {
+			stats.TotalBOMQuantity += item.Quantity
+		}
+	}
+
+	// Count requisitions and sum their budgets
+	stats.TotalRequisitions = int64(len(project.Requisitions))
+	for _, req := range project.Requisitions {
+		stats.AllocatedBudget += req.Budget
+	}
+
+	// Calculate budget utilization percentage
+	if stats.TotalBudget > 0 {
+		stats.BudgetUtilization = (stats.AllocatedBudget / stats.TotalBudget) * 100
+	}
+
+	return stats, nil
+}
+
+// GetProjectBOMItemQuantities returns BOM item quantities for a project
+func (s *DashboardService) GetProjectBOMItemQuantities(projectID uint) ([]BOMItemQuantity, error) {
+	var results []BOMItemQuantity
+
+	err := s.db.Model(&models.BillOfMaterialsItem{}).
+		Select("specifications.name as specification_name, bill_of_materials_items.quantity as quantity").
+		Joins("JOIN specifications ON specifications.id = bill_of_materials_items.specification_id").
+		Joins("JOIN bills_of_materials ON bills_of_materials.id = bill_of_materials_items.bill_of_materials_id").
+		Where("bills_of_materials.project_id = ?", projectID).
+		Order("quantity DESC").
+		Scan(&results).Error
+
+	return results, err
+}
+
+// GetProjectRequisitionBudgets returns requisition budget data for a project
+func (s *DashboardService) GetProjectRequisitionBudgets(projectID uint) ([]RequisitionBudgetData, error) {
+	var results []RequisitionBudgetData
+
+	err := s.db.Model(&models.ProjectRequisition{}).
+		Select("name as requisition_name, budget as budget").
+		Where("project_id = ? AND budget > 0", projectID).
+		Order("budget DESC").
+		Scan(&results).Error
+
+	return results, err
+}

@@ -8,6 +8,7 @@
             <span class="badge {{if eq .Project.Status "planning"}}secondary{{else if eq .Project.Status "active"}}primary{{else if eq .Project.Status "completed"}}success{{else}}contrast{{end}}">
                 {{.Project.Status}}
             </span>
+            <a href="/projects/{{.Project.ID}}/dashboard" role="button">View Dashboard</a>
             <button class="secondary" onclick="toggleEditMode()">Edit Project</button>
             <a href="/projects" role="button" class="outline">Back to Projects</a>
         </div>

@@ -1,0 +1,337 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <article style="margin: 0;">
+        <h3>BOM Items</h3>
+        <h2 style="margin: 0;">{{.ProjectStats.TotalBOMItems}}</h2>
+        <small>{{.ProjectStats.TotalBOMQuantity}} total units</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Requisitions</h3>
+        <h2 style="margin: 0;">{{.ProjectStats.TotalRequisitions}}</h2>
+        <small>Created from BOM</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Project Budget</h3>
+        <h2 style="margin: 0;">${{printf "%.2f" .ProjectStats.TotalBudget}}</h2>
+        <small>Total allocated</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Budget Utilization</h3>
+        <h2 style="margin: 0;">{{printf "%.1f" .ProjectStats.BudgetUtilization}}%</h2>
+        <small>${{printf "%.2f" .ProjectStats.AllocatedBudget}} allocated</small>
+    </article>
+</div>
+
+{{if .BOMItemQuantities}}
+<article>
+    <h2>Bill of Materials - Quantity by Specification</h2>
+    <p>Required quantities for each specification in the project</p>
+
+    <div id="bom-quantity-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <details>
+        <summary>View detailed table</summary>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Specification</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $item := .BOMItemQuantities}}
+                    <tr>
+                        <td><strong>{{add $index 1}}</strong></td>
+                        <td>{{$item.SpecificationName}}</td>
+                        <td style="font-weight: bold;">{{$item.Quantity}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </details>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof vegaEmbed !== 'function') {
+            console.error('vegaEmbed is not a function');
+            return;
+        }
+
+        const bomData = [
+            {{range .BOMItemQuantities}}
+            {
+                specification: "{{.SpecificationName}}",
+                quantity: {{.Quantity}}
+            },
+            {{end}}
+        ];
+
+        if (bomData.length === 0) {
+            document.getElementById('bom-quantity-chart').innerHTML = '<p>No BOM data available</p>';
+            return;
+        }
+
+        const bomSpec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "BOM item quantities by specification",
+            "width": 600,
+            "height": 300,
+            "data": {"values": bomData},
+            "mark": "bar",
+            "encoding": {
+                "x": {
+                    "field": "specification",
+                    "type": "nominal",
+                    "title": "Specification"
+                },
+                "y": {
+                    "field": "quantity",
+                    "type": "quantitative",
+                    "title": "Quantity"
+                },
+                "color": {
+                    "field": "quantity",
+                    "type": "quantitative",
+                    "scale": {"scheme": "greens"},
+                    "legend": null
+                },
+                "tooltip": [
+                    {"field": "specification", "type": "nominal", "title": "Specification"},
+                    {"field": "quantity", "type": "quantitative", "title": "Quantity"}
+                ]
+            }
+        };
+
+        vegaEmbed('#bom-quantity-chart', bomSpec, {
+            actions: false,
+            theme: 'latimes'
+        }).catch(error => {
+            console.error('vegaEmbed error:', error);
+        });
+    });
+    </script>
+</article>
+{{else}}
+<article>
+    <h2>Bill of Materials</h2>
+    <p><em>No BOM items defined yet</em></p>
+</article>
+{{end}}
+
+{{if .RequisitionBudgets}}
+<article>
+    <h2>Requisition Budgets</h2>
+    <p>Budget allocation across project requisitions</p>
+
+    <div id="requisition-budget-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <details>
+        <summary>View detailed table</summary>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Requisition</th>
+                        <th>Budget (USD)</th>
+                        <th>Percentage of Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $req := .RequisitionBudgets}}
+                    <tr>
+                        <td><strong>{{add $index 1}}</strong></td>
+                        <td>{{$req.RequisitionName}}</td>
+                        <td style="color: green; font-weight: bold;">${{printf "%.2f" $req.Budget}}</td>
+                        <td>
+                            {{$percentage := div (mul $req.Budget 100.0) $.ProjectStats.AllocatedBudget}}
+                            {{printf "%.1f" $percentage}}%
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </details>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof vegaEmbed !== 'function') {
+            console.error('vegaEmbed is not a function');
+            return;
+        }
+
+        const reqData = [
+            {{range .RequisitionBudgets}}
+            {
+                requisition: "{{.RequisitionName}}",
+                budget: {{.Budget}}
+            },
+            {{end}}
+        ];
+
+        if (reqData.length === 0) {
+            document.getElementById('requisition-budget-chart').innerHTML = '<p>No requisition budget data available</p>';
+            return;
+        }
+
+        const reqSpec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Requisition budget comparison",
+            "width": 600,
+            "height": 300,
+            "data": {"values": reqData},
+            "mark": "bar",
+            "encoding": {
+                "x": {
+                    "field": "requisition",
+                    "type": "nominal",
+                    "title": "Requisition"
+                },
+                "y": {
+                    "field": "budget",
+                    "type": "quantitative",
+                    "title": "Budget (USD)"
+                },
+                "color": {
+                    "field": "budget",
+                    "type": "quantitative",
+                    "scale": {"scheme": "oranges"},
+                    "legend": null
+                },
+                "tooltip": [
+                    {"field": "requisition", "type": "nominal", "title": "Requisition"},
+                    {"field": "budget", "type": "quantitative", "title": "Budget (USD)", "format": "$,.2f"}
+                ]
+            }
+        };
+
+        vegaEmbed('#requisition-budget-chart', reqSpec, {
+            actions: false,
+            theme: 'latimes'
+        }).catch(error => {
+            console.error('vegaEmbed error:', error);
+        });
+    });
+    </script>
+</article>
+{{else}}
+<article>
+    <h2>Requisition Budgets</h2>
+    <p><em>No requisitions with budgets defined yet</em></p>
+</article>
+{{end}}
+
+{{if gt .ProjectStats.TotalBudget 0.0}}
+<article>
+    <h2>Budget Utilization Overview</h2>
+    <p>Breakdown of project budget allocation</p>
+
+    <div id="budget-utilization-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <figure>
+        <table>
+            <tr>
+                <td><strong>Total Project Budget</strong></td>
+                <td style="font-weight: bold;">${{printf "%.2f" .ProjectStats.TotalBudget}}</td>
+            </tr>
+            <tr>
+                <td><strong>Allocated to Requisitions</strong></td>
+                <td style="color: green; font-weight: bold;">${{printf "%.2f" .ProjectStats.AllocatedBudget}}</td>
+            </tr>
+            <tr>
+                <td><strong>Remaining Budget</strong></td>
+                <td style="color: {{if lt (sub .ProjectStats.TotalBudget .ProjectStats.AllocatedBudget) 0.0}}red{{else}}blue{{end}}; font-weight: bold;">
+                    ${{printf "%.2f" (sub .ProjectStats.TotalBudget .ProjectStats.AllocatedBudget)}}
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Utilization Rate</strong></td>
+                <td style="color: {{if gt .ProjectStats.BudgetUtilization 100.0}}red{{else if gt .ProjectStats.BudgetUtilization 80.0}}orange{{else}}green{{end}}; font-weight: bold;">
+                    {{printf "%.1f" .ProjectStats.BudgetUtilization}}%
+                </td>
+            </tr>
+        </table>
+    </figure>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof vegaEmbed !== 'function') {
+            console.error('vegaEmbed is not a function');
+            return;
+        }
+
+        const totalBudget = {{.ProjectStats.TotalBudget}};
+        const allocatedBudget = {{.ProjectStats.AllocatedBudget}};
+        const remainingBudget = totalBudget - allocatedBudget;
+
+        const budgetData = [
+            {
+                category: "Allocated",
+                amount: allocatedBudget
+            },
+            {
+                category: "Remaining",
+                amount: remainingBudget > 0 ? remainingBudget : 0
+            }
+        ];
+
+        if (remainingBudget < 0) {
+            budgetData.push({
+                category: "Over Budget",
+                amount: Math.abs(remainingBudget)
+            });
+        }
+
+        const budgetSpec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Budget utilization breakdown",
+            "width": 400,
+            "height": 300,
+            "data": {"values": budgetData},
+            "mark": "arc",
+            "encoding": {
+                "theta": {
+                    "field": "amount",
+                    "type": "quantitative"
+                },
+                "color": {
+                    "field": "category",
+                    "type": "nominal",
+                    "scale": {
+                        "domain": ["Allocated", "Remaining", "Over Budget"],
+                        "range": ["#2ecc71", "#3498db", "#e74c3c"]
+                    },
+                    "legend": {"title": "Budget Category"}
+                },
+                "tooltip": [
+                    {"field": "category", "type": "nominal", "title": "Category"},
+                    {"field": "amount", "type": "quantitative", "title": "Amount (USD)", "format": "$,.2f"}
+                ]
+            }
+        };
+
+        vegaEmbed('#budget-utilization-chart', budgetSpec, {
+            actions: false,
+            theme: 'latimes'
+        }).catch(error => {
+            console.error('vegaEmbed error:', error);
+        });
+    });
+    </script>
+</article>
+{{end}}
+
+<article>
+    <h2>Actions</h2>
+    <div style="display: flex; gap: 1rem;">
+        <a href="/projects/{{.Project.ID}}" role="button" class="secondary">Back to Project Details</a>
+        <a href="/projects" role="button" class="outline">Back to Projects List</a>
+    </div>
+</article>
+{{end}}

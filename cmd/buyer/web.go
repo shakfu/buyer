@@ -352,6 +352,46 @@ func setupRoutes(
 		})
 	})
 
+	app.Get("/projects/:id/dashboard", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid project ID")
+		}
+
+		project, err := projectSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).SendString("Project not found")
+		}
+
+		projectStats, err := dashboardSvc.GetProjectStats(uint(id))
+		if err != nil {
+			return err
+		}
+
+		bomItemQuantities, err := dashboardSvc.GetProjectBOMItemQuantities(uint(id))
+		if err != nil {
+			return err
+		}
+
+		requisitionBudgets, err := dashboardSvc.GetProjectRequisitionBudgets(uint(id))
+		if err != nil {
+			return err
+		}
+
+		return renderTemplate(c, "project-dashboard.html", fiber.Map{
+			"Title":              project.Name + " - Dashboard",
+			"Project":            project,
+			"ProjectStats":       projectStats,
+			"BOMItemQuantities":  bomItemQuantities,
+			"RequisitionBudgets": requisitionBudgets,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Projects", "URL": "/projects"},
+				{"Name": project.Name, "URL": fmt.Sprintf("/projects/%d", project.ID)},
+				{"Name": "Dashboard", "Active": true},
+			},
+		})
+	})
+
 	// Requisition quote comparison routes
 	app.Get("/requisition-comparison", func(c *fiber.Ctx) error {
 		requisitions, err := requisitionSvc.List(0, 0)
