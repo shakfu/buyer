@@ -11,8 +11,11 @@ A purchasing support and vendor quote management tool written in Go.
 - **Vendor Management**: Manage vendors with currency and discount codes
 - **Quote Tracking**: Record and compare price quotes with automatic currency conversion
 - **Multi-Currency Support**: Built-in forex rate management and automatic USD conversion
+- **Document Management**: Attach documents to any entity (vendors, quotes, products, etc.)
+- **Vendor Rating System**: Rate vendors on price, quality, delivery, and service
+- **Performance Dashboard**: Visualize vendor performance with interactive charts and analytics
 - **CLI Interface**: Full-featured command-line interface with verbose mode
-- **Web Interface**: Simple web UI for viewing data
+- **Web Interface**: Modern HTMX-powered web UI with CRUD operations
 - **Comprehensive Testing**: Full test coverage for all services
 
 ## Installation
@@ -141,6 +144,45 @@ buyer list forex [--limit N] [--offset N]
 buyer delete forex [id] [-f|--force]
 ```
 
+### Document Commands
+
+```bash
+# Add a document
+buyer add document --entity-type [type] --entity-id [id] --file-name [name] --file-path [path] \
+  --file-type [type] --file-size [bytes] --description [text] --uploaded-by [email]
+
+# List all documents
+buyer list documents [--limit N] [--offset N]
+
+# List documents by entity type
+buyer list documents --entity-type vendor [--limit N] [--offset N]
+
+# List documents for specific entity
+buyer list documents --entity-type vendor --entity-id 1
+
+# Delete a document
+buyer delete document [id] [-f|--force]
+```
+
+### Vendor Rating Commands
+
+```bash
+# Add a vendor rating
+buyer add vendor-rating --vendor-id [id] --po-id [id] \
+  --price-rating [1-5] --quality-rating [1-5] \
+  --delivery-rating [1-5] --service-rating [1-5] \
+  --comments [text] --rated-by [email]
+
+# List all vendor ratings
+buyer list vendor-ratings [--limit N] [--offset N]
+
+# List ratings for a specific vendor
+buyer list vendor-ratings --vendor-id [id]
+
+# Delete a vendor rating
+buyer delete vendor-rating [id] [-f|--force]
+```
+
 ### Search
 
 ```bash
@@ -159,6 +201,16 @@ buyer web --port 3000
 ```
 
 Then visit http://localhost:8080 in your browser.
+
+**Available Pages:**
+- `/` - Dashboard with key metrics and recent activity
+- `/brands` - Brand management with CRUD operations
+- `/products` - Product catalog management
+- `/vendors` - Vendor management
+- `/quotes` - Price quote tracking and comparison
+- `/documents` - Document management for all entities
+- `/vendor-ratings` - Vendor rating submission and listing
+- `/vendor-performance` - Performance analytics dashboard with charts
 
 ## Configuration
 
@@ -267,6 +319,11 @@ buyer/
 - **Vendor**: Selling entity with currency info (e.g., B&H Photo)
 - **Quote**: Price quote from a vendor for a product
 - **Forex**: Currency exchange rate
+- **Document**: File attachment with polymorphic entity association
+- **VendorRating**: Multi-category vendor performance rating (price, quality, delivery, service)
+- **Requisition**: Internal purchase request with multi-item support
+- **Project**: Project tracking with requisition management
+- **PurchaseOrder**: Formal purchase order linked to quotes and requisitions
 
 ### Relationships
 
@@ -274,7 +331,12 @@ buyer/
 - Vendors have many Brands (many-to-many)
 - Products have many Quotes
 - Vendors have many Quotes
+- Vendors have many VendorRatings
 - Quotes automatically convert to USD using Forex rates
+- Documents use polymorphic associations (can attach to any entity)
+- VendorRatings can optionally link to PurchaseOrders
+- Projects have many Requisitions (many-to-many)
+- PurchaseOrders reference Quotes and Requisitions
 
 ## Development
 

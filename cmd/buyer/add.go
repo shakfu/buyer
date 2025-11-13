@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shakfu/buyer/internal/models"
 	"github.com/shakfu/buyer/internal/services"
 	"github.com/spf13/cobra"
 )
@@ -626,7 +627,7 @@ var addVendorRatingCmd = &cobra.Command{
 
 		// Get vendor by name or ID
 		vendorSvc := services.NewVendorService(cfg.DB)
-		var vendor *services.Vendor
+		var vendor *models.Vendor
 		var err error
 
 		// Try parsing as ID first
