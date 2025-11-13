@@ -1,0 +1,114 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>Compare Products</h1>
+        {{if .Specification}}
+        <p>Comparing products in specification: <strong>{{.Specification.Name}}</strong></p>
+        {{end}}
+    </header>
+
+    {{if .Products}}
+    <section>
+        <h3>Product Comparison</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        {{range .Products}}
+                        <th>{{.Name}}</th>
+                        {{end}}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Brand -->
+                    <tr>
+                        <td><strong>Brand</strong></td>
+                        {{range .Products}}
+                        <td>{{if .Brand}}{{.Brand.Name}}{{else}}-{{end}}</td>
+                        {{end}}
+                    </tr>
+
+                    <!-- SKU -->
+                    <tr>
+                        <td><strong>SKU</strong></td>
+                        {{range .Products}}
+                        <td>{{if .SKU}}{{.SKU}}{{else}}-{{end}}</td>
+                        {{end}}
+                    </tr>
+
+                    <!-- Dynamic Attributes -->
+                    {{range $attrInfo := $.AttributeNames}}
+                    <tr>
+                        <td><strong>{{$attrInfo.Name}}</strong>{{if $attrInfo.Unit}} <small>({{$attrInfo.Unit}})</small>{{end}}</td>
+                        {{range $product := $.Products}}
+                            <td>
+                                {{$found := false}}
+                                {{range $attr := $product.Attributes}}
+                                    {{if eq $attr.SpecificationAttribute.Name $attrInfo.Name}}
+                                        {{if $attr.ValueNumber}}
+                                            {{printf "%.2f" (deref $attr.ValueNumber)}}
+                                        {{else if $attr.ValueText}}
+                                            {{deref $attr.ValueText}}
+                                        {{else if $attr.ValueBoolean}}
+                                            {{if (deref $attr.ValueBoolean)}}Yes{{else}}No{{end}}
+                                        {{end}}
+                                        {{$found = true}}
+                                    {{end}}
+                                {{end}}
+                                {{if not $found}}-{{end}}
+                            </td>
+                        {{end}}
+                    </tr>
+                    {{end}}
+
+                    <!-- Best Quote Price -->
+                    <tr style="background-color: var(--primary-focus); font-weight: bold;">
+                        <td><strong>Best Price (USD)</strong></td>
+                        {{range .Products}}
+                        <td>
+                            {{if .Quotes}}
+                                {{$bestPrice := 999999999.0}}
+                                {{range .Quotes}}
+                                    {{if eq .Status "active"}}
+                                        {{if lt .ConvertedPrice $bestPrice}}
+                                            {{$bestPrice = .ConvertedPrice}}
+                                        {{end}}
+                                    {{end}}
+                                {{end}}
+                                {{if lt $bestPrice 999999999.0}}
+                                    ${{printf "%.2f" $bestPrice}}
+                                {{else}}
+                                    -
+                                {{end}}
+                            {{else}}
+                                -
+                            {{end}}
+                        </td>
+                        {{end}}
+                    </tr>
+
+                    <!-- Actions -->
+                    <tr>
+                        <td><strong>Actions</strong></td>
+                        {{range .Products}}
+                        <td><a href="/products/{{.ID}}" role="button" class="secondary">View Details</a></td>
+                        {{end}}
+                    </tr>
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{else}}
+    <section>
+        <p>No products found to compare.</p>
+    </section>
+    {{end}}
+
+    <footer>
+        <a href="/products" role="button" class="secondary">Back to Products</a>
+    </footer>
+</article>
+{{end}}

@@ -19,12 +19,22 @@ func setupTestDB(t *testing.T) *config.Config {
 		&models.Vendor{},
 		&models.Brand{},
 		&models.Specification{},
+		&models.SpecificationAttribute{},
 		&models.Product{},
+		&models.ProductAttribute{},
 		&models.Quote{},
+		&models.PurchaseOrder{},
+		&models.VendorRating{},
 		&models.Forex{},
 		&models.Requisition{},
 		&models.RequisitionItem{},
-	); err != nil {
+		&models.Project{},
+		&models.BillOfMaterials{},
+		&models.BillOfMaterialsItem{},
+		&models.ProjectRequisition{},
+		&models.ProjectRequisitionItem{},
+		&models.Document{},
+	); err != nil{
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 

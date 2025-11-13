@@ -45,6 +45,9 @@
                 <td>{{.Description}}</td>
                 <td>
                     <div class="actions">
+                        <a href="/specifications/{{.ID}}/attributes" role="button" class="btn-sm">Manage Attributes</a>
+                        <a href="/products/compare/{{.ID}}" role="button" class="btn-sm">Compare Products</a>
+                        <a href="/quotes/compare/specification/{{.ID}}" role="button" class="btn-sm">Compare Quotes</a>
                         <button class="btn-sm secondary" onclick="toggleSpecEdit({{.ID}})">Edit</button>
                         <button class="btn-sm contrast"
                                 hx-delete="/specifications/{{.ID}}"

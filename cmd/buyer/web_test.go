@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -29,7 +30,9 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 		&models.Vendor{},
 		&models.Brand{},
 		&models.Specification{},
+		&models.SpecificationAttribute{},
 		&models.Product{},
+		&models.ProductAttribute{},
 		&models.Requisition{},
 		&models.RequisitionItem{},
 		&models.Quote{},
@@ -70,7 +73,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 	})
 
 	// Setup routes
-	setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc, docSvc, ratingsSvc)
+	setupRoutes(app, db, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc, docSvc, ratingsSvc)
 
 	return app, db
 }
@@ -741,4 +744,572 @@ func TestWebHandler_ValidationErrors(t *testing.T) {
 func init() {
 	// Initialize config for tests (not used but prevents nil pointer)
 	cfg = &config.Config{}
+}
+
+func TestWebHandler_ProductDetailWithAttributes(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create spec and brand
+	spec := &models.Specification{Name: "Laptop"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	brand := &models.Brand{Name: "Dell"}
+	if err := db.Create(brand).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create specification attributes
+	ramAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "RAM",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+	}
+	storageAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "Storage",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+	}
+	if err := db.Create(&ramAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&storageAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create product
+	product := &models.Product{
+		Name:            "XPS 15",
+		BrandID:         brand.ID,
+		SpecificationID: &spec.ID,
+	}
+	if err := db.Create(product).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create product attributes
+	ram32 := 32.0
+	storage512 := 512.0
+	attrs := []models.ProductAttribute{
+		{
+			ProductID:                product.ID,
+			SpecificationAttributeID: ramAttr.ID,
+			ValueNumber:              &ram32,
+		},
+		{
+			ProductID:                product.ID,
+			SpecificationAttributeID: storageAttr.ID,
+			ValueNumber:              &storage512,
+		},
+	}
+	for _, attr := range attrs {
+		if err := db.Create(&attr).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Test product detail page
+	req := httptest.NewRequest("GET", fmt.Sprintf("/products/%d", product.ID), nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Read body to check if attributes are present
+	body := make([]byte, resp.ContentLength)
+	resp.Body.Read(body)
+	bodyStr := string(body)
+
+	// Check if attribute section is present
+	if !strings.Contains(bodyStr, "Product Specifications") {
+		t.Error("expected 'Product Specifications' section in response")
+	}
+
+	// Check if RAM attribute is present
+	if !strings.Contains(bodyStr, "RAM") {
+		t.Error("expected 'RAM' attribute in response")
+	}
+
+	// Check if Storage attribute is present
+	if !strings.Contains(bodyStr, "Storage") {
+		t.Error("expected 'Storage' attribute in response")
+	}
+}
+
+func TestWebHandler_ProductComparison(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create spec and brand
+	spec := &models.Specification{Name: "Smartphone"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	brand1 := &models.Brand{Name: "Apple"}
+	brand2 := &models.Brand{Name: "Samsung"}
+	if err := db.Create(&brand1).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&brand2).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create specification attributes
+	ramAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "RAM",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+	}
+	if err := db.Create(&ramAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create products
+	product1 := &models.Product{
+		Name:            "iPhone 15",
+		BrandID:         brand1.ID,
+		SpecificationID: &spec.ID,
+	}
+	product2 := &models.Product{
+		Name:            "Galaxy S24",
+		BrandID:         brand2.ID,
+		SpecificationID: &spec.ID,
+	}
+	if err := db.Create(&product1).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&product2).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create product attributes
+	ram8 := 8.0
+	ram12 := 12.0
+	attrs := []models.ProductAttribute{
+		{
+			ProductID:                product1.ID,
+			SpecificationAttributeID: ramAttr.ID,
+			ValueNumber:              &ram8,
+		},
+		{
+			ProductID:                product2.ID,
+			SpecificationAttributeID: ramAttr.ID,
+			ValueNumber:              &ram12,
+		},
+	}
+	for _, attr := range attrs {
+		if err := db.Create(&attr).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Test product comparison page
+	req := httptest.NewRequest("GET", fmt.Sprintf("/products/compare/%d", spec.ID), nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Read body to check if comparison is present
+	body := make([]byte, resp.ContentLength)
+	resp.Body.Read(body)
+	bodyStr := string(body)
+
+	// Check if both products are present
+	if !strings.Contains(bodyStr, "iPhone 15") {
+		t.Error("expected 'iPhone 15' in comparison")
+	}
+	if !strings.Contains(bodyStr, "Galaxy S24") {
+		t.Error("expected 'Galaxy S24' in comparison")
+	}
+
+	// Check if attribute comparison is present
+	if !strings.Contains(bodyStr, "RAM") {
+		t.Error("expected 'RAM' attribute in comparison")
+	}
+}
+
+func TestWebHandler_SpecificationAttributesPage(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create specification
+	spec := &models.Specification{Name: "Laptop", Description: "Laptop computers"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create some attributes
+	ramAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "RAM",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+		MinValue:        ptrFloat64(4),
+		MaxValue:        ptrFloat64(128),
+	}
+	cpuAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "CPU",
+		DataType:        "text",
+		IsRequired:      false,
+	}
+	if err := db.Create(&ramAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&cpuAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Test GET /specifications/:id/attributes
+	req := httptest.NewRequest("GET", fmt.Sprintf("/specifications/%d/attributes", spec.ID), nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyStr := string(body)
+
+	// Check for spec info and attributes
+	if !strings.Contains(bodyStr, "Laptop - Attributes") {
+		t.Error("expected page title in response")
+	}
+	if !strings.Contains(bodyStr, "RAM") {
+		t.Error("expected 'RAM' attribute in response")
+	}
+	if !strings.Contains(bodyStr, "CPU") {
+		t.Error("expected 'CPU' attribute in response")
+	}
+	if !strings.Contains(bodyStr, "4.00") && !strings.Contains(bodyStr, "Min: 4") {
+		t.Error("expected min value for RAM")
+	}
+}
+
+func TestWebHandler_CreateSpecificationAttribute(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create specification
+	spec := &models.Specification{Name: "Monitor"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Test POST /specifications/:id/attributes
+	form := url.Values{}
+	form.Set("name", "Screen Size")
+	form.Set("data_type", "number")
+	form.Set("unit", "inches")
+	form.Set("is_required", "on")
+	form.Set("min_value", "21")
+	form.Set("max_value", "49")
+	form.Set("description", "Diagonal screen size")
+
+	req := httptest.NewRequest("POST", fmt.Sprintf("/specifications/%d/attributes", spec.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected status 200, got %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Verify attribute was created
+	var attr models.SpecificationAttribute
+	if err := db.Where("specification_id = ? AND name = ?", spec.ID, "Screen Size").First(&attr).Error; err != nil {
+		t.Fatal("attribute not created:", err)
+	}
+	if attr.DataType != "number" {
+		t.Errorf("expected data_type 'number', got %s", attr.DataType)
+	}
+	if attr.Unit != "inches" {
+		t.Errorf("expected unit 'inches', got %s", attr.Unit)
+	}
+	if !attr.IsRequired {
+		t.Error("expected is_required to be true")
+	}
+	if attr.MinValue == nil || *attr.MinValue != 21 {
+		t.Error("expected min_value 21")
+	}
+	if attr.MaxValue == nil || *attr.MaxValue != 49 {
+		t.Error("expected max_value 49")
+	}
+}
+
+func TestWebHandler_DeleteSpecificationAttribute(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create specification and attribute
+	spec := &models.Specification{Name: "Keyboard"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	attr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "Switch Type",
+		DataType:        "text",
+	}
+	if err := db.Create(&attr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Test DELETE /specifications/:specId/attributes/:attrId
+	req := httptest.NewRequest("DELETE", fmt.Sprintf("/specifications/%d/attributes/%d", spec.ID, attr.ID), nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	// Verify attribute was deleted
+	var count int64
+	db.Model(&models.SpecificationAttribute{}).Where("id = ?", attr.ID).Count(&count)
+	if count != 0 {
+		t.Error("attribute should be deleted")
+	}
+}
+
+func TestWebHandler_UpdateProductAttributes(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create spec, brand, and attributes
+	spec := &models.Specification{Name: "Laptop"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	brand := &models.Brand{Name: "Dell"}
+	if err := db.Create(brand).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ramAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "RAM",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+		MinValue:        ptrFloat64(4),
+		MaxValue:        ptrFloat64(128),
+	}
+	storageAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "Storage",
+		DataType:        "number",
+		Unit:            "GB",
+	}
+	hasSSDAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "Has SSD",
+		DataType:        "boolean",
+	}
+	cpuAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "CPU Model",
+		DataType:        "text",
+	}
+	if err := db.Create(&ramAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&storageAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&hasSSDAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&cpuAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Create product
+	product := &models.Product{
+		Name:            "XPS 15",
+		BrandID:         brand.ID,
+		SpecificationID: &spec.ID,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Test POST /products/:id/attributes
+	form := url.Values{}
+	form.Set(fmt.Sprintf("attr_%d", ramAttr.ID), "16")
+	form.Set(fmt.Sprintf("attr_%d", storageAttr.ID), "512")
+	form.Set(fmt.Sprintf("attr_%d", hasSSDAttr.ID), "true")
+	form.Set(fmt.Sprintf("attr_%d", cpuAttr.ID), "Intel i7-12700H")
+
+	req := httptest.NewRequest("POST", fmt.Sprintf("/products/%d/attributes", product.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected status 200, got %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Verify attributes were created
+	var attrs []models.ProductAttribute
+	if err := db.Where("product_id = ?", product.ID).Preload("SpecificationAttribute").Find(&attrs).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(attrs) != 4 {
+		t.Fatalf("expected 4 attributes, got %d", len(attrs))
+	}
+
+	// Check values
+	for _, attr := range attrs {
+		switch attr.SpecificationAttribute.Name {
+		case "RAM":
+			if attr.ValueNumber == nil || *attr.ValueNumber != 16 {
+				t.Error("expected RAM value 16")
+			}
+		case "Storage":
+			if attr.ValueNumber == nil || *attr.ValueNumber != 512 {
+				t.Error("expected Storage value 512")
+			}
+		case "Has SSD":
+			if attr.ValueBoolean == nil || !*attr.ValueBoolean {
+				t.Error("expected Has SSD to be true")
+			}
+		case "CPU Model":
+			if attr.ValueText == nil || *attr.ValueText != "Intel i7-12700H" {
+				t.Error("expected CPU Model 'Intel i7-12700H'")
+			}
+		}
+	}
+
+	// Test response contains the updated display
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyStr := string(body)
+	if !strings.Contains(bodyStr, "16.00") && !strings.Contains(bodyStr, "16") {
+		t.Error("expected RAM value in response")
+	}
+	if !strings.Contains(bodyStr, "Intel i7-12700H") {
+		t.Error("expected CPU model in response")
+	}
+}
+
+func TestWebHandler_ProductAttributeValidation(t *testing.T) {
+	app, db := setupTestApp(t)
+
+	// Create spec, brand, and attributes
+	spec := &models.Specification{Name: "Mouse"}
+	if err := db.Create(spec).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	brand := &models.Brand{Name: "Logitech"}
+	if err := db.Create(brand).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Required attribute
+	dpiAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "DPI",
+		DataType:        "number",
+		IsRequired:      true,
+		MinValue:        ptrFloat64(800),
+		MaxValue:        ptrFloat64(25600),
+	}
+	if err := db.Create(&dpiAttr).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	product := &models.Product{
+		Name:            "MX Master 3",
+		BrandID:         brand.ID,
+		SpecificationID: &spec.ID,
+	}
+	if err := db.Create(&product).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Test 1: Missing required attribute
+	form := url.Values{}
+	req := httptest.NewRequest("POST", fmt.Sprintf("/products/%d/attributes", product.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected status 400 for missing required attribute, got %d", resp.StatusCode)
+	}
+
+	// Test 2: Value below minimum
+	form = url.Values{}
+	form.Set(fmt.Sprintf("attr_%d", dpiAttr.ID), "500")
+	req = httptest.NewRequest("POST", fmt.Sprintf("/products/%d/attributes", product.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected status 400 for value below minimum, got %d", resp.StatusCode)
+	}
+
+	// Test 3: Value above maximum
+	form = url.Values{}
+	form.Set(fmt.Sprintf("attr_%d", dpiAttr.ID), "30000")
+	req = httptest.NewRequest("POST", fmt.Sprintf("/products/%d/attributes", product.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected status 400 for value above maximum, got %d", resp.StatusCode)
+	}
+
+	// Test 4: Valid value
+	form = url.Values{}
+	form.Set(fmt.Sprintf("attr_%d", dpiAttr.ID), "4000")
+	req = httptest.NewRequest("POST", fmt.Sprintf("/products/%d/attributes", product.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = app.Test(req, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected status 200 for valid value, got %d: %s", resp.StatusCode, string(body))
+	}
+}
+
+// Helper function for float64 pointers
+func ptrFloat64(f float64) *float64 {
+	return &f
 }

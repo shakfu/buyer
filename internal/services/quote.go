@@ -240,3 +240,183 @@ func (s *QuoteService) GetBestQuoteForSpecification(specificationID uint) (*mode
 
 	return &quote, nil
 }
+
+// QuoteAttributeComparison represents a quote with attribute compliance information
+type QuoteAttributeComparison struct {
+	Quote                  *models.Quote
+	AttributeCompliance    map[uint]bool // attribute_id -> has_value
+	MissingRequiredAttrs   []string      // names of missing required attributes
+	HasAllRequiredAttrs    bool
+	ExtraAttributes        []models.ProductAttribute // attributes not in specification
+	ComplianceScore        float64                   // 0-100, percentage of required attrs present
+}
+
+// AttributeComparisonMatrix represents a full comparison matrix for quotes
+type AttributeComparisonMatrix struct {
+	Specification       *models.Specification
+	SpecificationAttrs  []models.SpecificationAttribute
+	QuoteComparisons    []QuoteAttributeComparison
+	ShowExtraAttributes bool
+}
+
+// GetQuoteComparisonMatrix creates a detailed comparison matrix for quotes of a specification
+func (s *QuoteService) GetQuoteComparisonMatrix(specificationID uint, showExtraAttrs bool) (*AttributeComparisonMatrix, error) {
+	// Get specification
+	var spec models.Specification
+	if err := s.db.First(&spec, specificationID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, &NotFoundError{Entity: "Specification", ID: specificationID}
+		}
+		return nil, err
+	}
+
+	// Get specification attributes
+	var specAttrs []models.SpecificationAttribute
+	if err := s.db.Where("specification_id = ?", specificationID).
+		Order("is_required DESC, name ASC").Find(&specAttrs).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all active quotes for products matching this specification
+	var quotes []models.Quote
+	if err := s.db.Preload("Vendor").
+		Preload("Product.Brand").
+		Preload("Product.Specification").
+		Preload("Product.Attributes.SpecificationAttribute").
+		Joins("JOIN products ON products.id = quotes.product_id").
+		Where("products.specification_id = ?", specificationID).
+		Where("quotes.valid_until IS NULL OR quotes.valid_until > ?", time.Now()).
+		Order("quotes.converted_price ASC").
+		Find(&quotes).Error; err != nil {
+		return nil, err
+	}
+
+	// Build comparison data
+	comparisons := make([]QuoteAttributeComparison, 0, len(quotes))
+	for _, quote := range quotes {
+		comparison := s.analyzeQuoteCompliance(&quote, specAttrs, showExtraAttrs)
+		comparisons = append(comparisons, comparison)
+	}
+
+	return &AttributeComparisonMatrix{
+		Specification:       &spec,
+		SpecificationAttrs:  specAttrs,
+		QuoteComparisons:    comparisons,
+		ShowExtraAttributes: showExtraAttrs,
+	}, nil
+}
+
+// GetProductQuoteComparisonMatrix creates a comparison matrix for quotes of a single product
+func (s *QuoteService) GetProductQuoteComparisonMatrix(productID uint, showExtraAttrs bool) (*AttributeComparisonMatrix, error) {
+	// Get product with specification
+	var product models.Product
+	if err := s.db.Preload("Specification").
+		Preload("Attributes.SpecificationAttribute").
+		First(&product, productID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, &NotFoundError{Entity: "Product", ID: productID}
+		}
+		return nil, err
+	}
+
+	if product.SpecificationID == nil {
+		return nil, &ValidationError{Message: "Product has no specification"}
+	}
+
+	// Get specification attributes
+	var specAttrs []models.SpecificationAttribute
+	if err := s.db.Where("specification_id = ?", *product.SpecificationID).
+		Order("is_required DESC, name ASC").Find(&specAttrs).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all active quotes for this product
+	var quotes []models.Quote
+	if err := s.db.Preload("Vendor").
+		Preload("Product.Brand").
+		Preload("Product.Specification").
+		Preload("Product.Attributes.SpecificationAttribute").
+		Where("product_id = ?", productID).
+		Where("valid_until IS NULL OR valid_until > ?", time.Now()).
+		Order("converted_price ASC").
+		Find(&quotes).Error; err != nil {
+		return nil, err
+	}
+
+	// Build comparison data
+	comparisons := make([]QuoteAttributeComparison, 0, len(quotes))
+	for _, quote := range quotes {
+		comparison := s.analyzeQuoteCompliance(&quote, specAttrs, showExtraAttrs)
+		comparisons = append(comparisons, comparison)
+	}
+
+	return &AttributeComparisonMatrix{
+		Specification:       product.Specification,
+		SpecificationAttrs:  specAttrs,
+		QuoteComparisons:    comparisons,
+		ShowExtraAttributes: showExtraAttrs,
+	}, nil
+}
+
+// analyzeQuoteCompliance checks if a product meets specification attribute requirements
+func (s *QuoteService) analyzeQuoteCompliance(quote *models.Quote, specAttrs []models.SpecificationAttribute, includeExtra bool) QuoteAttributeComparison {
+	compliance := QuoteAttributeComparison{
+		Quote:               quote,
+		AttributeCompliance: make(map[uint]bool),
+		MissingRequiredAttrs: make([]string, 0),
+		ExtraAttributes:     make([]models.ProductAttribute, 0),
+		HasAllRequiredAttrs: true,
+	}
+
+	// Build map of product attributes by specification_attribute_id
+	productAttrMap := make(map[uint]*models.ProductAttribute)
+	for i := range quote.Product.Attributes {
+		attr := &quote.Product.Attributes[i]
+		productAttrMap[attr.SpecificationAttributeID] = attr
+	}
+
+	// Check each specification attribute
+	requiredCount := 0
+	presentCount := 0
+
+	for _, specAttr := range specAttrs {
+		prodAttr, exists := productAttrMap[specAttr.ID]
+		hasValue := exists && (prodAttr.ValueNumber != nil || prodAttr.ValueText != nil || prodAttr.ValueBoolean != nil)
+
+		compliance.AttributeCompliance[specAttr.ID] = hasValue
+
+		if specAttr.IsRequired {
+			requiredCount++
+			if hasValue {
+				presentCount++
+			} else {
+				compliance.MissingRequiredAttrs = append(compliance.MissingRequiredAttrs, specAttr.Name)
+				compliance.HasAllRequiredAttrs = false
+			}
+		}
+	}
+
+	// Calculate compliance score
+	if requiredCount > 0 {
+		compliance.ComplianceScore = (float64(presentCount) / float64(requiredCount)) * 100
+	} else {
+		compliance.ComplianceScore = 100.0
+	}
+
+	// Find extra attributes if requested
+	if includeExtra {
+		specAttrIDs := make(map[uint]bool)
+		for _, specAttr := range specAttrs {
+			specAttrIDs[specAttr.ID] = true
+		}
+
+		for i := range quote.Product.Attributes {
+			attr := &quote.Product.Attributes[i]
+			if !specAttrIDs[attr.SpecificationAttributeID] {
+				compliance.ExtraAttributes = append(compliance.ExtraAttributes, *attr)
+			}
+		}
+	}
+
+	return compliance
+}

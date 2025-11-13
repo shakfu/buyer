@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,9 +17,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/shakfu/buyer/internal/models"
 	"github.com/shakfu/buyer/internal/services"
 	"github.com/shakfu/buyer/web"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
 var webCmd = &cobra.Command{
@@ -134,7 +137,7 @@ var webCmd = &cobra.Command{
 		slog.Debug("services initialized successfully")
 
 		// Routes
-		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc, docSvc, ratingsSvc)
+		setupRoutes(app, cfg.DB, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc, docSvc, ratingsSvc)
 
 		// Setup graceful shutdown
 		c := make(chan os.Signal, 1)
@@ -169,6 +172,7 @@ var webCmd = &cobra.Command{
 
 func setupRoutes(
 	app *fiber.App,
+	db *gorm.DB,
 	specSvc *services.SpecificationService,
 	brandSvc *services.BrandService,
 	productSvc *services.ProductService,
@@ -252,6 +256,158 @@ func setupRoutes(
 		})
 	})
 
+	// Specification attributes management routes
+	app.Get("/specifications/:id/attributes", func(c *fiber.Ctx) error {
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid specification ID")
+		}
+
+		spec, err := specSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(404).SendString("Specification not found")
+		}
+
+		// Get attributes for this specification
+		var attrs []models.SpecificationAttribute
+		if err := db.Where("specification_id = ?", id).Order("name ASC").Find(&attrs).Error; err != nil {
+			return err
+		}
+
+		return renderTemplate(c, "specification-attributes.html", fiber.Map{
+			"Title":         spec.Name + " - Attributes",
+			"Specification": spec,
+			"Attributes":    attrs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Specifications", "URL": "/specifications"},
+				{"Name": spec.Name, "Active": true},
+			},
+		})
+	})
+
+	app.Post("/specifications/:id/attributes", func(c *fiber.Ctx) error {
+		specID, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid specification ID")
+		}
+
+		// Parse form data
+		name := strings.TrimSpace(c.FormValue("name"))
+		dataType := c.FormValue("data_type")
+		unit := strings.TrimSpace(c.FormValue("unit"))
+		description := strings.TrimSpace(c.FormValue("description"))
+		isRequired := c.FormValue("is_required") == "on"
+
+		if name == "" {
+			return c.Status(400).SendString("Attribute name is required")
+		}
+
+		if dataType != "number" && dataType != "text" && dataType != "boolean" {
+			return c.Status(400).SendString("Invalid data type")
+		}
+
+		// Parse min/max values for number types
+		var minValue, maxValue *float64
+		if dataType == "number" {
+			if minStr := c.FormValue("min_value"); minStr != "" {
+				if val, err := strconv.ParseFloat(minStr, 64); err == nil {
+					minValue = &val
+				}
+			}
+			if maxStr := c.FormValue("max_value"); maxStr != "" {
+				if val, err := strconv.ParseFloat(maxStr, 64); err == nil {
+					maxValue = &val
+				}
+			}
+		}
+
+		attr := &models.SpecificationAttribute{
+			SpecificationID: uint(specID),
+			Name:            name,
+			DataType:        dataType,
+			Unit:            unit,
+			IsRequired:      isRequired,
+			MinValue:        minValue,
+			MaxValue:        maxValue,
+			Description:     description,
+		}
+
+		if err := db.Create(attr).Error; err != nil {
+			return c.Status(400).SendString(err.Error())
+		}
+
+		// Render new row
+		html := fmt.Sprintf(`
+		<tr id="attr-%d">
+			<td><strong>%s</strong></td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>%s</td>
+			<td>
+				<button class="btn-sm contrast"
+						hx-delete="/specifications/%d/attributes/%d"
+						hx-target="#attr-%d"
+						hx-swap="outerHTML"
+						hx-confirm="Are you sure? Products using this attribute will lose their values.">
+					Delete
+				</button>
+			</td>
+		</tr>`,
+			attr.ID,
+			attr.Name,
+			attr.DataType,
+			func() string {
+				if attr.Unit != "" {
+					return attr.Unit
+				}
+				return "-"
+			}(),
+			func() string {
+				if attr.IsRequired {
+					return "Yes"
+				}
+				return "No"
+			}(),
+			func() string {
+				if attr.DataType == "number" {
+					if attr.MinValue != nil && attr.MaxValue != nil {
+						return fmt.Sprintf("Min: %.2f Max: %.2f", *attr.MinValue, *attr.MaxValue)
+					} else if attr.MinValue != nil {
+						return fmt.Sprintf("Min: %.2f", *attr.MinValue)
+					} else if attr.MaxValue != nil {
+						return fmt.Sprintf("Max: %.2f", *attr.MaxValue)
+					}
+				}
+				return "-"
+			}(),
+			func() string {
+				if attr.Description != "" {
+					return attr.Description
+				}
+				return "-"
+			}(),
+			specID, attr.ID, attr.ID,
+		)
+
+		return c.SendString(html)
+	})
+
+	app.Delete("/specifications/:specId/attributes/:attrId", func(c *fiber.Ctx) error {
+		attrID, err := c.ParamsInt("attrId")
+		if err != nil {
+			return c.Status(400).SendString("Invalid attribute ID")
+		}
+
+		// Delete the attribute (cascade will delete product attributes)
+		if err := db.Delete(&models.SpecificationAttribute{}, attrID).Error; err != nil {
+			return c.Status(400).SendString(err.Error())
+		}
+
+		return c.SendString("")
+	})
+
 	// Brand routes
 	app.Get("/brands", func(c *fiber.Ctx) error {
 		brands, err := brandSvc.List(0, 0)
@@ -301,12 +457,217 @@ func setupRoutes(
 		if err != nil {
 			return c.Status(404).SendString("Product not found")
 		}
+
+		// Load available attributes for this product's specification
+		var availableAttrs []models.SpecificationAttribute
+		if product.SpecificationID != nil {
+			db.Where("specification_id = ?", *product.SpecificationID).
+				Order("name ASC").Find(&availableAttrs)
+		}
+
 		return renderTemplate(c, "product-detail.html", fiber.Map{
-			"Title":   product.Name,
-			"Product": product,
+			"Title":              product.Name,
+			"Product":            product,
+			"AvailableAttributes": availableAttrs,
 			"Breadcrumb": []map[string]interface{}{
 				{"Name": "Products", "URL": "/products"},
 				{"Name": product.Name, "Active": true},
+			},
+		})
+	})
+
+	// Product comparison route
+	app.Get("/products/compare/:specId", func(c *fiber.Ctx) error {
+		specID, err := c.ParamsInt("specId")
+		if err != nil {
+			return c.Status(400).SendString("Invalid specification ID")
+		}
+
+		// Get specification
+		spec, err := specSvc.GetByID(uint(specID))
+		if err != nil {
+			return c.Status(404).SendString("Specification not found")
+		}
+
+		// Get all products for this specification
+		products, err := productSvc.ListBySpecification(uint(specID))
+		if err != nil {
+			return err
+		}
+
+		// Extract unique attribute names from products
+		type AttrInfo struct {
+			ID   uint
+			Name string
+			Unit string
+		}
+		attrMap := make(map[string]AttrInfo)
+		for _, product := range products {
+			for _, attr := range product.Attributes {
+				if attr.SpecificationAttribute != nil {
+					name := attr.SpecificationAttribute.Name
+					if _, exists := attrMap[name]; !exists {
+						attrMap[name] = AttrInfo{
+							ID:   attr.SpecificationAttribute.ID,
+							Name: name,
+							Unit: attr.SpecificationAttribute.Unit,
+						}
+					}
+				}
+			}
+		}
+
+		// Convert to ordered slice
+		var attrNames []AttrInfo
+		for _, info := range attrMap {
+			attrNames = append(attrNames, info)
+		}
+
+		return renderTemplate(c, "product-comparison.html", fiber.Map{
+			"Title":          "Compare Products - " + spec.Name,
+			"Specification":  spec,
+			"Products":       products,
+			"AttributeNames": attrNames,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Products", "URL": "/products"},
+				{"Name": "Compare " + spec.Name, "Active": true},
+			},
+		})
+	})
+
+	// Quote comparison matrix - specification level
+	app.Get("/quotes/compare/specification/:specId", func(c *fiber.Ctx) error {
+		specID, err := c.ParamsInt("specId")
+		if err != nil {
+			return c.Status(400).SendString("Invalid specification ID")
+		}
+
+		showExtra := c.Query("show_extra") == "on"
+
+		matrix, err := quoteSvc.GetQuoteComparisonMatrix(uint(specID), showExtra)
+		if err != nil {
+			return c.Status(404).SendString(err.Error())
+		}
+
+		// Build helper maps for template using index-based keys
+		attributeCompliance := make(map[int]map[uint]bool)
+		productAttrValues := make(map[int]map[uint]*models.ProductAttribute)
+		extraAttrsByQuote := make(map[int]map[string]*models.ProductAttribute)
+		extraAttrNamesSet := make(map[string]bool)
+
+		for i := range matrix.QuoteComparisons {
+			comp := &matrix.QuoteComparisons[i]
+			attributeCompliance[i] = comp.AttributeCompliance
+
+			// Build product attribute value map
+			prodAttrMap := make(map[uint]*models.ProductAttribute)
+			for j := range comp.Quote.Product.Attributes {
+				attr := &comp.Quote.Product.Attributes[j]
+				prodAttrMap[attr.SpecificationAttributeID] = attr
+			}
+			productAttrValues[i] = prodAttrMap
+
+			// Build extra attributes map if showing extras
+			if showExtra {
+				extraMap := make(map[string]*models.ProductAttribute)
+				for j := range comp.ExtraAttributes {
+					attr := &comp.ExtraAttributes[j]
+					if attr.SpecificationAttribute != nil {
+						name := attr.SpecificationAttribute.Name
+						extraMap[name] = attr
+						extraAttrNamesSet[name] = true
+					}
+				}
+				extraAttrsByQuote[i] = extraMap
+			}
+		}
+
+		// Convert extra attr names to ordered slice
+		var extraAttrNames []string
+		for name := range extraAttrNamesSet {
+			extraAttrNames = append(extraAttrNames, name)
+		}
+
+		return renderTemplate(c, "quote-comparison-matrix.html", fiber.Map{
+			"Title":               "Quote Comparison - " + matrix.Specification.Name,
+			"Matrix":              matrix,
+			"AttributeCompliance": attributeCompliance,
+			"ProductAttrValues":   productAttrValues,
+			"ExtraAttrsByQuote":   extraAttrsByQuote,
+			"ExtraAttrNames":      extraAttrNames,
+			"ExtraAttrCount":      len(extraAttrNames),
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Specifications", "URL": "/specifications"},
+				{"Name": "Quote Comparison", "Active": true},
+			},
+		})
+	})
+
+	// Quote comparison matrix - product level
+	app.Get("/quotes/compare/product/:productId", func(c *fiber.Ctx) error {
+		productID, err := c.ParamsInt("productId")
+		if err != nil {
+			return c.Status(400).SendString("Invalid product ID")
+		}
+
+		showExtra := c.Query("show_extra") == "on"
+
+		matrix, err := quoteSvc.GetProductQuoteComparisonMatrix(uint(productID), showExtra)
+		if err != nil {
+			return c.Status(404).SendString(err.Error())
+		}
+
+		// Build helper maps for template using index-based keys
+		attributeCompliance := make(map[int]map[uint]bool)
+		productAttrValues := make(map[int]map[uint]*models.ProductAttribute)
+		extraAttrsByQuote := make(map[int]map[string]*models.ProductAttribute)
+		extraAttrNamesSet := make(map[string]bool)
+
+		for i := range matrix.QuoteComparisons {
+			comp := &matrix.QuoteComparisons[i]
+			attributeCompliance[i] = comp.AttributeCompliance
+
+			prodAttrMap := make(map[uint]*models.ProductAttribute)
+			for j := range comp.Quote.Product.Attributes {
+				attr := &comp.Quote.Product.Attributes[j]
+				prodAttrMap[attr.SpecificationAttributeID] = attr
+			}
+			productAttrValues[i] = prodAttrMap
+
+			if showExtra {
+				extraMap := make(map[string]*models.ProductAttribute)
+				for j := range comp.ExtraAttributes {
+					attr := &comp.ExtraAttributes[j]
+					if attr.SpecificationAttribute != nil {
+						name := attr.SpecificationAttribute.Name
+						extraMap[name] = attr
+						extraAttrNamesSet[name] = true
+					}
+				}
+				extraAttrsByQuote[i] = extraMap
+			}
+		}
+
+		var extraAttrNames []string
+		for name := range extraAttrNamesSet {
+			extraAttrNames = append(extraAttrNames, name)
+		}
+
+		// Get product name for title
+		var product models.Product
+		db.First(&product, productID)
+
+		return renderTemplate(c, "quote-comparison-matrix.html", fiber.Map{
+			"Title":               "Quote Comparison - " + product.Name,
+			"Matrix":              matrix,
+			"AttributeCompliance": attributeCompliance,
+			"ProductAttrValues":   productAttrValues,
+			"ExtraAttrsByQuote":   extraAttrsByQuote,
+			"ExtraAttrNames":      extraAttrNames,
+			"ExtraAttrCount":      len(extraAttrNames),
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Products", "URL": "/products"},
+				{"Name": "Quote Comparison", "Active": true},
 			},
 		})
 	})
@@ -693,7 +1054,7 @@ func setupRoutes(
 	})
 
 	// Setup CRUD handlers for all entities
-	SetupCRUDHandlers(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
+	SetupCRUDHandlers(app, db, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
 
 	// Purchase Order CRUD handlers
 	app.Post("/purchase-orders", func(c *fiber.Ctx) error {
@@ -939,6 +1300,35 @@ func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
 				return 0
 			}
 			return a / b
+		},
+		"deref": func(ptr interface{}) interface{} {
+			if ptr == nil {
+				return nil
+			}
+			switch v := ptr.(type) {
+			case *float64:
+				if v == nil {
+					return 0.0
+				}
+				return *v
+			case *string:
+				if v == nil {
+					return ""
+				}
+				return *v
+			case *bool:
+				if v == nil {
+					return false
+				}
+				return *v
+			case *int:
+				if v == nil {
+					return 0
+				}
+				return *v
+			default:
+				return ptr
+			}
 		},
 	})
 

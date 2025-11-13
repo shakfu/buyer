@@ -3,6 +3,8 @@ package services
 import (
 	"testing"
 	"time"
+
+	"github.com/shakfu/buyer/internal/models"
 )
 
 func TestQuoteService_Create(t *testing.T) {
@@ -961,4 +963,301 @@ func TestQuoteService_GetBestQuoteForSpecification(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for non-existent specification")
 	}
+}
+
+func TestQuoteService_GetQuoteComparisonMatrix(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer func() { _ = cfg.Close() }()
+
+	quoteSvc := NewQuoteService(cfg.DB)
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	specSvc := NewSpecificationService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	// Create specification with attributes
+	spec, _ := specSvc.Create("Laptop", "")
+
+	// Create specification attributes
+	ramAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "RAM",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+		MinValue:        ptrFloat(4),
+		MaxValue:        ptrFloat(128),
+	}
+	storageAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "Storage",
+		DataType:        "number",
+		Unit:            "GB",
+		IsRequired:      true,
+	}
+	cpuAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "CPU",
+		DataType:        "text",
+		IsRequired:      false,
+	}
+	cfg.DB.Create(&ramAttr)
+	cfg.DB.Create(&storageAttr)
+	cfg.DB.Create(&cpuAttr)
+
+	// Create brands and vendors
+	brand, _ := brandSvc.Create("Dell")
+	vendor1, _ := vendorSvc.Create("Tech Supplier", "USD", "")
+	vendor2, _ := vendorSvc.Create("Budget Parts", "USD", "")
+
+	// Create products with varying attribute compliance
+	// Product 1: Complete attributes
+	product1, _ := productSvc.Create("XPS 15", brand.ID, &spec.ID)
+	ram16 := 16.0
+	storage512 := 512.0
+	cpuIntel := "Intel i7"
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product1.ID,
+		SpecificationAttributeID: ramAttr.ID,
+		ValueNumber:              &ram16,
+	})
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product1.ID,
+		SpecificationAttributeID: storageAttr.ID,
+		ValueNumber:              &storage512,
+	})
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product1.ID,
+		SpecificationAttributeID: cpuAttr.ID,
+		ValueText:                &cpuIntel,
+	})
+
+	// Product 2: Missing optional attribute
+	product2, _ := productSvc.Create("Inspiron 15", brand.ID, &spec.ID)
+	ram8 := 8.0
+	storage256 := 256.0
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product2.ID,
+		SpecificationAttributeID: ramAttr.ID,
+		ValueNumber:              &ram8,
+	})
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product2.ID,
+		SpecificationAttributeID: storageAttr.ID,
+		ValueNumber:              &storage256,
+	})
+
+	// Product 3: Missing required attribute
+	product3, _ := productSvc.Create("Latitude 14", brand.ID, &spec.ID)
+	ram32 := 32.0
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product3.ID,
+		SpecificationAttributeID: ramAttr.ID,
+		ValueNumber:              &ram32,
+	})
+	// Missing storage (required!)
+
+	// Create quotes for products
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	quote1, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor1.ID,
+		ProductID:  product1.ID,
+		Price:      1200.00,
+		Currency:   "USD",
+		QuoteDate:  time.Now(),
+		ValidUntil: ptrTime(time.Now().AddDate(0, 3, 0)),
+	})
+
+	quote2, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor2.ID,
+		ProductID:  product2.ID,
+		Price:      800.00,
+		Currency:   "USD",
+		QuoteDate:  time.Now(),
+		ValidUntil: ptrTime(time.Now().AddDate(0, 3, 0)),
+	})
+
+	quote3, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor1.ID,
+		ProductID:  product3.ID,
+		Price:      950.00,
+		Currency:   "USD",
+		QuoteDate:  time.Now(),
+		ValidUntil: ptrTime(time.Now().AddDate(0, 3, 0)),
+	})
+
+	// Test GetQuoteComparisonMatrix
+	matrix, err := quoteSvc.GetQuoteComparisonMatrix(spec.ID, false)
+	if err != nil {
+		t.Fatalf("GetQuoteComparisonMatrix() error = %v", err)
+	}
+
+	if matrix.Specification.ID != spec.ID {
+		t.Error("Expected specification to match")
+	}
+
+	if len(matrix.SpecificationAttrs) != 3 {
+		t.Errorf("Expected 3 specification attributes, got %d", len(matrix.SpecificationAttrs))
+	}
+
+	if len(matrix.QuoteComparisons) != 3 {
+		t.Fatalf("Expected 3 quote comparisons, got %d", len(matrix.QuoteComparisons))
+	}
+
+	// Verify comparisons are sorted by price (lowest first)
+	if matrix.QuoteComparisons[0].Quote.ID != quote2.ID {
+		t.Error("Expected cheapest quote first")
+	}
+	if matrix.QuoteComparisons[1].Quote.ID != quote3.ID {
+		t.Error("Expected second cheapest quote second")
+	}
+	if matrix.QuoteComparisons[2].Quote.ID != quote1.ID {
+		t.Error("Expected most expensive quote last")
+	}
+
+	// Check compliance for product 1 (all attrs present)
+	comp1 := matrix.QuoteComparisons[2] // Most expensive = product1
+	if !comp1.HasAllRequiredAttrs {
+		t.Error("Product 1 should have all required attributes")
+	}
+	if comp1.ComplianceScore != 100.0 {
+		t.Errorf("Product 1 compliance = %.0f, want 100", comp1.ComplianceScore)
+	}
+	if len(comp1.MissingRequiredAttrs) != 0 {
+		t.Error("Product 1 should have no missing required attributes")
+	}
+
+	// Check compliance for product 2 (missing optional CPU)
+	comp2 := matrix.QuoteComparisons[0] // Cheapest = product2
+	if !comp2.HasAllRequiredAttrs {
+		t.Error("Product 2 should have all required attributes")
+	}
+	if comp2.ComplianceScore != 100.0 {
+		t.Errorf("Product 2 compliance = %.0f, want 100", comp2.ComplianceScore)
+	}
+
+	// Check compliance for product 3 (missing required Storage)
+	comp3 := matrix.QuoteComparisons[1] // Middle price = product3
+	if comp3.HasAllRequiredAttrs {
+		t.Error("Product 3 should be missing required attributes")
+	}
+	if comp3.ComplianceScore >= 100.0 {
+		t.Errorf("Product 3 compliance = %.0f, should be < 100", comp3.ComplianceScore)
+	}
+	if len(comp3.MissingRequiredAttrs) != 1 {
+		t.Errorf("Product 3 should have 1 missing required attribute, got %d", len(comp3.MissingRequiredAttrs))
+	}
+	if len(comp3.MissingRequiredAttrs) > 0 && comp3.MissingRequiredAttrs[0] != "Storage" {
+		t.Errorf("Product 3 should be missing 'Storage', got %v", comp3.MissingRequiredAttrs)
+	}
+
+	// Test non-existent specification
+	_, err = quoteSvc.GetQuoteComparisonMatrix(9999, false)
+	if err == nil {
+		t.Error("Expected error for non-existent specification")
+	}
+}
+
+func TestQuoteService_GetProductQuoteComparisonMatrix(t *testing.T) {
+	cfg := setupTestDB(t)
+	defer func() { _ = cfg.Close() }()
+
+	quoteSvc := NewQuoteService(cfg.DB)
+	brandSvc := NewBrandService(cfg.DB)
+	productSvc := NewProductService(cfg.DB)
+	vendorSvc := NewVendorService(cfg.DB)
+	specSvc := NewSpecificationService(cfg.DB)
+	forexSvc := NewForexService(cfg.DB)
+
+	// Setup
+	spec, _ := specSvc.Create("Mouse", "")
+	dpiAttr := &models.SpecificationAttribute{
+		SpecificationID: spec.ID,
+		Name:            "DPI",
+		DataType:        "number",
+		IsRequired:      true,
+		MinValue:        ptrFloat(800),
+		MaxValue:        ptrFloat(25600),
+	}
+	cfg.DB.Create(&dpiAttr)
+
+	brand, _ := brandSvc.Create("Logitech")
+	product, _ := productSvc.Create("MX Master 3", brand.ID, &spec.ID)
+
+	dpi4000 := 4000.0
+	cfg.DB.Create(&models.ProductAttribute{
+		ProductID:                product.ID,
+		SpecificationAttributeID: dpiAttr.ID,
+		ValueNumber:              &dpi4000,
+	})
+
+	vendor1, _ := vendorSvc.Create("Amazon", "USD", "")
+	vendor2, _ := vendorSvc.Create("Best Buy", "USD", "")
+
+	forexSvc.Create("USD", "USD", 1.0, time.Now())
+
+	// Create multiple quotes for same product
+	quote1, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor1.ID,
+		ProductID:  product.ID,
+		Price:      99.99,
+		Currency:   "USD",
+		QuoteDate:  time.Now(),
+		ValidUntil: ptrTime(time.Now().AddDate(0, 3, 0)),
+	})
+
+	quote2, _ := quoteSvc.Create(CreateQuoteInput{
+		VendorID:   vendor2.ID,
+		ProductID:  product.ID,
+		Price:      89.99,
+		Currency:   "USD",
+		QuoteDate:  time.Now(),
+		ValidUntil: ptrTime(time.Now().AddDate(0, 3, 0)),
+	})
+
+	// Test
+	matrix, err := quoteSvc.GetProductQuoteComparisonMatrix(product.ID, false)
+	if err != nil {
+		t.Fatalf("GetProductQuoteComparisonMatrix() error = %v", err)
+	}
+
+	if len(matrix.QuoteComparisons) != 2 {
+		t.Errorf("Expected 2 quote comparisons, got %d", len(matrix.QuoteComparisons))
+	}
+
+	// Verify quotes are sorted by price
+	if matrix.QuoteComparisons[0].Quote.ID != quote2.ID {
+		t.Error("Expected cheaper quote first")
+	}
+	if matrix.QuoteComparisons[1].Quote.ID != quote1.ID {
+		t.Error("Expected more expensive quote second")
+	}
+
+	// All quotes should have same compliance (same product)
+	for _, comp := range matrix.QuoteComparisons {
+		if !comp.HasAllRequiredAttrs {
+			t.Error("All quotes should have required attributes (same product)")
+		}
+		if comp.ComplianceScore != 100.0 {
+			t.Errorf("Compliance = %.0f, want 100", comp.ComplianceScore)
+		}
+	}
+
+	// Test product without specification
+	productNoSpec, _ := productSvc.Create("Generic Mouse", brand.ID, nil)
+	_, err = quoteSvc.GetProductQuoteComparisonMatrix(productNoSpec.ID, false)
+	if err == nil {
+		t.Error("Expected error for product without specification")
+	}
+}
+
+// Helper functions
+func ptrFloat(f float64) *float64 {
+	return &f
+}
+
+func ptrTime(t time.Time) *time.Time {
+	return &t
 }

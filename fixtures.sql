@@ -9,6 +9,36 @@ INSERT INTO specifications (id, name, description, created_at, updated_at) VALUE
 (4, 'Wireless Mouse', 'Ergonomic wireless mouse', datetime('now'), datetime('now')),
 (5, 'Mechanical Keyboard', 'Mechanical keyboard with RGB backlight', datetime('now'), datetime('now'));
 
+-- Specification Attributes (comparable features for each specification type)
+INSERT INTO specification_attributes (id, specification_id, name, data_type, unit, is_required, min_value, max_value, description, created_at, updated_at) VALUES
+-- Laptop attributes
+(1, 1, 'RAM', 'number', 'GB', 1, 4, 128, 'Memory capacity', datetime('now'), datetime('now')),
+(2, 1, 'Storage', 'number', 'GB', 1, 128, 4096, 'Storage capacity', datetime('now'), datetime('now')),
+(3, 1, 'Screen Size', 'number', 'inches', 1, 13, 17, 'Display diagonal size', datetime('now'), datetime('now')),
+(4, 1, 'CPU Cores', 'number', 'cores', 0, 2, 32, 'Number of CPU cores', datetime('now'), datetime('now')),
+(5, 1, 'Storage Type', 'text', NULL, 1, NULL, NULL, 'SSD or HDD', datetime('now'), datetime('now')),
+(6, 1, 'Has Touchscreen', 'boolean', NULL, 0, NULL, NULL, 'Touchscreen capability', datetime('now'), datetime('now')),
+-- Monitor attributes
+(7, 2, 'Screen Size', 'number', 'inches', 1, 21, 34, 'Display diagonal size', datetime('now'), datetime('now')),
+(8, 2, 'Resolution Width', 'number', 'px', 1, 1920, 7680, 'Horizontal resolution', datetime('now'), datetime('now')),
+(9, 2, 'Resolution Height', 'number', 'px', 1, 1080, 4320, 'Vertical resolution', datetime('now'), datetime('now')),
+(10, 2, 'Refresh Rate', 'number', 'Hz', 0, 60, 240, 'Screen refresh rate', datetime('now'), datetime('now')),
+(11, 2, 'Panel Type', 'text', NULL, 0, NULL, NULL, 'IPS, VA, TN, OLED', datetime('now'), datetime('now')),
+-- Smartphone attributes
+(12, 3, 'RAM', 'number', 'GB', 1, 4, 24, 'Memory capacity', datetime('now'), datetime('now')),
+(13, 3, 'Storage', 'number', 'GB', 1, 64, 1024, 'Internal storage', datetime('now'), datetime('now')),
+(14, 3, 'Screen Size', 'number', 'inches', 1, 5, 7, 'Display diagonal size', datetime('now'), datetime('now')),
+(15, 3, 'Battery', 'number', 'mAh', 0, 3000, 6000, 'Battery capacity', datetime('now'), datetime('now')),
+(16, 3, 'Has 5G', 'boolean', NULL, 0, NULL, NULL, '5G connectivity', datetime('now'), datetime('now')),
+-- Mouse attributes
+(17, 4, 'DPI', 'number', 'DPI', 0, 800, 25600, 'Sensor resolution', datetime('now'), datetime('now')),
+(18, 4, 'Is Wireless', 'boolean', NULL, 1, NULL, NULL, 'Wireless connectivity', datetime('now'), datetime('now')),
+(19, 4, 'Battery Life', 'number', 'days', 0, 7, 365, 'Battery life in days', datetime('now'), datetime('now')),
+-- Keyboard attributes
+(20, 5, 'Switch Type', 'text', NULL, 1, NULL, NULL, 'Mechanical switch type', datetime('now'), datetime('now')),
+(21, 5, 'Is Wireless', 'boolean', NULL, 0, NULL, NULL, 'Wireless connectivity', datetime('now'), datetime('now')),
+(22, 5, 'Has RGB', 'boolean', NULL, 0, NULL, NULL, 'RGB backlight', datetime('now'), datetime('now'));
+
 -- Brands
 INSERT INTO brands (id, name, created_at, updated_at) VALUES
 (1, 'Apple', datetime('now'), datetime('now')),
@@ -21,15 +51,97 @@ INSERT INTO brands (id, name, created_at, updated_at) VALUES
 
 -- Products (linked to brands and specifications with extended details)
 INSERT INTO products (id, name, sku, description, brand_id, specification_id, unit_of_measure, min_order_qty, lead_time_days, is_active, created_by, created_at, updated_at) VALUES
+-- Laptops (for comparison scenarios)
 (1, 'MacBook Pro 15"', 'APPLE-MBP15-2024', 'High-performance laptop with M3 Pro chip, 15-inch Liquid Retina display', 1, 1, 'each', 1, 7, 1, 'admin', datetime('now'), datetime('now')),
 (2, 'Dell XPS 15', 'DELL-XPS15-9530', 'Premium Windows laptop with Intel Core i7, 15.6-inch OLED display', 2, 1, 'each', 1, 5, 1, 'admin', datetime('now'), datetime('now')),
 (3, 'ThinkPad X1 Carbon', 'LENOVO-X1C-G11', 'Business ultrabook with Intel Core i5, 14-inch display', 6, 1, 'each', 5, 10, 1, 'admin', datetime('now'), datetime('now')),
+(10, 'HP EliteBook 850', 'HP-EB850-G10', 'Business laptop with Intel vPro, 15-inch display - INCOMPLETE SPECS', 5, 1, 'each', 10, 14, 1, 'admin', datetime('now'), datetime('now')),
+(11, 'Dell Latitude 5530', 'DELL-LAT5530', 'Mid-range business laptop with good value', 2, 1, 'each', 5, 7, 1, 'admin', datetime('now'), datetime('now')),
+-- Monitors
 (4, 'Dell UltraSharp U2720Q', 'DELL-U2720Q', 'Professional 27-inch 4K IPS monitor with USB-C hub', 2, 2, 'each', 2, 7, 1, 'admin', datetime('now'), datetime('now')),
 (5, 'LG 27UK850-W', 'LG-27UK850', '27-inch 4K UHD IPS monitor with HDR10 support', 7, 2, 'each', 1, 5, 1, 'admin', datetime('now'), datetime('now')),
+(12, 'Samsung M7', 'SAMS-M7-32', '32-inch 4K smart monitor with streaming apps - MISSING REFRESH RATE', 3, 2, 'each', 1, 5, 1, 'admin', datetime('now'), datetime('now')),
+-- Smartphones
 (6, 'Samsung Galaxy S24 Ultra', 'SAMS-S24U-256', 'Flagship Android smartphone with 256GB storage, S Pen', 3, 3, 'each', 1, 3, 1, 'admin', datetime('now'), datetime('now')),
 (7, 'iPhone 15 Pro Max', 'APPLE-IP15PM-256', 'Premium iPhone with A17 Pro chip, 256GB storage, titanium design', 1, 3, 'each', 1, 2, 1, 'admin', datetime('now'), datetime('now')),
+-- Peripherals
 (8, 'Logitech MX Master 3S', 'LOGI-MXM3S-BLK', 'Ergonomic wireless mouse with 8K DPI sensor and quiet clicks', 4, 4, 'each', 10, 3, 1, 'admin', datetime('now'), datetime('now')),
 (9, 'Logitech MX Mechanical', 'LOGI-MXMECH-BRN', 'Wireless mechanical keyboard with tactile brown switches and backlight', 4, 5, 'each', 5, 3, 1, 'admin', datetime('now'), datetime('now'));
+
+-- Product Attributes (actual feature values for each product)
+INSERT INTO product_attributes (id, product_id, specification_attribute_id, value_text, value_number, value_boolean, created_at, updated_at) VALUES
+-- MacBook Pro 15" (Product 1) - Laptop
+(1, 1, 1, NULL, 36, NULL, datetime('now'), datetime('now')),    -- RAM: 36 GB
+(2, 1, 2, NULL, 512, NULL, datetime('now'), datetime('now')),   -- Storage: 512 GB
+(3, 1, 3, NULL, 15.3, NULL, datetime('now'), datetime('now')),  -- Screen Size: 15.3 inches
+(4, 1, 4, NULL, 12, NULL, datetime('now'), datetime('now')),    -- CPU Cores: 12
+(5, 1, 5, 'SSD', NULL, NULL, datetime('now'), datetime('now')), -- Storage Type: SSD
+(6, 1, 6, NULL, NULL, 0, datetime('now'), datetime('now')),     -- Has Touchscreen: false
+-- Dell XPS 15 (Product 2) - Laptop
+(7, 2, 1, NULL, 32, NULL, datetime('now'), datetime('now')),    -- RAM: 32 GB
+(8, 2, 2, NULL, 1024, NULL, datetime('now'), datetime('now')),  -- Storage: 1024 GB
+(9, 2, 3, NULL, 15.6, NULL, datetime('now'), datetime('now')),  -- Screen Size: 15.6 inches
+(10, 2, 4, NULL, 8, NULL, datetime('now'), datetime('now')),    -- CPU Cores: 8
+(11, 2, 5, 'SSD', NULL, NULL, datetime('now'), datetime('now')),-- Storage Type: SSD
+(12, 2, 6, NULL, NULL, 1, datetime('now'), datetime('now')),    -- Has Touchscreen: true
+-- ThinkPad X1 Carbon (Product 3) - Laptop
+(13, 3, 1, NULL, 16, NULL, datetime('now'), datetime('now')),   -- RAM: 16 GB
+(14, 3, 2, NULL, 512, NULL, datetime('now'), datetime('now')),  -- Storage: 512 GB
+(15, 3, 3, NULL, 14, NULL, datetime('now'), datetime('now')),   -- Screen Size: 14 inches
+(16, 3, 4, NULL, 10, NULL, datetime('now'), datetime('now')),   -- CPU Cores: 10
+(17, 3, 5, 'SSD', NULL, NULL, datetime('now'), datetime('now')),-- Storage Type: SSD
+(18, 3, 6, NULL, NULL, 0, datetime('now'), datetime('now')),    -- Has Touchscreen: false
+-- Dell UltraSharp U2720Q (Product 4) - Monitor
+(19, 4, 7, NULL, 27, NULL, datetime('now'), datetime('now')),   -- Screen Size: 27 inches
+(20, 4, 8, NULL, 3840, NULL, datetime('now'), datetime('now')), -- Resolution Width: 3840 px
+(21, 4, 9, NULL, 2160, NULL, datetime('now'), datetime('now')), -- Resolution Height: 2160 px
+(22, 4, 10, NULL, 60, NULL, datetime('now'), datetime('now')),  -- Refresh Rate: 60 Hz
+(23, 4, 11, 'IPS', NULL, NULL, datetime('now'), datetime('now')),-- Panel Type: IPS
+-- LG 27UK850-W (Product 5) - Monitor
+(24, 5, 7, NULL, 27, NULL, datetime('now'), datetime('now')),   -- Screen Size: 27 inches
+(25, 5, 8, NULL, 3840, NULL, datetime('now'), datetime('now')), -- Resolution Width: 3840 px
+(26, 5, 9, NULL, 2160, NULL, datetime('now'), datetime('now')), -- Resolution Height: 2160 px
+(27, 5, 10, NULL, 60, NULL, datetime('now'), datetime('now')),  -- Refresh Rate: 60 Hz
+(28, 5, 11, 'IPS', NULL, NULL, datetime('now'), datetime('now')),-- Panel Type: IPS
+-- Samsung Galaxy S24 Ultra (Product 6) - Smartphone
+(29, 6, 12, NULL, 12, NULL, datetime('now'), datetime('now')),  -- RAM: 12 GB
+(30, 6, 13, NULL, 256, NULL, datetime('now'), datetime('now')), -- Storage: 256 GB
+(31, 6, 14, NULL, 6.8, NULL, datetime('now'), datetime('now')), -- Screen Size: 6.8 inches
+(32, 6, 15, NULL, 5000, NULL, datetime('now'), datetime('now')),-- Battery: 5000 mAh
+(33, 6, 16, NULL, NULL, 1, datetime('now'), datetime('now')),   -- Has 5G: true
+-- iPhone 15 Pro Max (Product 7) - Smartphone
+(34, 7, 12, NULL, 8, NULL, datetime('now'), datetime('now')),   -- RAM: 8 GB
+(35, 7, 13, NULL, 256, NULL, datetime('now'), datetime('now')), -- Storage: 256 GB
+(36, 7, 14, NULL, 6.7, NULL, datetime('now'), datetime('now')), -- Screen Size: 6.7 inches
+(37, 7, 15, NULL, 4441, NULL, datetime('now'), datetime('now')),-- Battery: 4441 mAh
+(38, 7, 16, NULL, NULL, 1, datetime('now'), datetime('now')),   -- Has 5G: true
+-- Logitech MX Master 3S (Product 8) - Mouse
+(39, 8, 17, NULL, 8000, NULL, datetime('now'), datetime('now')),-- DPI: 8000
+(40, 8, 18, NULL, NULL, 1, datetime('now'), datetime('now')),   -- Is Wireless: true
+(41, 8, 19, NULL, 70, NULL, datetime('now'), datetime('now')),  -- Battery Life: 70 days
+-- Logitech MX Mechanical (Product 9) - Keyboard
+(42, 9, 20, 'Tactile Brown', NULL, NULL, datetime('now'), datetime('now')),-- Switch Type: Tactile Brown
+(43, 9, 21, NULL, NULL, 1, datetime('now'), datetime('now')),   -- Is Wireless: true
+(44, 9, 22, NULL, NULL, 1, datetime('now'), datetime('now')),   -- Has RGB: true
+-- HP EliteBook 850 (Product 10) - Laptop - INCOMPLETE (missing required Storage attribute)
+(45, 10, 1, NULL, 16, NULL, datetime('now'), datetime('now')),  -- RAM: 16 GB
+-- Missing: Storage (REQUIRED attribute not set)
+(46, 10, 3, NULL, 15, NULL, datetime('now'), datetime('now')),  -- Screen Size: 15 inches
+(47, 10, 4, NULL, 8, NULL, datetime('now'), datetime('now')),   -- CPU Cores: 8
+(48, 10, 5, 'SSD', NULL, NULL, datetime('now'), datetime('now')),-- Storage Type: SSD (but no storage size!)
+(49, 10, 6, NULL, NULL, 0, datetime('now'), datetime('now')),   -- Has Touchscreen: false
+-- Dell Latitude 5530 (Product 11) - Laptop - COMPLETE (budget option)
+(50, 11, 1, NULL, 16, NULL, datetime('now'), datetime('now')),  -- RAM: 16 GB
+(51, 11, 2, NULL, 256, NULL, datetime('now'), datetime('now')), -- Storage: 256 GB
+(52, 11, 3, NULL, 15, NULL, datetime('now'), datetime('now')),  -- Screen Size: 15 inches
+(53, 11, 4, NULL, 6, NULL, datetime('now'), datetime('now')),   -- CPU Cores: 6
+(54, 11, 5, 'SSD', NULL, NULL, datetime('now'), datetime('now')),-- Storage Type: SSD
+-- Samsung M7 (Product 12) - Monitor - INCOMPLETE (missing required attributes)
+(55, 12, 7, NULL, 32, NULL, datetime('now'), datetime('now')),  -- Screen Size: 32 inches
+(56, 12, 8, NULL, 3840, NULL, datetime('now'), datetime('now')), -- Resolution Width: 3840 px
+(57, 12, 9, NULL, 2160, NULL, datetime('now'), datetime('now')), -- Resolution Height: 2160 px
+-- Missing: Refresh Rate is NOT SET (optional, but good for comparison)
+(58, 12, 11, 'VA', NULL, NULL, datetime('now'), datetime('now'));-- Panel Type: VA
 
 -- Vendors (with currency and discount codes)
 INSERT INTO vendors (id, name, currency, discount_code, created_at, updated_at) VALUES
@@ -49,15 +161,34 @@ INSERT INTO forex (id, from_currency, to_currency, rate, effective_date, created
 
 -- Quotes (vendor price quotes for products with versioning and status)
 INSERT INTO quotes (id, vendor_id, product_id, version, price, currency, converted_price, conversion_rate, min_quantity, status, quote_date, notes, created_by, created_at, updated_at) VALUES
--- Active quotes (current versions)
+-- LAPTOP QUOTES - For comparison matrix demonstration
+-- Product 1: MacBook Pro 15" (COMPLETE attributes, HIGH price)
 (1, 1, 1, 2, 2499.00, 'USD', 2499.00, 1.0, 1, 'active', datetime('now'), 'MacBook Pro with educational discount - updated price', 'sales_team', datetime('now'), datetime('now')),
 (2, 2, 1, 1, 2399.00, 'USD', 2399.00, 1.0, 3, 'active', datetime('now'), 'Amazon Business bulk pricing - minimum 3 units', 'procurement', datetime('now'), datetime('now')),
+-- Product 2: Dell XPS 15 (COMPLETE attributes, MEDIUM-HIGH price)
 (3, 1, 2, 1, 1599.99, 'USD', 1599.99, 1.0, 1, 'superseded', datetime('now', '-7 days'), 'Dell XPS on sale - OLD QUOTE', 'sales_team', datetime('now', '-7 days'), datetime('now')),
 (4, 4, 2, 2, 1699.00, 'USD', 1699.00, 1.0, 5, 'active', datetime('now'), 'CDW corporate pricing - minimum 5 units for discount', 'procurement', datetime('now'), datetime('now')),
+(13, 2, 2, 1, 1649.00, 'USD', 1649.00, 1.0, 1, 'active', datetime('now'), 'Amazon single unit price - Prime eligible', 'procurement', datetime('now'), datetime('now')),
+-- Product 3: ThinkPad X1 Carbon (COMPLETE attributes, MEDIUM price, 14-inch)
+(14, 4, 3, 1, 1299.00, 'USD', 1299.00, 1.0, 5, 'active', datetime('now'), 'CDW corporate discount - 5+ units', 'procurement', datetime('now'), datetime('now')),
+(15, 1, 3, 1, 1399.00, 'USD', 1399.00, 1.0, 1, 'active', datetime('now'), 'Best Buy business pricing', 'sales_team', datetime('now'), datetime('now')),
+-- Product 10: HP EliteBook 850 (INCOMPLETE - missing Storage, LOW price to tempt buyers)
+(16, 4, 10, 1, 1099.00, 'USD', 1099.00, 1.0, 10, 'active', datetime('now'), 'HP EliteBook bulk pricing - INCOMPLETE SPECS WARNING', 'procurement', datetime('now'), datetime('now')),
+(17, 2, 10, 1, 1149.00, 'USD', 1149.00, 1.0, 5, 'active', datetime('now'), 'Amazon Business - verify specs before ordering', 'procurement', datetime('now'), datetime('now')),
+-- Product 11: Dell Latitude 5530 (COMPLETE attributes, LOWEST price - budget option)
+(18, 4, 11, 1, 899.00, 'USD', 899.00, 1.0, 5, 'active', datetime('now'), 'Dell Latitude budget option - complete specs', 'procurement', datetime('now'), datetime('now')),
+(19, 2, 11, 1, 949.00, 'USD', 949.00, 1.0, 1, 'active', datetime('now'), 'Amazon single unit - good value for money', 'procurement', datetime('now'), datetime('now')),
+(20, 1, 11, 1, 979.00, 'USD', 979.00, 1.0, 1, 'active', datetime('now'), 'Best Buy retail price', 'sales_team', datetime('now'), datetime('now')),
+-- MONITOR QUOTES - For comparison matrix demonstration
 (5, 3, 4, 1, 649.99, 'USD', 649.99, 1.0, 2, 'accepted', datetime('now', '-5 days'), 'Monitor with free shipping - ACCEPTED', 'manager', datetime('now', '-5 days'), datetime('now', '-5 days')),
 (6, 2, 5, 1, 599.00, 'USD', 599.00, 1.0, 1, 'active', datetime('now'), 'Amazon Prime discount', 'procurement', datetime('now'), datetime('now')),
+(21, 1, 5, 1, 629.00, 'USD', 629.00, 1.0, 1, 'active', datetime('now'), 'Best Buy retail - price match available', 'sales_team', datetime('now'), datetime('now')),
+(22, 2, 12, 1, 499.00, 'USD', 499.00, 1.0, 1, 'active', datetime('now'), 'Samsung M7 Smart Monitor - MISSING refresh rate spec', 'procurement', datetime('now'), datetime('now')),
+(23, 1, 12, 1, 529.00, 'USD', 529.00, 1.0, 1, 'active', datetime('now'), 'Samsung M7 at Best Buy - verify specs', 'sales_team', datetime('now'), datetime('now')),
+-- SMARTPHONE QUOTES
 (7, 1, 7, 1, 1199.00, 'USD', 1199.00, 1.0, 1, 'active', datetime('now'), 'iPhone with trade-in credit', 'sales_team', datetime('now'), datetime('now')),
 (8, 5, 6, 1, 5999.00, 'CNY', 839.86, 0.14, 10, 'active', datetime('now'), 'Bulk order available - minimum 10 units', 'procurement', datetime('now'), datetime('now')),
+-- PERIPHERAL QUOTES
 (9, 2, 8, 1, 99.99, 'USD', 99.99, 1.0, 10, 'active', datetime('now'), 'Logitech mouse with Prime - bulk discount', 'procurement', datetime('now'), datetime('now')),
 (10, 4, 9, 1, 149.00, 'USD', 149.00, 1.0, 5, 'active', datetime('now'), 'Mechanical keyboard corporate pricing', 'procurement', datetime('now'), datetime('now')),
 -- Superseded quote (replaced by quote 1)

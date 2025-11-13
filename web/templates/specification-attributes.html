@@ -1,0 +1,152 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>{{.Specification.Name}} - Attributes</h1>
+        <p>{{.Specification.Description}}</p>
+    </header>
+
+    <div class="toggle-form">
+        <button onclick="toggleForm('add-attr-form')">Add New Attribute</button>
+    </div>
+
+    <article id="add-attr-form" class="hidden">
+        <h2>Add New Attribute</h2>
+        <form hx-post="/specifications/{{.Specification.ID}}/attributes"
+              hx-target="#attrs-table tbody"
+              hx-swap="beforeend"
+              hx-on::after-request="if(event.detail.successful) this.reset()">
+            <div class="grid">
+                <label for="name">
+                    Name *
+                    <input type="text" id="name" name="name" placeholder="e.g., RAM, Screen Size" required>
+                </label>
+                <label for="data_type">
+                    Data Type *
+                    <select id="data_type" name="data_type" required onchange="toggleValueFields(this.value)">
+                        <option value="number">Number</option>
+                        <option value="text">Text</option>
+                        <option value="boolean">Boolean</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="grid">
+                <label for="unit" id="unit-field">
+                    Unit
+                    <input type="text" id="unit" name="unit" placeholder="e.g., GB, inches, Hz">
+                    <small>Optional, for number types</small>
+                </label>
+                <label for="is_required">
+                    <input type="checkbox" id="is_required" name="is_required" role="switch">
+                    Required Attribute
+                </label>
+            </div>
+
+            <div class="grid" id="number-fields">
+                <label for="min_value">
+                    Minimum Value
+                    <input type="number" id="min_value" name="min_value" step="any" placeholder="e.g., 4">
+                </label>
+                <label for="max_value">
+                    Maximum Value
+                    <input type="number" id="max_value" name="max_value" step="any" placeholder="e.g., 128">
+                </label>
+            </div>
+
+            <label for="description">
+                Description
+                <textarea id="description" name="description" placeholder="Help text explaining this attribute" rows="2"></textarea>
+            </label>
+
+            <button type="submit">Add Attribute</button>
+            <button type="button" onclick="toggleForm('add-attr-form')" class="secondary">Cancel</button>
+        </form>
+    </article>
+
+    {{if .Attributes}}
+    <section>
+        <h3>Defined Attributes</h3>
+        <figure id="attrs-table">
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                        <th>Required</th>
+                        <th>Min/Max</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Attributes}}
+                    <tr id="attr-{{.ID}}">
+                        <td><strong>{{.Name}}</strong></td>
+                        <td>{{.DataType}}</td>
+                        <td>{{if .Unit}}{{.Unit}}{{else}}-{{end}}</td>
+                        <td>{{if .IsRequired}}Yes{{else}}No{{end}}</td>
+                        <td>
+                            {{if eq .DataType "number"}}
+                                {{if .MinValue}}Min: {{.MinValue}}{{end}}
+                                {{if .MaxValue}} Max: {{.MaxValue}}{{end}}
+                                {{if and (not .MinValue) (not .MaxValue)}}-{{end}}
+                            {{else}}
+                                -
+                            {{end}}
+                        </td>
+                        <td>{{if .Description}}{{.Description}}{{else}}-{{end}}</td>
+                        <td>
+                            <button class="btn-sm contrast"
+                                    hx-delete="/specifications/{{$.Specification.ID}}/attributes/{{.ID}}"
+                                    hx-target="#attr-{{.ID}}"
+                                    hx-swap="outerHTML"
+                                    hx-confirm="Are you sure? Products using this attribute will lose their values.">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{else}}
+    <section>
+        <p>No attributes defined yet. Add attributes to enable product comparisons.</p>
+    </section>
+    {{end}}
+
+    <footer>
+        <a href="/specifications" role="button" class="secondary">Back to Specifications</a>
+        {{if .Attributes}}
+        <a href="/products/compare/{{.Specification.ID}}" role="button">Compare Products</a>
+        {{end}}
+    </footer>
+</article>
+
+<script>
+function toggleValueFields(dataType) {
+    const numberFields = document.getElementById('number-fields');
+    const unitField = document.getElementById('unit-field');
+
+    if (dataType === 'number') {
+        numberFields.style.display = 'grid';
+        unitField.style.display = 'block';
+    } else {
+        numberFields.style.display = 'none';
+        unitField.style.display = 'none';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const dataTypeSelect = document.getElementById('data_type');
+    if (dataTypeSelect) {
+        toggleValueFields(dataTypeSelect.value);
+    }
+});
+</script>
+{{end}}

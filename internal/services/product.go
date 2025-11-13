@@ -72,7 +72,12 @@ func (s *ProductService) Create(name string, brandID uint, specificationID *uint
 // GetByID retrieves a product by ID with preloaded relationships
 func (s *ProductService) GetByID(id uint) (*models.Product, error) {
 	var product models.Product
-	err := s.db.Preload("Brand").Preload("Specification").Preload("Quotes").First(&product, id).Error
+	err := s.db.
+		Preload("Brand").
+		Preload("Specification").
+		Preload("Quotes").
+		Preload("Attributes.SpecificationAttribute").
+		First(&product, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, &NotFoundError{Entity: "Product", ID: id}
 	}
@@ -98,7 +103,12 @@ func (s *ProductService) GetByName(name string) (*models.Product, error) {
 // List retrieves all products with optional pagination
 func (s *ProductService) List(limit, offset int) ([]models.Product, error) {
 	var products []models.Product
-	query := s.db.Preload("Brand").Preload("Specification").Preload("Quotes").Order("name ASC")
+	query := s.db.
+		Preload("Brand").
+		Preload("Specification").
+		Preload("Quotes").
+		Preload("Attributes.SpecificationAttribute").
+		Order("name ASC")
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -121,7 +131,14 @@ func (s *ProductService) ListByBrand(brandID uint) ([]models.Product, error) {
 // ListBySpecification retrieves all products for a specific specification
 func (s *ProductService) ListBySpecification(specificationID uint) ([]models.Product, error) {
 	var products []models.Product
-	err := s.db.Preload("Brand").Preload("Specification").Where("specification_id = ?", specificationID).Order("name ASC").Find(&products).Error
+	err := s.db.
+		Preload("Brand").
+		Preload("Specification").
+		Preload("Quotes").
+		Preload("Attributes.SpecificationAttribute").
+		Where("specification_id = ?", specificationID).
+		Order("name ASC").
+		Find(&products).Error
 	return products, err
 }
 

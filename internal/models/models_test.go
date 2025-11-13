@@ -24,8 +24,12 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&Vendor{},
 		&Brand{},
 		&Specification{},
+		&SpecificationAttribute{},
 		&Product{},
+		&ProductAttribute{},
 		&Quote{},
+		&PurchaseOrder{},
+		&VendorRating{},
 		&Forex{},
 		&Requisition{},
 		&RequisitionItem{},
@@ -34,6 +38,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&BillOfMaterialsItem{},
 		&ProjectRequisition{},
 		&ProjectRequisitionItem{},
+		&Document{},
 	); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

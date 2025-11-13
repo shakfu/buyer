@@ -1,0 +1,162 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>Quote Comparison: {{.Matrix.Specification.Name}}</h1>
+        {{if .Matrix.Specification.Description}}
+        <p>{{.Matrix.Specification.Description}}</p>
+        {{end}}
+    </header>
+
+    {{if .Matrix.QuoteComparisons}}
+    <section>
+        <div class="toggle-form" style="margin-bottom: 1rem;">
+            <form method="get" style="display: inline;">
+                <label>
+                    <input type="checkbox" name="show_extra" {{if .Matrix.ShowExtraAttributes}}checked{{end}}
+                           onchange="this.form.submit()" role="switch">
+                    Show extra attributes
+                </label>
+            </form>
+        </div>
+
+        <figure>
+            <table role="grid" class="comparison-matrix">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Vendor</th>
+                        <th rowspan="2">Product</th>
+                        <th rowspan="2">Brand</th>
+                        <th rowspan="2">Price (USD)</th>
+                        <th rowspan="2">Compliance</th>
+                        <th colspan="{{len .Matrix.SpecificationAttrs}}" style="text-align: center;">Specification Attributes</th>
+                        {{if and .Matrix.ShowExtraAttributes (gt .ExtraAttrCount 0)}}
+                        <th colspan="{{.ExtraAttrCount}}" style="text-align: center;">Extra Attributes</th>
+                        {{end}}
+                        <th rowspan="2">Quote Date</th>
+                        <th rowspan="2">Actions</th>
+                    </tr>
+                    <tr>
+                        {{range .Matrix.SpecificationAttrs}}
+                        <th>
+                            {{.Name}}
+                            {{if .IsRequired}}<span style="color: red;" title="Required">*</span>{{end}}
+                            {{if .Unit}}<br><small>({{.Unit}})</small>{{end}}
+                        </th>
+                        {{end}}
+                        {{if and .Matrix.ShowExtraAttributes .ExtraAttrNames}}
+                        {{range .ExtraAttrNames}}
+                        <th style="font-style: italic;">{{.}}</th>
+                        {{end}}
+                        {{end}}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $idx, $comparison := .Matrix.QuoteComparisons}}
+                    <tr {{if not $comparison.HasAllRequiredAttrs}}style="background-color: #fff3cd;"{{end}}>
+                        <td>{{$comparison.Quote.Vendor.Name}}</td>
+                        <td>
+                            <a href="/products/{{$comparison.Quote.Product.ID}}">{{$comparison.Quote.Product.Name}}</a>
+                        </td>
+                        <td>{{if $comparison.Quote.Product.Brand}}{{$comparison.Quote.Product.Brand.Name}}{{else}}-{{end}}</td>
+                        <td><strong>${{printf "%.2f" $comparison.Quote.ConvertedPrice}}</strong></td>
+                        <td>
+                            {{if $comparison.HasAllRequiredAttrs}}
+                                <span style="color: green;" title="All required attributes present">✓ 100%</span>
+                            {{else}}
+                                <span style="color: orange;" title="Missing: {{range $i, $name := $comparison.MissingRequiredAttrs}}{{if $i}}, {{end}}{{$name}}{{end}}">
+                                    ⚠ {{printf "%.0f" $comparison.ComplianceScore}}%
+                                </span>
+                            {{end}}
+                        </td>
+                        {{range $specAttr := $.Matrix.SpecificationAttrs}}
+                        <td>
+                            {{$hasValue := index $.AttributeCompliance $idx $specAttr.ID}}
+                            {{if $hasValue}}
+                                {{$attr := index $.ProductAttrValues $idx $specAttr.ID}}
+                                {{if $attr.ValueNumber}}
+                                    {{printf "%.2f" (deref $attr.ValueNumber)}}
+                                {{else if $attr.ValueText}}
+                                    {{deref $attr.ValueText}}
+                                {{else if $attr.ValueBoolean}}
+                                    {{if (deref $attr.ValueBoolean)}}Yes{{else}}No{{end}}
+                                {{end}}
+                            {{else}}
+                                <span style="color: #999;" title="{{if $specAttr.IsRequired}}Required attribute missing{{else}}Optional attribute not set{{end}}">
+                                    {{if $specAttr.IsRequired}}<strong>-</strong>{{else}}-{{end}}
+                                </span>
+                            {{end}}
+                        </td>
+                        {{end}}
+                        {{if and $.Matrix.ShowExtraAttributes $.ExtraAttrNames}}
+                        {{range $extraName := $.ExtraAttrNames}}
+                        <td style="font-style: italic;">
+                            {{$extraAttr := index $.ExtraAttrsByQuote $idx $extraName}}
+                            {{if $extraAttr}}
+                                {{if $extraAttr.ValueNumber}}
+                                    {{printf "%.2f" (deref $extraAttr.ValueNumber)}}
+                                {{else if $extraAttr.ValueText}}
+                                    {{deref $extraAttr.ValueText}}
+                                {{else if $extraAttr.ValueBoolean}}
+                                    {{if (deref $extraAttr.ValueBoolean)}}Yes{{else}}No{{end}}
+                                {{end}}
+                            {{else}}
+                                -
+                            {{end}}
+                        </td>
+                        {{end}}
+                        {{end}}
+                        <td>{{.Quote.QuoteDate.Format "2006-01-02"}}</td>
+                        <td>
+                            <a href="/quotes/{{.Quote.ID}}" role="button" class="secondary btn-sm">View</a>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+
+        <footer style="margin-top: 1rem;">
+            <small>
+                <span style="color: red;">*</span> = Required attribute<br>
+                {{if not .Matrix.ShowExtraAttributes}}
+                <em>Italic headers</em> = Extra attributes (not part of specification)<br>
+                {{end}}
+                <span style="background-color: #fff3cd; padding: 0.2rem 0.5rem;">Yellow background</span> = Missing required attributes
+            </small>
+        </footer>
+    </section>
+    {{else}}
+    <p>No active quotes found for this specification.</p>
+    {{end}}
+
+    <footer>
+        <a href="/specifications" role="button" class="secondary">Back to Specifications</a>
+    </footer>
+</article>
+
+<style>
+.comparison-matrix {
+    font-size: 0.9rem;
+}
+.comparison-matrix th {
+    text-align: center;
+    vertical-align: bottom;
+    padding: 0.5rem 0.3rem;
+}
+.comparison-matrix td {
+    text-align: center;
+    padding: 0.5rem 0.3rem;
+}
+.comparison-matrix td:nth-child(1),
+.comparison-matrix td:nth-child(2),
+.comparison-matrix td:nth-child(3) {
+    text-align: left;
+}
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+</style>
+{{end}}

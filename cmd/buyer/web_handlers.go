@@ -1,17 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/shakfu/buyer/internal/models"
 	"github.com/shakfu/buyer/internal/services"
+	"gorm.io/gorm"
 )
 
 // SetupCRUDHandlers sets up all CRUD endpoints with XSS protection
 func SetupCRUDHandlers(
 	app *fiber.App,
+	db *gorm.DB,
 	specSvc *services.SpecificationService,
 	brandSvc *services.BrandService,
 	productSvc *services.ProductService,
@@ -130,6 +135,134 @@ func SetupCRUDHandlers(
 			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")
+	})
+
+	// Product attribute values endpoint
+	app.Post("/products/:id/attributes", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid product ID")
+		}
+
+		// Get product to verify it exists
+		product, err := productSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).SendString("Product not found")
+		}
+
+		if product.SpecificationID == nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Product has no specification")
+		}
+
+		// Get all specification attributes
+		var specAttrs []models.SpecificationAttribute
+		db.Where("specification_id = ?", *product.SpecificationID).Find(&specAttrs)
+
+		// Delete existing product attributes
+		db.Where("product_id = ?", id).Delete(&models.ProductAttribute{})
+
+		// Process form data and create new attributes
+		for _, attr := range specAttrs {
+			formKey := fmt.Sprintf("attr_%d", attr.ID)
+			value := strings.TrimSpace(c.FormValue(formKey))
+
+			// Skip empty values for non-required attributes
+			if value == "" && !attr.IsRequired {
+				continue
+			}
+
+			prodAttr := &models.ProductAttribute{
+				ProductID:                uint(id),
+				SpecificationAttributeID: attr.ID,
+			}
+
+			// Parse value based on data type
+			switch attr.DataType {
+			case "number":
+				if value != "" {
+					num, err := strconv.ParseFloat(value, 64)
+					if err != nil {
+						return c.Status(fiber.StatusBadRequest).
+							SendString(fmt.Sprintf("Invalid number for %s", attr.Name))
+					}
+					// Validate min/max
+					if attr.MinValue != nil && num < *attr.MinValue {
+						return c.Status(fiber.StatusBadRequest).
+							SendString(fmt.Sprintf("%s must be at least %.2f", attr.Name, *attr.MinValue))
+					}
+					if attr.MaxValue != nil && num > *attr.MaxValue {
+						return c.Status(fiber.StatusBadRequest).
+							SendString(fmt.Sprintf("%s must be at most %.2f", attr.Name, *attr.MaxValue))
+					}
+					prodAttr.ValueNumber = &num
+				} else if attr.IsRequired {
+					return c.Status(fiber.StatusBadRequest).
+						SendString(fmt.Sprintf("%s is required", attr.Name))
+				}
+			case "text":
+				if value != "" {
+					prodAttr.ValueText = &value
+				} else if attr.IsRequired {
+					return c.Status(fiber.StatusBadRequest).
+						SendString(fmt.Sprintf("%s is required", attr.Name))
+				}
+			case "boolean":
+				if value != "" {
+					boolVal := value == "true"
+					prodAttr.ValueBoolean = &boolVal
+				} else if attr.IsRequired {
+					return c.Status(fiber.StatusBadRequest).
+						SendString(fmt.Sprintf("%s is required", attr.Name))
+				}
+			}
+
+			// Only create if we have a value
+			if prodAttr.ValueNumber != nil || prodAttr.ValueText != nil || prodAttr.ValueBoolean != nil {
+				if err := db.Create(prodAttr).Error; err != nil {
+					return c.Status(fiber.StatusInternalServerError).
+						SendString(fmt.Sprintf("Failed to save %s: %s", attr.Name, err.Error()))
+				}
+			}
+		}
+
+		// Reload product with updated attributes
+		product, err = productSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to reload product")
+		}
+
+		// Render the updated attributes display
+		var buf bytes.Buffer
+		buf.WriteString(`<dl id="attrs-display">`)
+		if len(product.Attributes) > 0 {
+			for _, attr := range product.Attributes {
+				if attr.SpecificationAttribute == nil {
+					continue
+				}
+				buf.WriteString(fmt.Sprintf(`<dt>%s`, escapeHTML(attr.SpecificationAttribute.Name)))
+				if attr.SpecificationAttribute.Unit != "" {
+					buf.WriteString(fmt.Sprintf(` <small>(%s)</small>`, escapeHTML(attr.SpecificationAttribute.Unit)))
+				}
+				buf.WriteString(`</dt><dd>`)
+				if attr.ValueNumber != nil {
+					buf.WriteString(fmt.Sprintf("%.2f", *attr.ValueNumber))
+				} else if attr.ValueText != nil {
+					buf.WriteString(escapeHTML(*attr.ValueText))
+				} else if attr.ValueBoolean != nil {
+					if *attr.ValueBoolean {
+						buf.WriteString("Yes")
+					} else {
+						buf.WriteString("No")
+					}
+				}
+				buf.WriteString(`</dd>`)
+			}
+		} else {
+			buf.WriteString(`<p>No attribute values set yet.</p>`)
+		}
+		buf.WriteString(`</dl>`)
+
+		return c.SendString(buf.String())
 	})
 
 	// CRUD endpoints for Vendors
