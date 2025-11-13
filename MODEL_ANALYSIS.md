@@ -568,23 +568,34 @@ type Approval struct {
 ✅ **Project → BillOfMaterials** - Delete project removes BOM
 ✅ **BillOfMaterials → BillOfMaterialsItem** - Delete BOM removes items
 ✅ **Project → ProjectRequisition** - Delete project removes requisitions
+✅ **ProjectRequisition → ProjectRequisitionItem** - Delete project requisition removes items
 
 #### One-to-Many (with RESTRICT)
 ✅ **Brand → Product** - Cannot delete brand with products
 ✅ **Vendor → Quote** - Cannot delete vendor with quotes
+✅ **Vendor → PurchaseOrder** - Cannot delete vendor with purchase orders
+✅ **Quote → PurchaseOrder** - Cannot delete quote with purchase orders
 ✅ **Specification → Product** - Cannot delete spec with products
 ✅ **Specification → RequisitionItem** - Cannot delete spec with items
+✅ **Specification → BillOfMaterialsItem** - Cannot delete spec with BOM items
+✅ **BillOfMaterialsItem → ProjectRequisitionItem** - Cannot delete BOM items with project requisition items
 
 #### One-to-Many (with SET NULL)
 ✅ **Specification → Product** - Delete spec sets product.specification_id to NULL
+✅ **Requisition → PurchaseOrder** - Delete requisition sets purchase_order.requisition_id to NULL
+
+#### One-to-One
+✅ **Project ↔ BillOfMaterials** - Each project has exactly one BOM
+
+#### Polymorphic Relationships
+✅ **Document → Any Entity** - Documents can attach to vendors, quotes, purchase orders, products, etc. via EntityType and EntityID fields
+
+#### Self-Referencing Relationships
+✅ **Quote → Quote (Versioning)** - Quotes link to previous versions (PreviousQuoteID) and newer versions (ReplacedBy)
 
 ### Missing Relationships
 
-❌ **Quote → PurchaseOrder** - Need to track which quotes were accepted
-❌ **Requisition → PurchaseOrder** - Link requisitions to fulfillment
-❌ **PurchaseOrder → Document** - Attach invoices, receipts
-❌ **Vendor → Document** - Attach contracts, certifications
-❌ **PurchaseOrder → VendorRating** - Rate vendors based on order performance
+❌ **PurchaseOrder → VendorRating** - Rate vendors based on order performance (VendorRating model not yet implemented)
 
 ---
 
