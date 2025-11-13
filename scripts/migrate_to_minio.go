@@ -1,3 +1,9 @@
+//go:build ignore
+// +build ignore
+
+// This file is excluded from regular builds until the storage layer is implemented.
+// To build: go build -tags minio_migration ./scripts/migrate_to_minio.go
+
 package main
 
 import (
