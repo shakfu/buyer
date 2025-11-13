@@ -39,6 +39,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
 		&models.ProjectRequisitionItem{},
+		&models.PurchaseOrder{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
@@ -55,6 +56,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 	dashboardSvc := services.NewDashboardService(db)
 	projectSvc := services.NewProjectService(db)
 	projectReqSvc := services.NewProjectRequisitionService(db)
+	poSvc := services.NewPurchaseOrderService(db)
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -64,7 +66,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 	})
 
 	// Setup routes
-	setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc)
+	setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc)
 
 	return app, db
 }

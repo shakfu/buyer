@@ -8,39 +8,59 @@
 <article id="add-quote-form" class="hidden">
     <h2>Add New Quote</h2>
     <form hx-post="/quotes" hx-target="#quotes-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
-        <label for="vendor_id">
-            Vendor
-            <select id="vendor_id" name="vendor_id" required>
-                <option value="">Select a vendor...</option>
-                {{range .Vendors}}
-                <option value="{{.ID}}">{{.Name}}</option>
-                {{end}}
-            </select>
-        </label>
-        <label for="product_id">
-            Product
-            <select id="product_id" name="product_id" required>
-                <option value="">Select a product...</option>
-                {{range .Products}}
-                <option value="{{.ID}}">{{.Name}}</option>
-                {{end}}
-            </select>
-        </label>
-        <label for="price">
-            Price
-            <input type="number" id="price" name="price" placeholder="99.99" step="0.01" min="0" required>
-        </label>
-        <label for="currency">
-            Currency
-            <select id="currency" name="currency" required>
-                {{template "currency-select"}}
-            </select>
-        </label>
-        <label for="valid_until">
-            Valid Until (Optional)
-            <input type="date" id="valid_until" name="valid_until" placeholder="Leave blank for no expiry">
-            <small>Leave blank if quote has no expiration date</small>
-        </label>
+        <div class="grid">
+            <label for="vendor_id">
+                Vendor
+                <select id="vendor_id" name="vendor_id" required>
+                    <option value="">Select a vendor...</option>
+                    {{range .Vendors}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </label>
+            <label for="product_id">
+                Product
+                <select id="product_id" name="product_id" required>
+                    <option value="">Select a product...</option>
+                    {{range .Products}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </label>
+        </div>
+        <div class="grid">
+            <label for="price">
+                Price
+                <input type="number" id="price" name="price" placeholder="99.99" step="0.01" min="0" required>
+            </label>
+            <label for="currency">
+                Currency
+                <select id="currency" name="currency" required>
+                    {{template "currency-select"}}
+                </select>
+            </label>
+            <label for="min_quantity">
+                Minimum Quantity
+                <input type="number" id="min_quantity" name="min_quantity" placeholder="0" min="0" value="0">
+            </label>
+        </div>
+        <div class="grid">
+            <label for="valid_until">
+                Valid Until (Optional)
+                <input type="date" id="valid_until" name="valid_until" placeholder="Leave blank for no expiry">
+                <small>Leave blank if quote has no expiration date</small>
+            </label>
+            <label for="status">
+                Status
+                <select id="status" name="status">
+                    <option value="active" selected>Active</option>
+                    <option value="superseded">Superseded</option>
+                    <option value="expired">Expired</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="declined">Declined</option>
+                </select>
+            </label>
+        </div>
         <label for="notes">
             Notes
             <textarea id="notes" name="notes" placeholder="Optional notes about this quote" rows="3"></textarea>
@@ -57,11 +77,9 @@
                 <th>ID</th>
                 <th>Vendor</th>
                 <th>Product</th>
-                <th>Price</th>
-                <th>Currency</th>
                 <th>Price (USD)</th>
-                <th>Quote Date</th>
-                <th>Expires (Days)</th>
+                <th>Status</th>
+                <th>Date</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -71,28 +89,26 @@
                 <td>{{.ID}}</td>
                 <td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
                 <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
-                <td>{{printf "%.2f" .Price}}</td>
-                <td>{{.Currency}}</td>
                 <td>{{printf "%.2f" .ConvertedPrice}}</td>
-                <td>{{.QuoteDate.Format "2006-01-02"}}</td>
                 <td>
-                    {{if .ValidUntil}}
-                        {{$days := .DaysUntilExpiration}}
-                        {{if lt $days 0}}
-                            <span style="color: red; font-weight: bold;">{{$days}}</span>
-                        {{else if lt $days 7}}
-                            <span style="color: red; font-weight: bold;">{{$days}}</span>
-                        {{else if lt $days 30}}
-                            <span style="color: orange; font-weight: bold;">{{$days}}</span>
-                        {{else}}
-                            <span style="color: green;">{{$days}}</span>
-                        {{end}}
+                    {{if eq .Status "active"}}
+                        <span style="color: green;">●</span>
+                    {{else if eq .Status "accepted"}}
+                        <span style="color: blue;">●</span>
+                    {{else if eq .Status "superseded"}}
+                        <span style="color: orange;">●</span>
+                    {{else if eq .Status "expired"}}
+                        <span style="color: red;">●</span>
+                    {{else if eq .Status "declined"}}
+                        <span style="color: gray;">●</span>
                     {{else}}
-                        <span style="color: gray;">—</span>
+                        <span style="color: gray;">●</span>
                     {{end}}
                 </td>
+                <td>{{.QuoteDate.Format "2006-01-02"}}</td>
                 <td>
                     <div class="actions">
+                        <a href="/quotes/{{.ID}}" role="button" class="btn-sm secondary">View</a>
                         <button class="btn-sm contrast"
                                 hx-delete="/quotes/{{.ID}}"
                                 hx-target="#quote-{{.ID}}"

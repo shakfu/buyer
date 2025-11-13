@@ -214,17 +214,94 @@ var updateProjectRequisitionCmd = &cobra.Command{
 	},
 }
 
+var updatePurchaseOrderCmd = &cobra.Command{
+	Use:   "purchase-order [id] --status [status]",
+	Short: "Update a purchase order status",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid ID: %v\n", err)
+			os.Exit(1)
+		}
+
+		status, _ := cmd.Flags().GetString("status")
+		invoiceNumber, _ := cmd.Flags().GetString("invoice")
+		actualDeliveryStr, _ := cmd.Flags().GetString("actual-delivery")
+
+		svc := services.NewPurchaseOrderService(cfg.DB)
+
+		// Update status if provided
+		if status != "" {
+			_, err := svc.UpdateStatus(uint(id), status)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error updating status: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Purchase order %d status updated to: %s\n", id, status)
+		}
+
+		// Update invoice number if provided
+		if invoiceNumber != "" {
+			_, err := svc.UpdateInvoiceNumber(uint(id), invoiceNumber)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error updating invoice number: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Purchase order %d invoice number updated to: %s\n", id, invoiceNumber)
+		}
+
+		// Update actual delivery if provided
+		if actualDeliveryStr != "" {
+			parsed, err := time.Parse("2006-01-02", actualDeliveryStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing actual-delivery: %v\n", err)
+				os.Exit(1)
+			}
+			_, err = svc.UpdateDeliveryDates(uint(id), nil, &parsed)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error updating delivery date: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Purchase order %d actual delivery updated to: %s\n", id, actualDeliveryStr)
+		}
+
+		// Show updated PO
+		po, err := svc.GetByID(uint(id))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error retrieving purchase order: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("\nUpdated Purchase Order:")
+		fmt.Printf("  PO Number: %s\n", po.PONumber)
+		fmt.Printf("  Status: %s\n", po.Status)
+		if po.InvoiceNumber != "" {
+			fmt.Printf("  Invoice: %s\n", po.InvoiceNumber)
+		}
+		if po.ActualDelivery != nil {
+			fmt.Printf("  Actual Delivery: %s\n", po.ActualDelivery.Format("2006-01-02"))
+		}
+	},
+}
+
 func init() {
 	updateCmd.AddCommand(updateSpecificationCmd)
 	updateCmd.AddCommand(updateBrandCmd)
 	updateCmd.AddCommand(updateProductCmd)
 	updateCmd.AddCommand(updateVendorCmd)
+	updateCmd.AddCommand(updatePurchaseOrderCmd)
 	updateCmd.AddCommand(updateProjectCmd)
 	updateCmd.AddCommand(updateBOMItemCmd)
 	updateCmd.AddCommand(updateProjectRequisitionCmd)
 
 	// Specification flags
 	updateSpecificationCmd.Flags().String("description", "", "New description for the specification")
+
+	// Purchase Order flags
+	updatePurchaseOrderCmd.Flags().String("status", "", "New status (pending, approved, ordered, shipped, received, cancelled)")
+	updatePurchaseOrderCmd.Flags().String("invoice", "", "Invoice number")
+	updatePurchaseOrderCmd.Flags().String("actual-delivery", "", "Actual delivery date (YYYY-MM-DD)")
 
 	// Project flags
 	updateProjectCmd.Flags().String("description", "", "New description for the project")

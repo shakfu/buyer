@@ -1,0 +1,218 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<div class="toggle-form">
+    <button onclick="toggleForm('add-po-form')">Add New Purchase Order</button>
+</div>
+
+<article id="add-po-form" class="hidden">
+    <h2>Add New Purchase Order</h2>
+    <form hx-post="/purchase-orders" hx-target="#purchase-orders-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+        <label for="quote_id">
+            Quote
+            <select id="quote_id" name="quote_id" required onchange="updatePODetails(this)">
+                <option value="">Select a quote...</option>
+                {{range .Quotes}}
+                <option value="{{.ID}}"
+                        data-vendor="{{if .Vendor}}{{.Vendor.Name}}{{end}}"
+                        data-product="{{if .Product}}{{.Product.Name}}{{end}}"
+                        data-price="{{.Price}}"
+                        data-currency="{{.Currency}}">
+                    {{if .Vendor}}{{.Vendor.Name}}{{end}} - {{if .Product}}{{.Product.Name}}{{end}} ({{printf "%.2f" .Price}} {{.Currency}})
+                </option>
+                {{end}}
+            </select>
+        </label>
+        <label for="requisition_id">
+            Requisition (Optional)
+            <select id="requisition_id" name="requisition_id">
+                <option value="">None</option>
+                {{range .Requisitions}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </label>
+        <label for="po_number">
+            PO Number
+            <input type="text" id="po_number" name="po_number" placeholder="PO-2024-001" required>
+        </label>
+        <label for="quantity">
+            Quantity
+            <input type="number" id="quantity" name="quantity" placeholder="1" min="1" required>
+        </label>
+        <label for="expected_delivery">
+            Expected Delivery (Optional)
+            <input type="date" id="expected_delivery" name="expected_delivery">
+        </label>
+        <label for="shipping_cost">
+            Shipping Cost
+            <input type="number" id="shipping_cost" name="shipping_cost" placeholder="0.00" step="0.01" min="0" value="0">
+        </label>
+        <label for="tax">
+            Tax
+            <input type="number" id="tax" name="tax" placeholder="0.00" step="0.01" min="0" value="0">
+        </label>
+        <label for="notes">
+            Notes
+            <textarea id="notes" name="notes" placeholder="Optional notes about this purchase order" rows="3"></textarea>
+        </label>
+        <button type="submit">Create Purchase Order</button>
+        <button type="button" onclick="toggleForm('add-po-form')" class="secondary">Cancel</button>
+    </form>
+</article>
+
+<script>
+function updatePODetails(select) {
+    const option = select.selectedOptions[0];
+    if (!option || !option.value) return;
+
+    // Could auto-populate fields here if needed
+    // For example, suggest PO number based on date
+    const today = new Date();
+    const year = today.getFullYear();
+    const poNumber = document.getElementById('po_number');
+    if (!poNumber.value) {
+        // Generate a suggested PO number (user can modify)
+        const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        poNumber.placeholder = `PO-${year}-${randomNum}`;
+    }
+}
+</script>
+
+<figure id="purchase-orders-table">
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>PO Number</th>
+                <th>Status</th>
+                <th>Vendor</th>
+                <th>Product</th>
+                <th>Total</th>
+                <th>Order Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .PurchaseOrders}}
+            <tr id="po-{{.ID}}">
+                <td><strong>{{.PONumber}}</strong></td>
+                <td>
+                    <span class="badge badge-{{.Status}}">{{.Status}}</span>
+                </td>
+                <td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+                <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+                <td>{{printf "%.2f" .GrandTotal}} {{.Currency}}</td>
+                <td>{{.OrderDate.Format "2006-01-02"}}</td>
+                <td>
+                    <div class="actions">
+                        <a href="/purchase-orders/{{.ID}}" role="button" class="btn-sm secondary">View</a>
+                        {{if or (eq .Status "pending") (eq .Status "cancelled")}}
+                        <button class="btn-sm contrast"
+                                hx-delete="/purchase-orders/{{.ID}}"
+                                hx-target="#po-{{.ID}}"
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to delete this purchase order?">
+                            Delete
+                        </button>
+                        {{end}}
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</figure>
+
+<!-- Update Status Modal -->
+<dialog id="update-status-modal">
+    <article>
+        <h3>Update Purchase Order Status</h3>
+        <form id="update-status-form">
+            <input type="hidden" id="update-po-id" name="po_id">
+            <label for="new_status">
+                Status
+                <select id="new_status" name="status" required>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="ordered">Ordered</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="received">Received</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </label>
+            <label for="invoice_number">
+                Invoice Number (Optional)
+                <input type="text" id="invoice_number" name="invoice_number" placeholder="INV-12345">
+            </label>
+            <label for="actual_delivery">
+                Actual Delivery Date (Optional)
+                <input type="date" id="actual_delivery" name="actual_delivery">
+            </label>
+            <footer>
+                <button type="submit">Update</button>
+                <button type="button" class="secondary" onclick="closeUpdateModal()">Cancel</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+
+<script>
+function showUpdateStatus(poId, currentStatus) {
+    document.getElementById('update-po-id').value = poId;
+    document.getElementById('new_status').value = currentStatus;
+    document.getElementById('update-status-modal').showModal();
+}
+
+function closeUpdateModal() {
+    document.getElementById('update-status-modal').close();
+    document.getElementById('update-status-form').reset();
+}
+
+document.getElementById('update-status-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const poId = formData.get('po_id');
+
+    // Build query parameters for the PUT request
+    const params = new URLSearchParams();
+    if (formData.get('status')) params.append('status', formData.get('status'));
+    if (formData.get('invoice_number')) params.append('invoice', formData.get('invoice_number'));
+    if (formData.get('actual_delivery')) params.append('actual_delivery', formData.get('actual_delivery'));
+
+    fetch(`/purchase-orders/${poId}?${params.toString()}`, {
+        method: 'PUT'
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Replace the row with updated data
+        document.getElementById(`po-${poId}`).outerHTML = html;
+        closeUpdateModal();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update purchase order');
+    });
+});
+</script>
+
+<style>
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.badge-pending { background-color: #6c757d; color: white; }
+.badge-approved { background-color: #0dcaf0; color: white; }
+.badge-ordered { background-color: #0d6efd; color: white; }
+.badge-shipped { background-color: #fd7e14; color: white; }
+.badge-received { background-color: #198754; color: white; }
+.badge-cancelled { background-color: #dc3545; color: white; }
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+</style>
+{{end}}

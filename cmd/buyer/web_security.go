@@ -372,18 +372,20 @@ func RenderQuoteRow(quote *models.Quote) (SafeHTML, error) {
 		productName = quote.Product.Name
 	}
 
-	// Format expiry display
-	expiryDisplay := `<span style="color: gray;">—</span>`
+	// Determine expiry status and days - let template handle HTML generation
+	var expiryDays *int
+	expiryColor := "gray"
+	expiryText := "—"
 	if quote.ValidUntil != nil {
 		days := quote.DaysUntilExpiration()
-		if days < 0 {
-			expiryDisplay = fmt.Sprintf(`<span style="color: red; font-weight: bold;">%d</span>`, days)
-		} else if days < 7 {
-			expiryDisplay = fmt.Sprintf(`<span style="color: red; font-weight: bold;">%d</span>`, days)
+		expiryDays = &days
+		expiryText = fmt.Sprintf("%d", days)
+		if days < 0 || days < 7 {
+			expiryColor = "red"
 		} else if days < 30 {
-			expiryDisplay = fmt.Sprintf(`<span style="color: orange; font-weight: bold;">%d</span>`, days)
+			expiryColor = "orange"
 		} else {
-			expiryDisplay = fmt.Sprintf(`<span style="color: green;">%d</span>`, days)
+			expiryColor = "green"
 		}
 	}
 
@@ -395,7 +397,13 @@ func RenderQuoteRow(quote *models.Quote) (SafeHTML, error) {
 		<td>{{.Currency}}</td>
 		<td>{{printf "%.2f" .ConvertedPrice}}</td>
 		<td>{{.QuoteDate.Format "2006-01-02"}}</td>
-		<td>{{.ExpiryDisplay}}</td>
+		<td>
+			{{if .ExpiryDays}}
+				<span style="color: {{.ExpiryColor}}{{if or (lt .ExpiryDays 7) (lt .ExpiryDays 0)}}; font-weight: bold{{end}}">{{.ExpiryText}}</span>
+			{{else}}
+				<span style="color: {{.ExpiryColor}};">{{.ExpiryText}}</span>
+			{{end}}
+		</td>
 		<td>
 			<div class="actions">
 				<button class="btn-sm contrast"
@@ -417,7 +425,9 @@ func RenderQuoteRow(quote *models.Quote) (SafeHTML, error) {
 		Currency       string
 		ConvertedPrice float64
 		QuoteDate      time.Time
-		ExpiryDisplay  template.HTML
+		ExpiryDays     *int
+		ExpiryColor    string
+		ExpiryText     string
 	}{
 		ID:             quote.ID,
 		VendorName:     vendorName,
@@ -426,7 +436,9 @@ func RenderQuoteRow(quote *models.Quote) (SafeHTML, error) {
 		Currency:       quote.Currency,
 		ConvertedPrice: quote.ConvertedPrice,
 		QuoteDate:      quote.QuoteDate,
-		ExpiryDisplay:  template.HTML(expiryDisplay),
+		ExpiryDays:     expiryDays,
+		ExpiryColor:    expiryColor,
+		ExpiryText:     expiryText,
 	}
 
 	var buf bytes.Buffer
@@ -438,36 +450,47 @@ func RenderQuoteRow(quote *models.Quote) (SafeHTML, error) {
 
 // RenderRequisitionRow safely renders a requisition table row
 func RenderRequisitionRow(req *models.Requisition) (SafeHTML, error) {
-	itemsHTML := ""
+	// Prepare item data for template
+	type ItemData struct {
+		SpecName      string
+		Quantity      int
+		BudgetPerUnit float64
+		HasBudget     bool
+		Description   string
+	}
+
+	items := make([]ItemData, 0, len(req.Items))
 	for _, item := range req.Items {
 		specName := ""
 		if item.Specification != nil {
 			specName = item.Specification.Name
 		}
-		budgetDisplay := ""
-		if item.BudgetPerUnit > 0 {
-			budgetDisplay = fmt.Sprintf(", Budget/unit: %.2f", item.BudgetPerUnit)
-		}
-		descDisplay := ""
-		if item.Description != "" {
-			descDisplay = fmt.Sprintf(" - %s", escapeHTML(item.Description))
-		}
-		itemsHTML += fmt.Sprintf("<li>%s (Qty: %d%s)%s</li>", escapeHTML(specName), item.Quantity, budgetDisplay, descDisplay)
-	}
-
-	justificationDisplay := ""
-	if req.Justification != "" {
-		justificationDisplay = fmt.Sprintf("<br><small>%s</small>", escapeHTML(req.Justification))
-	}
-	budgetDisplay := ""
-	if req.Budget > 0 {
-		budgetDisplay = fmt.Sprintf("<br><strong>Budget: %.2f</strong>", req.Budget)
+		items = append(items, ItemData{
+			SpecName:      specName,
+			Quantity:      item.Quantity,
+			BudgetPerUnit: item.BudgetPerUnit,
+			HasBudget:     item.BudgetPerUnit > 0,
+			Description:   item.Description,
+		})
 	}
 
 	tmpl := template.Must(template.New("req-row").Parse(`<tr id="req-{{.ID}}">
 		<td>{{.ID}}</td>
-		<td>{{.Name}}{{.JustificationDisplay}}{{.BudgetDisplay}}</td>
-		<td><ul>{{.ItemsHTML}}</ul></td>
+		<td>
+			{{.Name}}
+			{{if .Justification}}<br><small>{{.Justification}}</small>{{end}}
+			{{if gt .Budget 0.0}}<br><strong>Budget: {{printf "%.2f" .Budget}}</strong>{{end}}
+		</td>
+		<td>
+			<ul>
+				{{range .Items}}
+				<li>
+					{{.SpecName}} (Qty: {{.Quantity}}{{if .HasBudget}}, Budget/unit: {{printf "%.2f" .BudgetPerUnit}}{{end}})
+					{{if .Description}} - {{.Description}}{{end}}
+				</li>
+				{{end}}
+			</ul>
+		</td>
 		<td>
 			<div class="actions">
 				<button class="btn-sm contrast"
@@ -482,17 +505,17 @@ func RenderRequisitionRow(req *models.Requisition) (SafeHTML, error) {
 	</tr>`))
 
 	data := struct {
-		ID                    uint
-		Name                  string
-		JustificationDisplay  template.HTML
-		BudgetDisplay         template.HTML
-		ItemsHTML             template.HTML
+		ID            uint
+		Name          string
+		Justification string
+		Budget        float64
+		Items         []ItemData
 	}{
-		ID:                    req.ID,
-		Name:                  req.Name,
-		JustificationDisplay:  template.HTML(justificationDisplay),
-		BudgetDisplay:         template.HTML(budgetDisplay),
-		ItemsHTML:             template.HTML(itemsHTML),
+		ID:            req.ID,
+		Name:          req.Name,
+		Justification: req.Justification,
+		Budget:        req.Budget,
+		Items:         items,
 	}
 
 	var buf bytes.Buffer
@@ -764,5 +787,58 @@ func RenderProjectRequisitionsList(projectReqs []models.ProjectRequisition) (Saf
 	}
 
 	buf.WriteString("</tbody></table>")
+	return SafeHTML{content: buf.String()}, nil
+}
+
+// RenderPurchaseOrderRow safely renders a purchase order table row
+func RenderPurchaseOrderRow(po *models.PurchaseOrder) (SafeHTML, error) {
+	tmpl := `
+<tr id="po-{{.ID}}">
+	<td>{{.ID}}</td>
+	<td>{{.PONumber}}</td>
+	<td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+	<td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+	<td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+	<td>{{.Quantity}}</td>
+	<td>{{printf "%.2f" .UnitPrice}} {{.Currency}}</td>
+	<td>{{printf "%.2f" .TotalAmount}} {{.Currency}}</td>
+	<td>{{printf "%.2f" .GrandTotal}} {{.Currency}}</td>
+	<td>{{.OrderDate.Format "2006-01-02"}}</td>
+	<td>
+		{{if .ExpectedDelivery}}
+			{{.ExpectedDelivery.Format "2006-01-02"}}
+		{{else}}
+			<span style="color: gray;">—</span>
+		{{end}}
+	</td>
+	<td>
+		<div class="actions">
+			<button class="btn-sm" onclick="showUpdateStatus({{.ID}}, '{{.Status}}')">
+				Update
+			</button>
+			{{if or (eq .Status "pending") (eq .Status "cancelled")}}
+			<button class="btn-sm contrast"
+					hx-delete="/purchase-orders/{{.ID}}"
+					hx-target="#po-{{.ID}}"
+					hx-swap="outerHTML"
+					hx-confirm="Are you sure you want to delete this purchase order?">
+				Delete
+			</button>
+			{{end}}
+		</div>
+	</td>
+</tr>
+`
+
+	t, err := template.New("purchase-order-row").Parse(tmpl)
+	if err != nil {
+		return SafeHTML{}, err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, po); err != nil {
+		return SafeHTML{}, err
+	}
+
 	return SafeHTML{content: buf.String()}, nil
 }

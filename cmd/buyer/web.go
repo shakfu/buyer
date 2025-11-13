@@ -127,11 +127,12 @@ var webCmd = &cobra.Command{
 		dashboardSvc := services.NewDashboardService(cfg.DB)
 		projectSvc := services.NewProjectService(cfg.DB)
 		projectReqSvc := services.NewProjectRequisitionService(cfg.DB)
+		poSvc := services.NewPurchaseOrderService(cfg.DB)
 
 		slog.Debug("services initialized successfully")
 
 		// Routes
-		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc)
+		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc)
 
 		// Setup graceful shutdown
 		c := make(chan os.Signal, 1)
@@ -176,6 +177,7 @@ func setupRoutes(
 	dashboardSvc *services.DashboardService,
 	projectSvc *services.ProjectService,
 	projectReqSvc *services.ProjectRequisitionService,
+	poSvc *services.PurchaseOrderService,
 ) {
 	// Home page
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -286,6 +288,25 @@ func setupRoutes(
 		})
 	})
 
+	app.Get("/products/:id", func(c *fiber.Ctx) error {
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid product ID")
+		}
+		product, err := productSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(404).SendString("Product not found")
+		}
+		return renderTemplate(c, "product-detail.html", fiber.Map{
+			"Title":   product.Name,
+			"Product": product,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Products", "URL": "/products"},
+				{"Name": product.Name, "Active": true},
+			},
+		})
+	})
+
 	// Vendor routes
 	app.Get("/vendors", func(c *fiber.Ctx) error {
 		vendors, err := vendorSvc.List(0, 0)
@@ -297,6 +318,25 @@ func setupRoutes(
 			"Vendors": vendors,
 			"Breadcrumb": []map[string]interface{}{
 				{"Name": "Vendors", "Active": true},
+			},
+		})
+	})
+
+	app.Get("/vendors/:id", func(c *fiber.Ctx) error {
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid vendor ID")
+		}
+		vendor, err := vendorSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(404).SendString("Vendor not found")
+		}
+		return renderTemplate(c, "vendor-detail.html", fiber.Map{
+			"Title":  vendor.Name,
+			"Vendor": vendor,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Vendors", "URL": "/vendors"},
+				{"Name": vendor.Name, "Active": true},
 			},
 		})
 	})
@@ -322,6 +362,69 @@ func setupRoutes(
 			"Products": products,
 			"Breadcrumb": []map[string]interface{}{
 				{"Name": "Quotes", "Active": true},
+			},
+		})
+	})
+
+	app.Get("/quotes/:id", func(c *fiber.Ctx) error {
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid quote ID")
+		}
+		quote, err := quoteSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(404).SendString("Quote not found")
+		}
+		return renderTemplate(c, "quote-detail.html", fiber.Map{
+			"Title": fmt.Sprintf("Quote #%d", quote.ID),
+			"Quote": quote,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Quotes", "URL": "/quotes"},
+				{"Name": fmt.Sprintf("Quote #%d", quote.ID), "Active": true},
+			},
+		})
+	})
+
+	// Purchase Order routes
+	app.Get("/purchase-orders", func(c *fiber.Ctx) error {
+		orders, err := poSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		quotes, err := quoteSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		requisitions, err := requisitionSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "purchase-orders.html", fiber.Map{
+			"Title":          "Purchase Orders",
+			"PurchaseOrders": orders,
+			"Quotes":         quotes,
+			"Requisitions":   requisitions,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Purchase Orders", "Active": true},
+			},
+		})
+	})
+
+	app.Get("/purchase-orders/:id", func(c *fiber.Ctx) error {
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid purchase order ID")
+		}
+		po, err := poSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(404).SendString("Purchase order not found")
+		}
+		return renderTemplate(c, "purchase-order-detail.html", fiber.Map{
+			"Title":         po.PONumber,
+			"PurchaseOrder": po,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Purchase Orders", "URL": "/purchase-orders"},
+				{"Name": po.PONumber, "Active": true},
 			},
 		})
 	})
@@ -495,6 +598,121 @@ func setupRoutes(
 
 	// Setup CRUD handlers for all entities
 	SetupCRUDHandlers(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
+
+	// Purchase Order CRUD handlers
+	app.Post("/purchase-orders", func(c *fiber.Ctx) error {
+		quoteID, err := strconv.ParseUint(c.FormValue("quote_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid quote ID")
+		}
+
+		var reqIDPtr *uint
+		reqIDStr := c.FormValue("requisition_id")
+		if reqIDStr != "" {
+			reqID, err := strconv.ParseUint(reqIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid requisition ID")
+			}
+			reqIDUint := uint(reqID)
+			reqIDPtr = &reqIDUint
+		}
+
+		quantity, err := strconv.Atoi(c.FormValue("quantity"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid quantity")
+		}
+
+		var expectedDelivery *time.Time
+		expectedDeliveryStr := c.FormValue("expected_delivery")
+		if expectedDeliveryStr != "" {
+			parsed, err := time.Parse("2006-01-02", expectedDeliveryStr)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid expected delivery date")
+			}
+			expectedDelivery = &parsed
+		}
+
+		shippingCost, _ := strconv.ParseFloat(c.FormValue("shipping_cost"), 64)
+		tax, _ := strconv.ParseFloat(c.FormValue("tax"), 64)
+
+		po, err := poSvc.Create(services.CreatePurchaseOrderInput{
+			QuoteID:          uint(quoteID),
+			RequisitionID:    reqIDPtr,
+			PONumber:         c.FormValue("po_number"),
+			Quantity:         quantity,
+			ExpectedDelivery: expectedDelivery,
+			ShippingCost:     shippingCost,
+			Tax:              tax,
+			Notes:            c.FormValue("notes"),
+		})
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderPurchaseOrderRow(po)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Put("/purchase-orders/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+
+		status := c.Query("status")
+		invoice := c.Query("invoice")
+		actualDeliveryStr := c.Query("actual_delivery")
+
+		if status != "" {
+			_, err := poSvc.UpdateStatus(uint(id), status)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+			}
+		}
+
+		if invoice != "" {
+			_, err := poSvc.UpdateInvoiceNumber(uint(id), invoice)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+			}
+		}
+
+		if actualDeliveryStr != "" {
+			parsed, err := time.Parse("2006-01-02", actualDeliveryStr)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid actual delivery date")
+			}
+			_, err = poSvc.UpdateDeliveryDates(uint(id), nil, &parsed)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+			}
+		}
+
+		po, err := poSvc.GetByID(uint(id))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderPurchaseOrderRow(po)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/purchase-orders/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := poSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
 
 	// Setup project handlers
 	SetupProjectHandlers(app, projectSvc, specSvc, requisitionSvc, projectReqSvc)

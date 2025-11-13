@@ -1,0 +1,128 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>{{.Vendor.Name}}</h1>
+    </header>
+
+    <section>
+        <h3>Vendor Information</h3>
+        <dl>
+            <dt>Currency</dt>
+            <dd>{{.Vendor.Currency}}</dd>
+
+            {{if .Vendor.DiscountCode}}
+            <dt>Discount Code</dt>
+            <dd><code>{{.Vendor.DiscountCode}}</code></dd>
+            {{end}}
+
+            {{if .Vendor.Email}}
+            <dt>Email</dt>
+            <dd><a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a></dd>
+            {{end}}
+
+            {{if .Vendor.Phone}}
+            <dt>Phone</dt>
+            <dd><a href="tel:{{.Vendor.Phone}}">{{.Vendor.Phone}}</a></dd>
+            {{end}}
+
+            {{if .Vendor.Website}}
+            <dt>Website</dt>
+            <dd><a href="{{.Vendor.Website}}" target="_blank" rel="noopener">{{.Vendor.Website}}</a></dd>
+            {{end}}
+
+            {{if .Vendor.Address}}
+            <dt>Address</dt>
+            <dd><pre style="white-space: pre-wrap;">{{.Vendor.Address}}</pre></dd>
+            {{end}}
+        </dl>
+    </section>
+
+    {{if or .Vendor.TaxID .Vendor.PaymentTerms}}
+    <section>
+        <h3>Business Information</h3>
+        <dl>
+            {{if .Vendor.TaxID}}
+            <dt>Tax ID</dt>
+            <dd>{{.Vendor.TaxID}}</dd>
+            {{end}}
+
+            {{if .Vendor.PaymentTerms}}
+            <dt>Payment Terms</dt>
+            <dd>{{.Vendor.PaymentTerms}}</dd>
+            {{end}}
+        </dl>
+    </section>
+    {{end}}
+
+    {{if .Vendor.Brands}}
+    <section>
+        <h3>Brands Carried ({{len .Vendor.Brands}})</h3>
+        <div class="grid">
+            {{range .Vendor.Brands}}
+            <article>
+                <a href="/brands/{{.ID}}">{{.Name}}</a>
+            </article>
+            {{end}}
+        </div>
+    </section>
+    {{end}}
+
+    {{if .Vendor.Quotes}}
+    <section>
+        <h3>Price Quotes ({{len .Vendor.Quotes}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Price (USD)</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Vendor.Quotes}}
+                    <tr>
+                        <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+                        <td>{{printf "%.2f" .Price}} {{.Currency}}</td>
+                        <td>{{printf "%.2f" .ConvertedPrice}}</td>
+                        <td>
+                            {{if eq .Status "active"}}
+                                <span style="color: green;">Active</span>
+                            {{else if eq .Status "accepted"}}
+                                <span style="color: blue;">Accepted</span>
+                            {{else if eq .Status "superseded"}}
+                                <span style="color: orange;">Superseded</span>
+                            {{else if eq .Status "expired"}}
+                                <span style="color: red;">Expired</span>
+                            {{else if eq .Status "declined"}}
+                                <span style="color: gray;">Declined</span>
+                            {{else}}
+                                {{.Status}}
+                            {{end}}
+                        </td>
+                        <td>{{.QuoteDate.Format "2006-01-02"}}</td>
+                        <td><a href="/quotes/{{.ID}}" role="button" class="secondary">View</a></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
+    <footer>
+        <a href="/vendors" role="button" class="secondary">Back to Vendors</a>
+        <button class="contrast"
+                hx-delete="/vendors/{{.Vendor.ID}}"
+                hx-confirm="Are you sure you want to delete this vendor?"
+                hx-on::after-request="if(event.detail.successful) window.location.href='/vendors'">
+            Delete Vendor
+        </button>
+    </footer>
+</article>
+{{end}}

@@ -451,12 +451,105 @@ var addProjectRequisitionCmd = &cobra.Command{
 	},
 }
 
+var addPurchaseOrderCmd = &cobra.Command{
+	Use:   "purchase-order --quote-id [id] --po-number [number] --quantity [qty]",
+	Short: "Add a new purchase order from a quote",
+	Run: func(cmd *cobra.Command, args []string) {
+		quoteID, _ := cmd.Flags().GetUint("quote-id")
+		poNumber, _ := cmd.Flags().GetString("po-number")
+		quantity, _ := cmd.Flags().GetInt("quantity")
+		requisitionID, _ := cmd.Flags().GetUint("requisition-id")
+		expectedDeliveryStr, _ := cmd.Flags().GetString("expected-delivery")
+		shippingCost, _ := cmd.Flags().GetFloat64("shipping-cost")
+		tax, _ := cmd.Flags().GetFloat64("tax")
+		notes, _ := cmd.Flags().GetString("notes")
+
+		if quoteID == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --quote-id flag is required")
+			os.Exit(1)
+		}
+		if poNumber == "" {
+			fmt.Fprintln(os.Stderr, "Error: --po-number flag is required")
+			os.Exit(1)
+		}
+		if quantity == 0 {
+			fmt.Fprintln(os.Stderr, "Error: --quantity flag is required")
+			os.Exit(1)
+		}
+
+		var expectedDelivery *time.Time
+		if expectedDeliveryStr != "" {
+			parsed, err := time.Parse("2006-01-02", expectedDeliveryStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing expected-delivery: %v\n", err)
+				os.Exit(1)
+			}
+			expectedDelivery = &parsed
+		}
+
+		var reqIDPtr *uint
+		if requisitionID != 0 {
+			reqIDPtr = &requisitionID
+		}
+
+		svc := services.NewPurchaseOrderService(cfg.DB)
+		po, err := svc.Create(services.CreatePurchaseOrderInput{
+			QuoteID:          quoteID,
+			RequisitionID:    reqIDPtr,
+			PONumber:         poNumber,
+			Quantity:         quantity,
+			ExpectedDelivery: expectedDelivery,
+			ShippingCost:     shippingCost,
+			Tax:              tax,
+			Notes:            notes,
+		})
+		if err != nil {
+			slog.Error("failed to create purchase order",
+				slog.String("po_number", poNumber),
+				slog.Uint64("quote_id", uint64(quoteID)),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("purchase order created successfully",
+			slog.Uint64("id", uint64(po.ID)),
+			slog.String("po_number", po.PONumber))
+
+		fmt.Printf("Purchase Order created successfully:\n")
+		fmt.Printf("  ID: %d\n", po.ID)
+		fmt.Printf("  PO Number: %s\n", po.PONumber)
+		fmt.Printf("  Status: %s\n", po.Status)
+		if po.Vendor != nil {
+			fmt.Printf("  Vendor: %s\n", po.Vendor.Name)
+		}
+		if po.Product != nil {
+			fmt.Printf("  Product: %s\n", po.Product.Name)
+		}
+		fmt.Printf("  Quantity: %d\n", po.Quantity)
+		fmt.Printf("  Unit Price: %.2f %s\n", po.UnitPrice, po.Currency)
+		fmt.Printf("  Total Amount: %.2f %s\n", po.TotalAmount, po.Currency)
+		if po.ShippingCost > 0 {
+			fmt.Printf("  Shipping: %.2f %s\n", po.ShippingCost, po.Currency)
+		}
+		if po.Tax > 0 {
+			fmt.Printf("  Tax: %.2f %s\n", po.Tax, po.Currency)
+		}
+		fmt.Printf("  Grand Total: %.2f %s\n", po.GrandTotal, po.Currency)
+		fmt.Printf("  Order Date: %s\n", po.OrderDate.Format("2006-01-02"))
+		if po.ExpectedDelivery != nil {
+			fmt.Printf("  Expected Delivery: %s\n", po.ExpectedDelivery.Format("2006-01-02"))
+		}
+	},
+}
+
 func init() {
 	addCmd.AddCommand(addSpecificationCmd)
 	addCmd.AddCommand(addBrandCmd)
 	addCmd.AddCommand(addProductCmd)
 	addCmd.AddCommand(addVendorCmd)
 	addCmd.AddCommand(addQuoteCmd)
+	addCmd.AddCommand(addPurchaseOrderCmd)
 	addCmd.AddCommand(addForexCmd)
 	addCmd.AddCommand(addRequisitionCmd)
 	addCmd.AddCommand(addRequisitionItemCmd)
@@ -480,6 +573,16 @@ func init() {
 	addQuoteCmd.Flags().Float64("price", 0, "Price (required)")
 	addQuoteCmd.Flags().String("currency", "", "Currency code (defaults to vendor's currency)")
 	addQuoteCmd.Flags().String("notes", "", "Additional notes")
+
+	// Purchase Order flags
+	addPurchaseOrderCmd.Flags().Uint("quote-id", 0, "Quote ID (required)")
+	addPurchaseOrderCmd.Flags().String("po-number", "", "PO number (required)")
+	addPurchaseOrderCmd.Flags().Int("quantity", 0, "Quantity (required)")
+	addPurchaseOrderCmd.Flags().Uint("requisition-id", 0, "Requisition ID (optional)")
+	addPurchaseOrderCmd.Flags().String("expected-delivery", "", "Expected delivery date (YYYY-MM-DD)")
+	addPurchaseOrderCmd.Flags().Float64("shipping-cost", 0, "Shipping cost")
+	addPurchaseOrderCmd.Flags().Float64("tax", 0, "Tax amount")
+	addPurchaseOrderCmd.Flags().String("notes", "", "Additional notes")
 
 	// Forex flags
 	addForexCmd.Flags().String("from", "", "From currency code (required)")

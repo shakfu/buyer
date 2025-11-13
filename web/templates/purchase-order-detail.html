@@ -1,0 +1,135 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>Purchase Order: {{.PurchaseOrder.PONumber}}</h1>
+        <p>
+            <strong>{{if .PurchaseOrder.Vendor}}{{.PurchaseOrder.Vendor.Name}}{{end}}</strong> -
+            {{if .PurchaseOrder.Product}}{{.PurchaseOrder.Product.Name}}{{end}}
+        </p>
+    </header>
+
+    <section>
+        <h3>Order Information</h3>
+        <dl>
+            <dt>Status</dt>
+            <dd>
+                <strong style="text-transform: capitalize;">{{.PurchaseOrder.Status}}</strong>
+            </dd>
+
+            <dt>PO Number</dt>
+            <dd>{{.PurchaseOrder.PONumber}}</dd>
+
+            <dt>Order Date</dt>
+            <dd>{{.PurchaseOrder.OrderDate.Format "January 2, 2006"}}</dd>
+
+            <dt>Quantity</dt>
+            <dd>{{.PurchaseOrder.Quantity}} units</dd>
+
+            {{if .PurchaseOrder.Requisition}}
+            <dt>Requisition</dt>
+            <dd><a href="/requisitions/{{.PurchaseOrder.RequisitionID}}">{{.PurchaseOrder.Requisition.Name}}</a></dd>
+            {{end}}
+        </dl>
+    </section>
+
+    <section>
+        <h3>Pricing Details</h3>
+        <dl>
+            <dt>Unit Price</dt>
+            <dd>{{printf "%.2f" .PurchaseOrder.UnitPrice}} {{.PurchaseOrder.Currency}}</dd>
+
+            <dt>Subtotal</dt>
+            <dd>{{printf "%.2f" .PurchaseOrder.TotalAmount}} {{.PurchaseOrder.Currency}}</dd>
+
+            <dt>Shipping Cost</dt>
+            <dd>{{printf "%.2f" .PurchaseOrder.ShippingCost}} {{.PurchaseOrder.Currency}}</dd>
+
+            <dt>Tax</dt>
+            <dd>{{printf "%.2f" .PurchaseOrder.Tax}} {{.PurchaseOrder.Currency}}</dd>
+
+            <dt><strong>Grand Total</strong></dt>
+            <dd><strong>{{printf "%.2f" .PurchaseOrder.GrandTotal}} {{.PurchaseOrder.Currency}}</strong></dd>
+        </dl>
+    </section>
+
+    <section>
+        <h3>Delivery Information</h3>
+        <dl>
+            <dt>Expected Delivery</dt>
+            <dd>{{.PurchaseOrder.ExpectedDelivery.Format "January 2, 2006"}}</dd>
+
+            {{if .PurchaseOrder.ActualDelivery}}
+            <dt>Actual Delivery</dt>
+            <dd>{{.PurchaseOrder.ActualDelivery.Format "January 2, 2006"}}</dd>
+            {{end}}
+
+            {{if .PurchaseOrder.InvoiceNumber}}
+            <dt>Invoice Number</dt>
+            <dd>{{.PurchaseOrder.InvoiceNumber}}</dd>
+            {{end}}
+        </dl>
+    </section>
+
+    {{if .PurchaseOrder.Notes}}
+    <section>
+        <h3>Notes</h3>
+        <p>{{.PurchaseOrder.Notes}}</p>
+    </section>
+    {{end}}
+
+    {{if .PurchaseOrder.CreatedBy}}
+    <section>
+        <h3>Audit Information</h3>
+        <dl>
+            <dt>Created By</dt>
+            <dd>{{.PurchaseOrder.CreatedBy}} on {{.PurchaseOrder.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+
+            {{if .PurchaseOrder.UpdatedBy}}
+            <dt>Updated By</dt>
+            <dd>{{.PurchaseOrder.UpdatedBy}} on {{.PurchaseOrder.UpdatedAt.Format "2006-01-02 15:04"}}</dd>
+            {{end}}
+        </dl>
+    </section>
+    {{end}}
+
+    <section>
+        <h3>Related Items</h3>
+        <div class="grid">
+            {{if .PurchaseOrder.Quote}}
+            <article>
+                <h4>Quote</h4>
+                <p><a href="/quotes/{{.PurchaseOrder.QuoteID}}">View Quote #{{.PurchaseOrder.QuoteID}}</a></p>
+            </article>
+            {{end}}
+
+            {{if .PurchaseOrder.Vendor}}
+            <article>
+                <h4>Vendor</h4>
+                <p><a href="/vendors/{{.PurchaseOrder.VendorID}}">{{.PurchaseOrder.Vendor.Name}}</a></p>
+            </article>
+            {{end}}
+
+            {{if .PurchaseOrder.Product}}
+            <article>
+                <h4>Product</h4>
+                <p><a href="/products/{{.PurchaseOrder.ProductID}}">{{.PurchaseOrder.Product.Name}}</a></p>
+            </article>
+            {{end}}
+        </div>
+    </section>
+
+    <footer>
+        <a href="/purchase-orders" role="button" class="secondary">Back to Purchase Orders</a>
+        {{if or (eq .PurchaseOrder.Status "pending") (eq .PurchaseOrder.Status "cancelled")}}
+        <button class="contrast"
+                hx-delete="/purchase-orders/{{.PurchaseOrder.ID}}"
+                hx-confirm="Are you sure you want to delete this purchase order?"
+                hx-on::after-request="if(event.detail.successful) window.location.href='/purchase-orders'">
+            Delete Purchase Order
+        </button>
+        {{end}}
+    </footer>
+</article>
+{{end}}

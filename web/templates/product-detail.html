@@ -1,0 +1,126 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>{{.Product.Name}}</h1>
+        {{if .Product.SKU}}<p><strong>SKU:</strong> {{.Product.SKU}}</p>{{end}}
+    </header>
+
+    {{if .Product.Description}}
+    <section>
+        <h3>Description</h3>
+        <p>{{.Product.Description}}</p>
+    </section>
+    {{end}}
+
+    <section>
+        <h3>Product Information</h3>
+        <dl>
+            <dt>Brand</dt>
+            <dd>{{if .Product.Brand}}{{.Product.Brand.Name}}{{else}}-{{end}}</dd>
+
+            <dt>Specification</dt>
+            <dd>{{if .Product.Specification}}{{.Product.Specification.Name}}{{else}}-{{end}}</dd>
+
+            <dt>Unit of Measure</dt>
+            <dd>{{.Product.UnitOfMeasure}}</dd>
+
+            {{if gt .Product.MinOrderQty 0}}
+            <dt>Minimum Order Quantity</dt>
+            <dd>{{.Product.MinOrderQty}} {{.Product.UnitOfMeasure}}</dd>
+            {{end}}
+
+            {{if gt .Product.LeadTimeDays 0}}
+            <dt>Lead Time</dt>
+            <dd>{{.Product.LeadTimeDays}} days</dd>
+            {{end}}
+
+            <dt>Status</dt>
+            <dd>
+                {{if .Product.IsActive}}
+                    <span style="color: green;">Active</span>
+                {{else}}
+                    <span style="color: red;">Inactive</span>
+                {{end}}
+                {{if .Product.DiscontinuedAt}}
+                    <br><small>Discontinued on {{.Product.DiscontinuedAt.Format "2006-01-02"}}</small>
+                {{end}}
+            </dd>
+        </dl>
+    </section>
+
+    {{if .Product.CreatedBy}}
+    <section>
+        <h3>Audit Information</h3>
+        <dl>
+            <dt>Created By</dt>
+            <dd>{{.Product.CreatedBy}} on {{.Product.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+
+            {{if .Product.UpdatedBy}}
+            <dt>Updated By</dt>
+            <dd>{{.Product.UpdatedBy}} on {{.Product.UpdatedAt.Format "2006-01-02 15:04"}}</dd>
+            {{end}}
+        </dl>
+    </section>
+    {{end}}
+
+    {{if .Product.Quotes}}
+    <section>
+        <h3>Price Quotes ({{len .Product.Quotes}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Price</th>
+                        <th>Price (USD)</th>
+                        <th>Min Qty</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Product.Quotes}}
+                    <tr>
+                        <td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+                        <td>{{printf "%.2f" .Price}} {{.Currency}}</td>
+                        <td>{{printf "%.2f" .ConvertedPrice}}</td>
+                        <td>{{if gt .MinQuantity 0}}{{.MinQuantity}}{{else}}-{{end}}</td>
+                        <td>
+                            {{if eq .Status "active"}}
+                                <span style="color: green;">Active</span>
+                            {{else if eq .Status "accepted"}}
+                                <span style="color: blue;">Accepted</span>
+                            {{else if eq .Status "superseded"}}
+                                <span style="color: orange;">Superseded</span>
+                            {{else if eq .Status "expired"}}
+                                <span style="color: red;">Expired</span>
+                            {{else if eq .Status "declined"}}
+                                <span style="color: gray;">Declined</span>
+                            {{else}}
+                                {{.Status}}
+                            {{end}}
+                        </td>
+                        <td>{{.QuoteDate.Format "2006-01-02"}}</td>
+                        <td><a href="/quotes/{{.ID}}" role="button" class="secondary">View</a></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
+    <footer>
+        <a href="/products" role="button" class="secondary">Back to Products</a>
+        <button class="contrast"
+                hx-delete="/products/{{.Product.ID}}"
+                hx-confirm="Are you sure you want to delete this product?"
+                hx-on::after-request="if(event.detail.successful) window.location.href='/products'">
+            Delete Product
+        </button>
+    </footer>
+</article>
+{{end}}

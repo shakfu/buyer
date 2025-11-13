@@ -1,0 +1,153 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<article>
+    <header>
+        <h1>Quote #{{.Quote.ID}} <small>(Version {{.Quote.Version}})</small></h1>
+        <p>
+            <strong>{{if .Quote.Vendor}}{{.Quote.Vendor.Name}}{{end}}</strong> -
+            {{if .Quote.Product}}{{.Quote.Product.Name}}{{end}}
+        </p>
+    </header>
+
+    <section>
+        <h3>Pricing Information</h3>
+        <dl>
+            <dt>Price</dt>
+            <dd><strong>{{printf "%.2f" .Quote.Price}} {{.Quote.Currency}}</strong></dd>
+
+            <dt>Price (USD)</dt>
+            <dd>{{printf "%.2f" .Quote.ConvertedPrice}} USD</dd>
+
+            {{if ne .Quote.Currency "USD"}}
+            <dt>Conversion Rate</dt>
+            <dd>{{printf "%.4f" .Quote.ConversionRate}}</dd>
+            {{end}}
+
+            {{if gt .Quote.MinQuantity 0}}
+            <dt>Minimum Order Quantity</dt>
+            <dd>{{.Quote.MinQuantity}} units</dd>
+            {{end}}
+        </dl>
+    </section>
+
+    <section>
+        <h3>Quote Details</h3>
+        <dl>
+            <dt>Status</dt>
+            <dd>
+                {{if eq .Quote.Status "active"}}
+                    <span style="color: green; font-weight: bold;">Active</span>
+                {{else if eq .Quote.Status "accepted"}}
+                    <span style="color: blue; font-weight: bold;">Accepted</span>
+                {{else if eq .Quote.Status "superseded"}}
+                    <span style="color: orange; font-weight: bold;">Superseded</span>
+                {{else if eq .Quote.Status "expired"}}
+                    <span style="color: red; font-weight: bold;">Expired</span>
+                {{else if eq .Quote.Status "declined"}}
+                    <span style="color: gray; font-weight: bold;">Declined</span>
+                {{else}}
+                    {{.Quote.Status}}
+                {{end}}
+            </dd>
+
+            <dt>Quote Date</dt>
+            <dd>{{.Quote.QuoteDate.Format "January 2, 2006"}}</dd>
+
+            {{if .Quote.ValidUntil}}
+            <dt>Valid Until</dt>
+            <dd>
+                {{.Quote.ValidUntil.Format "January 2, 2006"}}
+                {{$days := .Quote.DaysUntilExpiration}}
+                {{if lt $days 0}}
+                    <span style="color: red; font-weight: bold;">(Expired {{$days}} days ago)</span>
+                {{else if lt $days 7}}
+                    <span style="color: red; font-weight: bold;">(Expires in {{$days}} days)</span>
+                {{else if lt $days 30}}
+                    <span style="color: orange; font-weight: bold;">(Expires in {{$days}} days)</span>
+                {{else}}
+                    <span style="color: green;">({{$days}} days remaining)</span>
+                {{end}}
+            </dd>
+            {{end}}
+
+            <dt>Version</dt>
+            <dd>
+                v{{.Quote.Version}}
+                {{if .Quote.PreviousQuoteID}}
+                    <br><small><a href="/quotes/{{.Quote.PreviousQuoteID}}">View previous version (Quote #{{.Quote.PreviousQuoteID}})</a></small>
+                {{end}}
+                {{if .Quote.ReplacedBy}}
+                    <br><small><a href="/quotes/{{.Quote.ReplacedBy}}">View newer version (Quote #{{.Quote.ReplacedBy}})</a></small>
+                {{end}}
+            </dd>
+        </dl>
+    </section>
+
+    {{if .Quote.Notes}}
+    <section>
+        <h3>Notes</h3>
+        <p>{{.Quote.Notes}}</p>
+    </section>
+    {{end}}
+
+    {{if .Quote.CreatedBy}}
+    <section>
+        <h3>Audit Information</h3>
+        <dl>
+            <dt>Created By</dt>
+            <dd>{{.Quote.CreatedBy}} on {{.Quote.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+
+            {{if .Quote.UpdatedBy}}
+            <dt>Updated By</dt>
+            <dd>{{.Quote.UpdatedBy}} on {{.Quote.UpdatedAt.Format "2006-01-02 15:04"}}</dd>
+            {{end}}
+        </dl>
+    </section>
+    {{end}}
+
+    {{if .Quote.PurchaseOrders}}
+    <section>
+        <h3>Purchase Orders ({{len .Quote.PurchaseOrders}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>PO Number</th>
+                        <th>Status</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Order Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Quote.PurchaseOrders}}
+                    <tr>
+                        <td>{{.PONumber}}</td>
+                        <td>{{.Status}}</td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{printf "%.2f" .GrandTotal}} {{.Currency}}</td>
+                        <td>{{.OrderDate.Format "2006-01-02"}}</td>
+                        <td><a href="/purchase-orders/{{.ID}}" role="button" class="secondary">View</a></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
+    <footer>
+        <a href="/quotes" role="button" class="secondary">Back to Quotes</a>
+        <a href="/products/{{.Quote.ProductID}}" role="button" class="secondary">View Product</a>
+        <a href="/vendors/{{.Quote.VendorID}}" role="button" class="secondary">View Vendor</a>
+        <button class="contrast"
+                hx-delete="/quotes/{{.Quote.ID}}"
+                hx-confirm="Are you sure you want to delete this quote?"
+                hx-on::after-request="if(event.detail.successful) window.location.href='/quotes'">
+            Delete Quote
+        </button>
+    </footer>
+</article>
+{{end}}

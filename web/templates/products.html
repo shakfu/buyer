@@ -8,28 +8,66 @@
 <article id="add-product-form" class="hidden">
     <h2>Add New Product</h2>
     <form hx-post="/products" hx-target="#products-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
-        <label for="name">
-            Product Name
-            <input type="text" id="name" name="name" placeholder="Enter product name" required>
+        <div class="grid">
+            <label for="name">
+                Product Name
+                <input type="text" id="name" name="name" placeholder="Enter product name" required>
+            </label>
+            <label for="sku">
+                SKU (optional)
+                <input type="text" id="sku" name="sku" placeholder="Stock Keeping Unit">
+            </label>
+        </div>
+        <label for="description">
+            Description (optional)
+            <textarea id="description" name="description" placeholder="Product description" rows="2"></textarea>
         </label>
-        <label for="brand_id">
-            Brand
-            <select id="brand_id" name="brand_id" required>
-                <option value="">Select a brand...</option>
-                {{range .Brands}}
-                <option value="{{.ID}}">{{.Name}}</option>
-                {{end}}
-            </select>
-        </label>
-        <label for="specification_id">
-            Specification (optional)
-            <select id="specification_id" name="specification_id">
-                <option value="">None - Does not meet a specific specification</option>
-                {{range .Specifications}}
-                <option value="{{.ID}}">{{.Name}}</option>
-                {{end}}
-            </select>
-            <small>What general product type does this meet?</small>
+        <div class="grid">
+            <label for="brand_id">
+                Brand
+                <select id="brand_id" name="brand_id" required>
+                    <option value="">Select a brand...</option>
+                    {{range .Brands}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </label>
+            <label for="specification_id">
+                Specification (optional)
+                <select id="specification_id" name="specification_id">
+                    <option value="">None - Does not meet a specific specification</option>
+                    {{range .Specifications}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+                <small>What general product type does this meet?</small>
+            </label>
+        </div>
+        <div class="grid">
+            <label for="unit_of_measure">
+                Unit of Measure
+                <select id="unit_of_measure" name="unit_of_measure">
+                    <option value="each">Each</option>
+                    <option value="box">Box</option>
+                    <option value="case">Case</option>
+                    <option value="kg">Kilogram</option>
+                    <option value="lb">Pound</option>
+                    <option value="liter">Liter</option>
+                    <option value="gallon">Gallon</option>
+                </select>
+            </label>
+            <label for="min_order_qty">
+                Minimum Order Quantity
+                <input type="number" id="min_order_qty" name="min_order_qty" placeholder="0" min="0" value="0">
+            </label>
+            <label for="lead_time_days">
+                Lead Time (days)
+                <input type="number" id="lead_time_days" name="lead_time_days" placeholder="0" min="0" value="0">
+            </label>
+        </div>
+        <label for="is_active">
+            <input type="checkbox" id="is_active" name="is_active" role="switch" checked>
+            Product is active
         </label>
         <button type="submit">Add Product</button>
         <button type="button" onclick="toggleForm('add-product-form')" class="secondary">Cancel</button>
@@ -44,6 +82,7 @@
                 <th>Name</th>
                 <th>Brand</th>
                 <th>Specification</th>
+                <th>Status</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -52,22 +91,21 @@
             <tr id="product-{{.ID}}">
                 <td>{{.ID}}</td>
                 <td>
-                    <span class="product-name">{{.Name}}</span>
-                    <form class="hidden edit-form" hx-put="/products/{{.ID}}" hx-target="#product-{{.ID}}" hx-swap="outerHTML">
-                        <input type="text" name="name" value="{{.Name}}" required>
-                        <select name="specification_id">
-                            <option value="">None</option>
-                            {{range $.Specifications}}
-                            <option value="{{.ID}}">{{.Name}}</option>
-                            {{end}}
-                        </select>
-                    </form>
+                    <strong>{{.Name}}</strong>
+                    {{if .SKU}}<br><small>{{.SKU}}</small>{{end}}
                 </td>
                 <td>{{if .Brand}}{{.Brand.Name}}{{end}}</td>
                 <td>{{if .Specification}}{{.Specification.Name}}{{else}}-{{end}}</td>
                 <td>
+                    {{if .IsActive}}
+                        <span style="color: green;">●</span>
+                    {{else}}
+                        <span style="color: red;">●</span>
+                    {{end}}
+                </td>
+                <td>
                     <div class="actions">
-                        <button class="btn-sm secondary" onclick="toggleProductEdit({{.ID}})">Edit</button>
+                        <a href="/products/{{.ID}}" role="button" class="btn-sm secondary">View</a>
                         <button class="btn-sm contrast"
                                 hx-delete="/products/{{.ID}}"
                                 hx-target="#product-{{.ID}}"
@@ -83,26 +121,4 @@
     </table>
 </figure>
 
-<script>
-function toggleProductEdit(id) {
-    const row = document.getElementById('product-' + id);
-    const nameSpan = row.querySelector('.product-name');
-    const form = row.querySelector('.edit-form');
-    const editBtn = row.querySelector('.secondary');
-
-    if (form.classList.contains('hidden')) {
-        nameSpan.classList.add('hidden');
-        form.classList.remove('hidden');
-        editBtn.textContent = 'Save';
-        editBtn.onclick = function() {
-            htmx.trigger(form, 'submit');
-        };
-    } else {
-        nameSpan.classList.remove('hidden');
-        form.classList.add('hidden');
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = function() { toggleProductEdit(id); };
-    }
-}
-</script>
 {{end}}

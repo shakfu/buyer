@@ -367,12 +367,65 @@ var listProjectRequisitionsCmd = &cobra.Command{
 	},
 }
 
+var listPurchaseOrdersCmd = &cobra.Command{
+	Use:   "purchase-orders",
+	Short: "List all purchase orders",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+		status, _ := cmd.Flags().GetString("status")
+
+		svc := services.NewPurchaseOrderService(cfg.DB)
+		var orders []*models.PurchaseOrder
+		var err error
+
+		if status != "" {
+			orders, err = svc.ListByStatus(status, limit, offset)
+		} else {
+			orders, err = svc.List(limit, offset)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(orders) == 0 {
+			fmt.Println("No purchase orders found.")
+			return
+		}
+
+		tbl := table.New("ID", "PO Number", "Status", "Vendor", "Product", "Qty", "Total", "Order Date", "Expected")
+		for _, po := range orders {
+			vendorName := ""
+			if po.Vendor != nil {
+				vendorName = po.Vendor.Name
+			}
+			productName := ""
+			if po.Product != nil {
+				productName = po.Product.Name
+			}
+
+			totalStr := fmt.Sprintf("%.2f %s", po.GrandTotal, po.Currency)
+			orderDateStr := po.OrderDate.Format("2006-01-02")
+			expectedStr := "-"
+			if po.ExpectedDelivery != nil {
+				expectedStr = po.ExpectedDelivery.Format("2006-01-02")
+			}
+
+			tbl.AddRow(po.ID, po.PONumber, po.Status, vendorName, productName, po.Quantity, totalStr, orderDateStr, expectedStr)
+		}
+		tbl.Print()
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listSpecificationsCmd)
 	listCmd.AddCommand(listBrandsCmd)
 	listCmd.AddCommand(listProductsCmd)
 	listCmd.AddCommand(listVendorsCmd)
 	listCmd.AddCommand(listQuotesCmd)
+	listCmd.AddCommand(listPurchaseOrdersCmd)
 	listCmd.AddCommand(listForexCmd)
 	listCmd.AddCommand(listRequisitionsCmd)
 	listCmd.AddCommand(listProjectsCmd)
@@ -380,8 +433,11 @@ func init() {
 	listCmd.AddCommand(listProjectRequisitionsCmd)
 
 	// Add common pagination flags
-	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listForexCmd, listRequisitionsCmd, listProjectsCmd, listProjectRequisitionsCmd} {
+	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listPurchaseOrdersCmd, listForexCmd, listRequisitionsCmd, listProjectsCmd, listProjectRequisitionsCmd} {
 		cmd.Flags().Int("limit", 0, "Maximum number of results (0 = no limit)")
 		cmd.Flags().Int("offset", 0, "Number of results to skip")
 	}
+
+	// Purchase order specific flags
+	listPurchaseOrdersCmd.Flags().String("status", "", "Filter by status (pending, approved, ordered, shipped, received, cancelled)")
 }

@@ -42,17 +42,12 @@
             {{range .Vendors}}
             <tr id="vendor-{{.ID}}">
                 <td>{{.ID}}</td>
-                <td>
-                    <span class="vendor-name">{{.Name}}</span>
-                    <form class="hidden edit-form" hx-put="/vendors/{{.ID}}" hx-target="#vendor-{{.ID}}" hx-swap="outerHTML">
-                        <input type="text" name="name" value="{{.Name}}" required>
-                    </form>
-                </td>
+                <td><strong>{{.Name}}</strong></td>
                 <td>{{.Currency}}</td>
                 <td>{{.DiscountCode}}</td>
                 <td>
                     <div class="actions">
-                        <button class="btn-sm secondary" onclick="toggleVendorEdit({{.ID}})">Edit</button>
+                        <a href="/vendors/{{.ID}}" role="button" class="btn-sm secondary">View</a>
                         <button class="btn-sm contrast"
                                 hx-delete="/vendors/{{.ID}}"
                                 hx-target="#vendor-{{.ID}}"
@@ -67,27 +62,4 @@
         </tbody>
     </table>
 </figure>
-
-<script>
-function toggleVendorEdit(id) {
-    const row = document.getElementById('vendor-' + id);
-    const nameSpan = row.querySelector('.vendor-name');
-    const form = row.querySelector('.edit-form');
-    const editBtn = row.querySelector('.secondary');
-
-    if (form.classList.contains('hidden')) {
-        nameSpan.classList.add('hidden');
-        form.classList.remove('hidden');
-        editBtn.textContent = 'Save';
-        editBtn.onclick = function() {
-            htmx.trigger(form, 'submit');
-        };
-    } else {
-        nameSpan.classList.remove('hidden');
-        form.classList.add('hidden');
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = function() { toggleVendorEdit(id); };
-    }
-}
-</script>
 {{end}}

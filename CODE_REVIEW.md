@@ -21,10 +21,11 @@ The following critical security and quality issues have been **FIXED**:
 - **✅ C1 (HIGH):** Eliminated ~850 lines of duplicated code by consolidating CRUD handlers
 - **✅ CF2 (MEDIUM):** Added graceful shutdown with signal handling
 - **✅ C2 (MEDIUM):** Fixed all error handlers to properly escape HTML output
+- **✅ C3 (MEDIUM):** Refactored HTML rendering to use proper template auto-escaping
 
-**Security improvements:** The application now enforces strong passwords (12+ chars, uppercase, lowercase, digit, special char) and requires explicit configuration when authentication is enabled. No more dangerous defaults.
+**Security improvements:** The application now enforces strong passwords (12+ chars, uppercase, lowercase, digit, special char) and requires explicit configuration when authentication is enabled. No more dangerous defaults. All HTML rendering uses Go's template auto-escaping to prevent XSS.
 
-**Code quality improvements:** Massive code duplication eliminated - all CRUD handlers now consistently use the render functions from `web_handlers.go`, making the codebase much more maintainable.
+**Code quality improvements:** Massive code duplication eliminated - all CRUD handlers now consistently use the render functions from `web_handlers.go`, making the codebase much more maintainable. HTML rendering refactored to eliminate unsafe manual string building.
 
 ---
 
@@ -64,18 +65,29 @@ return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 
 **Resolution:** Used sed to replace all 19 instances of `SendString(err.Error())` with `SendString(escapeHTML(err.Error()))` throughout web.go.
 
-#### **C3: Unsafe String Concatenation in HTML Generation**
+#### **C3: Unsafe String Concatenation in HTML Generation** ✅ FIXED
 **Severity: MEDIUM**
-**Location:** `cmd/buyer/web_security.go` lines 366-368
+**Location:** `cmd/buyer/web_security.go` (lines 364-526, now refactored)
+**Status:** Eliminated all manual HTML string building with `fmt.Sprintf` and `template.HTML` casting
 
-```go
-itemsHTML += fmt.Sprintf("<li>%s (Qty: %d%s)%s</li>",
-    escapeHTML(specName), item.Quantity, budgetDisplay, descDisplay)
-```
+~~While `escapeHTML` was used on some variables, others like `budgetDisplay` and `descDisplay` were constructed with `fmt.Sprintf` and cast to `template.HTML`, bypassing Go's template auto-escaping.~~
 
-While `escapeHTML` is used on `specName`, `budgetDisplay` and `descDisplay` are constructed with string formatting that may include unescaped content.
+**Resolution:**
+- **RenderQuoteRow** (lines 364-449): Removed manual HTML string building for `expiryDisplay`
+  - Now passes raw data (`expiryDays`, `expiryColor`, `expiryText`) to template
+  - Template handles all HTML generation with proper auto-escaping
 
-**Recommendation:** Escape all dynamic content or use proper template rendering throughout.
+- **RenderRequisitionRow** (lines 451-526): Completely refactored to eliminate string concatenation
+  - Removed manual `fmt.Sprintf` HTML building for items, justification, and budget
+  - Created structured `ItemData` type for proper template iteration
+  - Template now uses `{{range .Items}}` with auto-escaped fields
+  - All `template.HTML` casts eliminated
+
+**Benefits:**
+- Template engine now auto-escapes ALL dynamic content
+- No risk of XSS from missed `escapeHTML()` calls
+- More maintainable - HTML structure visible in template, not scattered in Go code
+- Consistent with Go template best practices
 
 ### MEDIUM Issues
 
