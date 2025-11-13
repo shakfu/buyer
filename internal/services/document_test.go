@@ -6,7 +6,7 @@ import (
 
 func TestDocumentService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -141,7 +141,7 @@ func TestDocumentService_Create(t *testing.T) {
 
 func TestDocumentService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -195,7 +195,7 @@ func TestDocumentService_GetByID(t *testing.T) {
 
 func TestDocumentService_ListByEntity(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -203,13 +203,13 @@ func TestDocumentService_ListByEntity(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create documents for vendor 1
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc2.pdf",
@@ -217,7 +217,7 @@ func TestDocumentService_ListByEntity(t *testing.T) {
 	})
 
 	// Create document for vendor 2
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor2.ID,
 		FileName:   "doc3.pdf",
@@ -267,7 +267,7 @@ func TestDocumentService_ListByEntity(t *testing.T) {
 
 func TestDocumentService_ListByEntityType(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 	brandService := NewBrandService(cfg.DB)
@@ -276,13 +276,13 @@ func TestDocumentService_ListByEntityType(t *testing.T) {
 	brand, _ := brandService.Create("Test Brand")
 
 	// Create vendor documents
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "vendor_doc1.pdf",
 		FilePath:   "/docs/vendor_doc1.pdf",
 	})
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "vendor_doc2.pdf",
@@ -290,7 +290,7 @@ func TestDocumentService_ListByEntityType(t *testing.T) {
 	})
 
 	// Create brand document
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "brand",
 		EntityID:   brand.ID,
 		FileName:   "brand_doc1.pdf",
@@ -336,7 +336,7 @@ func TestDocumentService_ListByEntityType(t *testing.T) {
 
 func TestDocumentService_Update(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -399,7 +399,7 @@ func TestDocumentService_Update(t *testing.T) {
 
 func TestDocumentService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -456,20 +456,20 @@ func TestDocumentService_Delete(t *testing.T) {
 
 func TestDocumentService_DeleteByEntity(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
 	vendor, _ := vendorService.Create("Test Vendor", "USD", "")
 
 	// Create multiple documents for the vendor
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc2.pdf",
@@ -490,7 +490,7 @@ func TestDocumentService_DeleteByEntity(t *testing.T) {
 
 func TestDocumentService_Count(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -503,13 +503,13 @@ func TestDocumentService_Count(t *testing.T) {
 	}
 
 	// Create documents
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc2.pdf",
@@ -524,7 +524,7 @@ func TestDocumentService_Count(t *testing.T) {
 
 func TestDocumentService_CountByEntity(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewDocumentService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -532,13 +532,13 @@ func TestDocumentService_CountByEntity(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create documents for vendor 1
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc2.pdf",
@@ -546,7 +546,7 @@ func TestDocumentService_CountByEntity(t *testing.T) {
 	})
 
 	// Create document for vendor 2
-	service.Create(CreateDocumentInput{
+	_, _ = 	service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor2.ID,
 		FileName:   "doc3.pdf",

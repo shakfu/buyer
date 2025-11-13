@@ -7,7 +7,7 @@ import (
 
 func TestDashboardService_GetStats(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	dashboardSvc := NewDashboardService(cfg.DB)
 	brandSvc := NewBrandService(cfg.DB)
@@ -97,7 +97,7 @@ func TestDashboardService_GetStats(t *testing.T) {
 
 func TestDashboardService_GetVendorSpending(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	dashboardSvc := NewDashboardService(cfg.DB)
 	brandSvc := NewBrandService(cfg.DB)
@@ -192,7 +192,7 @@ func TestDashboardService_GetVendorSpending(t *testing.T) {
 
 func TestDashboardService_GetProductPriceComparison(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	dashboardSvc := NewDashboardService(cfg.DB)
 	brandSvc := NewBrandService(cfg.DB)
@@ -299,7 +299,7 @@ func TestDashboardService_GetProductPriceComparison(t *testing.T) {
 
 func TestDashboardService_GetExpiryStats(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	dashboardSvc := NewDashboardService(cfg.DB)
 	brandSvc := NewBrandService(cfg.DB)
@@ -423,7 +423,7 @@ func TestDashboardService_GetExpiryStats(t *testing.T) {
 
 func TestDashboardService_GetRecentQuotes(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	dashboardSvc := NewDashboardService(cfg.DB)
 	brandSvc := NewBrandService(cfg.DB)

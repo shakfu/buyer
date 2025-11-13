@@ -6,7 +6,7 @@ import (
 
 func TestProductService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -79,7 +79,7 @@ func TestProductService_Create(t *testing.T) {
 
 func TestProductService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -136,7 +136,7 @@ func TestProductService_GetByID(t *testing.T) {
 
 func TestProductService_Update(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -199,7 +199,7 @@ func TestProductService_Update(t *testing.T) {
 
 func TestProductService_GetByName(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -255,7 +255,7 @@ func TestProductService_GetByName(t *testing.T) {
 
 func TestProductService_List(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -320,7 +320,7 @@ func TestProductService_List(t *testing.T) {
 
 func TestProductService_ListByBrand(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -351,7 +351,7 @@ func TestProductService_ListByBrand(t *testing.T) {
 
 func TestProductService_ListBySpecification(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -388,7 +388,7 @@ func TestProductService_ListBySpecification(t *testing.T) {
 
 func TestProductService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -451,7 +451,7 @@ func TestProductService_Delete(t *testing.T) {
 
 func TestProductService_Count(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)

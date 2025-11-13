@@ -2,12 +2,11 @@ package services
 
 import (
 	"testing"
-	"time"
 )
 
 func TestVendorRatingService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 	brandService := NewBrandService(cfg.DB)
@@ -158,7 +157,7 @@ func TestVendorRatingService_Create(t *testing.T) {
 
 func TestVendorRatingService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -213,7 +212,7 @@ func TestVendorRatingService_GetByID(t *testing.T) {
 
 func TestVendorRatingService_ListByVendor(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -221,17 +220,17 @@ func TestVendorRatingService_ListByVendor(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create ratings for vendor 1
-	service.Create(CreateVendorRatingInput{
+	_, _ = 	service.Create(CreateVendorRatingInput{
 		VendorID:    vendor1.ID,
 		PriceRating: intPtr(5),
 	})
-	service.Create(CreateVendorRatingInput{
+	_, _ = 	service.Create(CreateVendorRatingInput{
 		VendorID:      vendor1.ID,
 		QualityRating: intPtr(4),
 	})
 
 	// Create rating for vendor 2
-	service.Create(CreateVendorRatingInput{
+	_, _ = 	service.Create(CreateVendorRatingInput{
 		VendorID:    vendor2.ID,
 		PriceRating: intPtr(3),
 	})
@@ -275,7 +274,7 @@ func TestVendorRatingService_ListByVendor(t *testing.T) {
 
 func TestVendorRatingService_Update(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -351,7 +350,7 @@ func TestVendorRatingService_Update(t *testing.T) {
 
 func TestVendorRatingService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
@@ -406,21 +405,21 @@ func TestVendorRatingService_Delete(t *testing.T) {
 
 func TestVendorRatingService_GetAverageRatings(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 
 	vendor, _ := vendorService.Create("Test Vendor", "USD", "")
 
 	// Create multiple ratings
-	service.Create(CreateVendorRatingInput{
+	_, _ = 	service.Create(CreateVendorRatingInput{
 		VendorID:       vendor.ID,
 		PriceRating:    intPtr(5),
 		QualityRating:  intPtr(4),
 		DeliveryRating: intPtr(5),
 		ServiceRating:  intPtr(5),
 	})
-	service.Create(CreateVendorRatingInput{
+	_, _ = 	service.Create(CreateVendorRatingInput{
 		VendorID:       vendor.ID,
 		PriceRating:    intPtr(3),
 		QualityRating:  intPtr(4),
@@ -462,7 +461,7 @@ func TestVendorRatingService_GetAverageRatings(t *testing.T) {
 
 func TestVendorRatingService_VendorPurchaseOrderMismatch(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 	service := NewVendorRatingService(cfg.DB)
 	vendorService := NewVendorService(cfg.DB)
 	brandService := NewBrandService(cfg.DB)
@@ -515,6 +514,3 @@ func uintPtr(u uint) *uint {
 	return &u
 }
 
-func timePtr(t time.Time) *time.Time {
-	return &t
-}

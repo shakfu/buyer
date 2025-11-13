@@ -7,7 +7,7 @@ import (
 
 func TestProjectService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -104,7 +104,7 @@ func TestProjectService_Create(t *testing.T) {
 
 func TestProjectService_CreateDuplicate(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -125,7 +125,7 @@ func TestProjectService_CreateDuplicate(t *testing.T) {
 
 func TestProjectService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -156,7 +156,7 @@ func TestProjectService_GetByID(t *testing.T) {
 
 func TestProjectService_GetByName(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -183,7 +183,7 @@ func TestProjectService_GetByName(t *testing.T) {
 
 func TestProjectService_List(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -251,7 +251,7 @@ func TestProjectService_List(t *testing.T) {
 
 func TestProjectService_Update(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -300,7 +300,7 @@ func TestProjectService_Update(t *testing.T) {
 
 func TestProjectService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -329,7 +329,7 @@ func TestProjectService_Delete(t *testing.T) {
 
 func TestProjectService_Count(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewProjectService(cfg.DB)
 
@@ -357,7 +357,7 @@ func TestProjectService_Count(t *testing.T) {
 
 func TestProjectService_AddBillOfMaterialsItem(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	projectSvc := NewProjectService(cfg.DB)
 	specSvc := NewSpecificationService(cfg.DB)
@@ -418,7 +418,7 @@ func TestProjectService_AddBillOfMaterialsItem(t *testing.T) {
 
 func TestProjectService_UpdateBillOfMaterialsItem(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	projectSvc := NewProjectService(cfg.DB)
 	specSvc := NewSpecificationService(cfg.DB)
@@ -466,7 +466,7 @@ func TestProjectService_UpdateBillOfMaterialsItem(t *testing.T) {
 
 func TestProjectService_DeleteBillOfMaterialsItem(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	projectSvc := NewProjectService(cfg.DB)
 	specSvc := NewSpecificationService(cfg.DB)

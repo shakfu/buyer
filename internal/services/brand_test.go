@@ -39,7 +39,7 @@ func setupTestDB(t *testing.T) *config.Config {
 
 func TestBrandService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewBrandService(cfg.DB)
 
@@ -113,7 +113,7 @@ func TestBrandService_Create(t *testing.T) {
 
 func TestBrandService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewBrandService(cfg.DB)
 
@@ -173,7 +173,7 @@ func TestBrandService_GetByID(t *testing.T) {
 
 func TestBrandService_Update(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewBrandService(cfg.DB)
 
@@ -247,7 +247,7 @@ func TestBrandService_Update(t *testing.T) {
 
 func TestBrandService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewBrandService(cfg.DB)
 
@@ -295,7 +295,7 @@ func TestBrandService_Delete(t *testing.T) {
 
 func TestBrandService_List(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewBrandService(cfg.DB)
 
