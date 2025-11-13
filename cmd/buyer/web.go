@@ -747,11 +747,3 @@ func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {
 func init() {
 	webCmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
 }
-
-// getEnvOrDefault returns the value of an environment variable or a default value
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}

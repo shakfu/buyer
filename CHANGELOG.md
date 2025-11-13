@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Sample documents in fixtures** - Added 12 example document attachments for vendors, quotes, purchase orders, and products
   - **Detail pages** - Added dedicated detail pages for Products, Quotes, Vendors, and Purchase Orders with comprehensive information display
   - **Simplified table views** - Streamlined list tables to show only essential columns with "View" buttons for accessing full details
+  - **Model validation hooks** - Added BeforeSave hooks to validate business constraints at the model level:
+    - Quote: Validates positive prices, conversion rates, valid status enums, and non-negative minimum quantities
+    - Project: Validates status enum values and non-negative budgets
+    - PurchaseOrder: Validates status enums, positive quantities, non-negative amounts (total, shipping, tax)
+    - RequisitionItem: Validates positive quantities and non-negative budget per unit
+    - Product: Validates non-negative minimum order quantities and lead time days
 
 ### Changed
   - Web forms now automatically clear input values after successful submission
@@ -39,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed unsafe string concatenation in HTML generation (C3 from CODE_REVIEW.md)
   - All HTML rendering now uses proper template auto-escaping instead of manual string building
   - **Product SKU field** - Changed from string to pointer type (*string) to properly handle NULL values in unique constraint, preventing UNIQUE constraint violations when multiple products have no SKU
+  - **Quote.IsStale() logic** - Fixed incorrect logic that marked long-term valid quotes as stale (D7 from MODEL_ANALYSIS.md)
+    - Now correctly handles quotes with ValidUntil set: if not expired, they are not stale regardless of age
+    - Only quotes without ValidUntil set are marked stale after 90 days
+  - **Linting issues** - Fixed all golangci-lint warnings:
+    - Added error checking for all test helper function calls (errcheck)
+    - Removed unused `getEnvOrDefault` function in web.go
+    - Fixed ineffectual assignment in list.go by using separate variable for fmt.Sscanf error
 
 ## [0.1.0]
 

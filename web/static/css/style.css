@@ -2,7 +2,7 @@
 
 /* Base font size adjustment - equivalent to one browser zoom-out step */
 :root {
-    --pico-font-size: 90%;
+    --pico-font-size: 95%;
 }
 
 /* Top Navigation */

@@ -52,7 +52,7 @@ func TestPurchaseOrderService_Create(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -245,7 +245,7 @@ func TestPurchaseOrderService_GetByID(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -320,7 +320,7 @@ func TestPurchaseOrderService_GetByPONumber(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -395,7 +395,7 @@ func TestPurchaseOrderService_UpdateStatus(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -515,7 +515,7 @@ func TestPurchaseOrderService_UpdateDeliveryDates(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -578,7 +578,7 @@ func TestPurchaseOrderService_Delete(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -642,7 +642,7 @@ func TestPurchaseOrderService_Delete(t *testing.T) {
 			})
 
 			// Set status
-			poSvc.UpdateStatus(po.ID, tt.status)
+			_, _ = poSvc.UpdateStatus(po.ID, tt.status)
 
 			err := poSvc.Delete(po.ID)
 
@@ -690,7 +690,7 @@ func TestPurchaseOrderService_List(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -704,7 +704,7 @@ func TestPurchaseOrderService_List(t *testing.T) {
 
 	// Create multiple purchase orders
 	for i := 1; i <= 5; i++ {
-		poSvc.Create(CreatePurchaseOrderInput{
+		_, _ = poSvc.Create(CreatePurchaseOrderInput{
 			QuoteID:  quote.ID,
 			PONumber: fmt.Sprintf("PO-LIST-%d", i),
 			Quantity: i,
@@ -766,7 +766,7 @@ func TestPurchaseOrderService_ListByStatus(t *testing.T) {
 	product, _ := productSvc.Create("Test Product", brand.ID, nil)
 
 	forexSvc := NewForexService(cfg.DB)
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quoteSvc := NewQuoteService(cfg.DB)
 	quote, _ := quoteSvc.Create(CreateQuoteInput{
@@ -784,14 +784,14 @@ func TestPurchaseOrderService_ListByStatus(t *testing.T) {
 		PONumber: "PO-STATUS-1",
 		Quantity: 1,
 	})
-	poSvc.UpdateStatus(po1.ID, "shipped")
+	_, _ = poSvc.UpdateStatus(po1.ID, "shipped")
 
 	po2, _ := poSvc.Create(CreatePurchaseOrderInput{
 		QuoteID:  quote.ID,
 		PONumber: "PO-STATUS-2",
 		Quantity: 1,
 	})
-	poSvc.UpdateStatus(po2.ID, "shipped")
+	_, _ = poSvc.UpdateStatus(po2.ID, "shipped")
 
 	_, _ = poSvc.Create(CreatePurchaseOrderInput{
 		QuoteID:  quote.ID,

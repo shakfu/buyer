@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -290,6 +291,36 @@ type Document struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+// BeforeSave hook for RequisitionItem - validates constraints
+func (ri *RequisitionItem) BeforeSave(tx *gorm.DB) error {
+	// Validate positive quantity
+	if ri.Quantity <= 0 {
+		return fmt.Errorf("requisition item quantity must be positive, got %d", ri.Quantity)
+	}
+
+	// Validate positive budget per unit if set
+	if ri.BudgetPerUnit < 0 {
+		return fmt.Errorf("requisition item budget per unit cannot be negative, got %.2f", ri.BudgetPerUnit)
+	}
+
+	return nil
+}
+
+// BeforeSave hook for Product - validates constraints
+func (p *Product) BeforeSave(tx *gorm.DB) error {
+	// Validate minimum order quantity
+	if p.MinOrderQty < 0 {
+		return fmt.Errorf("product minimum order quantity cannot be negative, got %d", p.MinOrderQty)
+	}
+
+	// Validate lead time days
+	if p.LeadTimeDays < 0 {
+		return fmt.Errorf("product lead time days cannot be negative, got %d", p.LeadTimeDays)
+	}
+
+	return nil
+}
+
 // BeforeCreate hook for Vendor
 func (v *Vendor) BeforeCreate(tx *gorm.DB) error {
 	if v.Currency == "" {
@@ -306,11 +337,59 @@ func (q *Quote) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// BeforeSave hook for Quote - validates constraints
+func (q *Quote) BeforeSave(tx *gorm.DB) error {
+	// Validate positive price
+	if q.Price <= 0 {
+		return fmt.Errorf("quote price must be positive, got %.2f", q.Price)
+	}
+	if q.ConvertedPrice <= 0 {
+		return fmt.Errorf("quote converted price must be positive, got %.2f", q.ConvertedPrice)
+	}
+	if q.ConversionRate <= 0 {
+		return fmt.Errorf("quote conversion rate must be positive, got %.2f", q.ConversionRate)
+	}
+
+	// Validate status enum
+	validStatuses := map[string]bool{
+		"active": true, "superseded": true, "expired": true,
+		"accepted": true, "declined": true,
+	}
+	if q.Status != "" && !validStatuses[q.Status] {
+		return fmt.Errorf("invalid quote status: %s (must be one of: active, superseded, expired, accepted, declined)", q.Status)
+	}
+
+	// Validate minimum quantity
+	if q.MinQuantity < 0 {
+		return fmt.Errorf("quote minimum quantity cannot be negative, got %d", q.MinQuantity)
+	}
+
+	return nil
+}
+
 // BeforeCreate hook for Project - sets default status if not provided
 func (p *Project) BeforeCreate(tx *gorm.DB) error {
 	if p.Status == "" {
 		p.Status = "planning"
 	}
+	return nil
+}
+
+// BeforeSave hook for Project - validates constraints
+func (p *Project) BeforeSave(tx *gorm.DB) error {
+	// Validate status enum
+	validStatuses := map[string]bool{
+		"planning": true, "active": true, "completed": true, "cancelled": true,
+	}
+	if p.Status != "" && !validStatuses[p.Status] {
+		return fmt.Errorf("invalid project status: %s (must be one of: planning, active, completed, cancelled)", p.Status)
+	}
+
+	// Validate positive budget
+	if p.Budget < 0 {
+		return fmt.Errorf("project budget cannot be negative, got %.2f", p.Budget)
+	}
+
 	return nil
 }
 
@@ -329,6 +408,42 @@ func (po *PurchaseOrder) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// BeforeSave hook for PurchaseOrder - validates constraints
+func (po *PurchaseOrder) BeforeSave(tx *gorm.DB) error {
+	// Validate status enum
+	validStatuses := map[string]bool{
+		"pending": true, "approved": true, "ordered": true,
+		"shipped": true, "received": true, "cancelled": true,
+	}
+	if po.Status != "" && !validStatuses[po.Status] {
+		return fmt.Errorf("invalid purchase order status: %s (must be one of: pending, approved, ordered, shipped, received, cancelled)", po.Status)
+	}
+
+	// Validate positive quantity
+	if po.Quantity <= 0 {
+		return fmt.Errorf("purchase order quantity must be positive, got %d", po.Quantity)
+	}
+
+	// Validate positive amounts
+	if po.TotalAmount < 0 {
+		return fmt.Errorf("purchase order total amount cannot be negative, got %.2f", po.TotalAmount)
+	}
+	if po.ShippingCost < 0 {
+		return fmt.Errorf("purchase order shipping cost cannot be negative, got %.2f", po.ShippingCost)
+	}
+	if po.Tax < 0 {
+		return fmt.Errorf("purchase order tax cannot be negative, got %.2f", po.Tax)
+	}
+	if po.GrandTotal < 0 {
+		return fmt.Errorf("purchase order grand total cannot be negative, got %.2f", po.GrandTotal)
+	}
+
+	// Note: We don't validate that actual delivery must be after expected delivery
+	// because items can arrive early, and that's a valid scenario
+
+	return nil
+}
+
 // IsExpired checks if the quote has passed its expiration date
 func (q *Quote) IsExpired() bool {
 	if q.ValidUntil == nil {
@@ -338,11 +453,19 @@ func (q *Quote) IsExpired() bool {
 }
 
 // IsStale checks if the quote is older than 90 days (or expired if ValidUntil is set)
+// Fixed logic: If ValidUntil is set and still valid, the quote is not stale regardless of age
 func (q *Quote) IsStale() bool {
+	// If expired, it's definitely stale
 	if q.IsExpired() {
 		return true
 	}
-	// Consider quotes older than 90 days as stale
+
+	// If ValidUntil is set and still valid, not stale
+	if q.ValidUntil != nil {
+		return false
+	}
+
+	// If no expiration set, consider stale after 90 days
 	return time.Since(q.QuoteDate) > 90*24*time.Hour
 }
 

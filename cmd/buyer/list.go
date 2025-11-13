@@ -325,8 +325,8 @@ var listProjectRequisitionsCmd = &cobra.Command{
 		if len(args) == 1 {
 			// List for specific project
 			var projectID uint
-			_, err := fmt.Sscanf(args[0], "%d", &projectID)
-			if err != nil {
+			_, scanErr := fmt.Sscanf(args[0], "%d", &projectID)
+			if scanErr != nil {
 				fmt.Fprintf(os.Stderr, "Error: Invalid project ID\n")
 				os.Exit(1)
 			}
