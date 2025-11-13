@@ -7,7 +7,7 @@ import (
 
 func TestForexService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewForexService(cfg.DB)
 
@@ -84,7 +84,7 @@ func TestForexService_Create(t *testing.T) {
 
 func TestForexService_GetLatestRate(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewForexService(cfg.DB)
 
@@ -150,7 +150,7 @@ func TestForexService_GetLatestRate(t *testing.T) {
 
 func TestForexService_Convert(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	svc := NewForexService(cfg.DB)
 
@@ -161,12 +161,12 @@ func TestForexService_Convert(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		amount         float64
-		from           string
-		to             string
-		wantConverted  float64
-		wantErr        bool
+		name          string
+		amount        float64
+		from          string
+		to            string
+		wantConverted float64
+		wantErr       bool
 	}{
 		{
 			name:          "valid conversion",

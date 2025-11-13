@@ -80,7 +80,7 @@ func (s *PurchaseOrderService) Create(input CreatePurchaseOrderInput) (*models.P
 		ProductID:        quote.ProductID,
 		RequisitionID:    input.RequisitionID,
 		PONumber:         poNumber,
-		Status:           "pending", // Will be set by BeforeCreate hook if empty
+		Status:           "pending",  // Will be set by BeforeCreate hook if empty
 		OrderDate:        time.Now(), // Will be set by BeforeCreate hook if zero
 		ExpectedDelivery: input.ExpectedDelivery,
 		Quantity:         input.Quantity,
@@ -108,32 +108,43 @@ func (s *PurchaseOrderService) Create(input CreatePurchaseOrderInput) (*models.P
 // GetByID retrieves a purchase order by ID
 func (s *PurchaseOrderService) GetByID(id uint) (*models.PurchaseOrder, error) {
 	var po models.PurchaseOrder
-	if err := s.db.Preload("Quote").Preload("Vendor").Preload("Product").Preload("Requisition").First(&po, id).Error; err != nil {
+	if err := s.db.Preload("Quote").Preload("Vendor").Preload("Product").
+		Preload("Requisition").Preload("VendorRatings").First(&po, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, &NotFoundError{Entity: "purchase order", ID: id}
 		}
 		return nil, err
 	}
+
+	// Load documents separately (polymorphic relationship)
+	s.loadDocuments(&po)
+
 	return &po, nil
 }
 
 // GetByPONumber retrieves a purchase order by PO number
 func (s *PurchaseOrderService) GetByPONumber(poNumber string) (*models.PurchaseOrder, error) {
 	var po models.PurchaseOrder
-	if err := s.db.Preload("Quote").Preload("Vendor").Preload("Product").Preload("Requisition").
+	if err := s.db.Preload("Quote").Preload("Vendor").Preload("Product").
+		Preload("Requisition").Preload("VendorRatings").
 		Where("po_number = ?", poNumber).First(&po).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, &NotFoundError{Entity: "purchase order", ID: poNumber}
 		}
 		return nil, err
 	}
+
+	// Load documents separately (polymorphic relationship)
+	s.loadDocuments(&po)
+
 	return &po, nil
 }
 
 // List retrieves all purchase orders with pagination
 func (s *PurchaseOrderService) List(limit, offset int) ([]*models.PurchaseOrder, error) {
 	var orders []*models.PurchaseOrder
-	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").Preload("Requisition").
+	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").
+		Preload("Requisition").Preload("VendorRatings").
 		Order("order_date DESC")
 
 	if limit > 0 {
@@ -146,13 +157,20 @@ func (s *PurchaseOrderService) List(limit, offset int) ([]*models.PurchaseOrder,
 	if err := query.Find(&orders).Error; err != nil {
 		return nil, err
 	}
+
+	// Load documents for all purchase orders
+	for i := range orders {
+		s.loadDocuments(orders[i])
+	}
+
 	return orders, nil
 }
 
 // ListByStatus retrieves purchase orders by status
 func (s *PurchaseOrderService) ListByStatus(status string, limit, offset int) ([]*models.PurchaseOrder, error) {
 	var orders []*models.PurchaseOrder
-	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").Preload("Requisition").
+	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").
+		Preload("Requisition").Preload("VendorRatings").
 		Where("status = ?", status).
 		Order("order_date DESC")
 
@@ -166,13 +184,20 @@ func (s *PurchaseOrderService) ListByStatus(status string, limit, offset int) ([
 	if err := query.Find(&orders).Error; err != nil {
 		return nil, err
 	}
+
+	// Load documents for all purchase orders
+	for i := range orders {
+		s.loadDocuments(orders[i])
+	}
+
 	return orders, nil
 }
 
 // ListByVendor retrieves purchase orders for a specific vendor
 func (s *PurchaseOrderService) ListByVendor(vendorID uint, limit, offset int) ([]*models.PurchaseOrder, error) {
 	var orders []*models.PurchaseOrder
-	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").Preload("Requisition").
+	query := s.db.Preload("Quote").Preload("Vendor").Preload("Product").
+		Preload("Requisition").Preload("VendorRatings").
 		Where("vendor_id = ?", vendorID).
 		Order("order_date DESC")
 
@@ -186,6 +211,12 @@ func (s *PurchaseOrderService) ListByVendor(vendorID uint, limit, offset int) ([
 	if err := query.Find(&orders).Error; err != nil {
 		return nil, err
 	}
+
+	// Load documents for all purchase orders
+	for i := range orders {
+		s.loadDocuments(orders[i])
+	}
+
 	return orders, nil
 }
 
@@ -320,4 +351,11 @@ func (s *PurchaseOrderService) CountByStatus(status string) (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// loadDocuments loads documents for a purchase order (polymorphic relationship)
+func (s *PurchaseOrderService) loadDocuments(po *models.PurchaseOrder) {
+	var docs []models.Document
+	s.db.Where("entity_type = ? AND entity_id = ?", "purchase_order", po.ID).Find(&docs)
+	po.Documents = docs
 }

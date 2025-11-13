@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+  - **Document management system** - Full implementation of document management features (D8 from MODEL_ANALYSIS.md)
+    - DocumentService with complete CRUD operations
+    - CLI commands: `buyer add document` and `buyer list documents` with entity filtering
+    - Web CRUD interface at `/documents` with HTMX integration
+    - Support for polymorphic document attachments to any entity type
+    - Document metadata tracking: file name, type, size, upload info
+    - Comprehensive test suite with 8 test functions covering all service operations
+  - **Vendor rating system** - Multi-category vendor performance tracking (D6 from MODEL_ANALYSIS.md)
+    - VendorRating model with four rating categories: price, quality, delivery, and service
+    - VendorRatingService with CRUD operations and analytics functions
+    - CLI commands: `buyer add vendor-rating` and `buyer list vendor-ratings` with vendor filtering
+    - Web CRUD interface at `/vendor-ratings` with HTMX integration
+    - Optional purchase order linkage for context-specific ratings
+    - Comprehensive test suite with 8 test functions covering all service operations
+  - **Vendor performance dashboard** - Analytics and visualization for vendor ratings
+    - Web dashboard at `/vendor-performance` with interactive Vega-Lite charts
+    - Overall vendor rankings sorted by average rating
+    - Category breakdown visualization (price, quality, delivery, service)
+    - Key metrics: total ratings, rated vendors, average overall rating, top performer
+    - SQL aggregation with proper null handling for optional rating categories
+    - GetVendorPerformance() and GetCategoryAverages() analytics functions
+  - **HTMX-powered web interfaces** - Modern interactive web pages with real-time updates
+    - Form submissions without page reloads
+    - Dynamic table row updates for create/delete operations
+    - Improved user experience with instant feedback
+  - **Web render functions** - RenderDocumentRow() and RenderVendorRatingRow() for HTMX partial responses
   - MODEL_ANALYSIS.md - Comprehensive analysis of data models with gap analysis and recommendations
   - **PurchaseOrder model** - Track purchase orders from quote acceptance through delivery (D1 from MODEL_ANALYSIS.md)
   - **Vendor contact information** - Added email, phone, website, address fields to Vendor model (D2 from MODEL_ANALYSIS.md)
@@ -52,6 +78,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added error checking for all test helper function calls (errcheck)
     - Removed unused `getEnvOrDefault` function in web.go
     - Fixed ineffectual assignment in list.go by using separate variable for fmt.Sscanf error
+    - Fixed type mismatch in add.go: changed `*services.Vendor` to `*models.Vendor`
+    - Added missing models import in add.go
+    - Updated web_test.go to include Document and VendorRating models in AutoMigrate
+    - Updated web_test.go setupRoutes call to include docSvc and ratingsSvc parameters
 
 ## [0.1.0]
 

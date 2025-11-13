@@ -115,6 +115,111 @@
     </section>
     {{end}}
 
+    {{if .Vendor.PurchaseOrders}}
+    <section>
+        <h3>Purchase Orders ({{len .Vendor.PurchaseOrders}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>PO Number</th>
+                        <th>Product</th>
+                        <th>Status</th>
+                        <th>Order Date</th>
+                        <th>Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Vendor.PurchaseOrders}}
+                    <tr>
+                        <td>{{.PONumber}}</td>
+                        <td>{{if .Product}}{{.Product.Name}}{{end}}</td>
+                        <td style="text-transform: capitalize;">{{.Status}}</td>
+                        <td>{{.OrderDate.Format "2006-01-02"}}</td>
+                        <td>{{printf "%.2f" .GrandTotal}} {{.Currency}}</td>
+                        <td><a href="/purchase-orders/{{.ID}}" role="button" class="secondary">View</a></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
+    {{if .Vendor.VendorRatings}}
+    <section>
+        <h3>Vendor Ratings ({{len .Vendor.VendorRatings}})</h3>
+        {{range .Vendor.VendorRatings}}
+        <article>
+            <header>
+                {{if .PurchaseOrderID}}
+                <small>Rating for <a href="/purchase-orders/{{.PurchaseOrderID}}">PO #{{.PurchaseOrderID}}</a></small>
+                {{else}}
+                <small>General Vendor Rating</small>
+                {{end}}
+            </header>
+            <div class="grid">
+                {{if .PriceRating}}
+                <div>
+                    <strong>Price:</strong> {{.PriceRating}}/5
+                </div>
+                {{end}}
+                {{if .QualityRating}}
+                <div>
+                    <strong>Quality:</strong> {{.QualityRating}}/5
+                </div>
+                {{end}}
+                {{if .DeliveryRating}}
+                <div>
+                    <strong>Delivery:</strong> {{.DeliveryRating}}/5
+                </div>
+                {{end}}
+                {{if .ServiceRating}}
+                <div>
+                    <strong>Service:</strong> {{.ServiceRating}}/5
+                </div>
+                {{end}}
+            </div>
+            {{if .Comments}}
+            <p><em>"{{.Comments}}"</em></p>
+            {{end}}
+            <footer>
+                <small>Rated by {{.RatedBy}} on {{.CreatedAt.Format "2006-01-02"}}</small>
+            </footer>
+        </article>
+        {{end}}
+    </section>
+    {{end}}
+
+    {{if .Vendor.Documents}}
+    <section>
+        <h3>Documents ({{len .Vendor.Documents}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Uploaded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Vendor.Documents}}
+                    <tr>
+                        <td><code>{{.FileName}}</code></td>
+                        <td>{{.FileType}}</td>
+                        <td>{{.Description}}</td>
+                        <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
     <footer>
         <a href="/vendors" role="button" class="secondary">Back to Vendors</a>
         <button class="contrast"

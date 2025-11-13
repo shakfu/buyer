@@ -1,0 +1,111 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<div class="toggle-form">
+    <button onclick="toggleForm('add-document-form')">Add New Document</button>
+</div>
+
+<article id="add-document-form" class="hidden">
+    <h2>Add New Document</h2>
+    <form hx-post="/documents" hx-target="#documents-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+        <div class="grid">
+            <label for="entity_type">
+                Entity Type
+                <select id="entity_type" name="entity_type" required>
+                    <option value="">Select entity type...</option>
+                    <option value="vendor">Vendor</option>
+                    <option value="brand">Brand</option>
+                    <option value="product">Product</option>
+                    <option value="quote">Quote</option>
+                    <option value="purchase_order">Purchase Order</option>
+                    <option value="requisition">Requisition</option>
+                    <option value="project">Project</option>
+                </select>
+            </label>
+            <label for="entity_id">
+                Entity ID
+                <input type="number" id="entity_id" name="entity_id" placeholder="Enter entity ID" required>
+            </label>
+        </div>
+        <div class="grid">
+            <label for="file_name">
+                File Name
+                <input type="text" id="file_name" name="file_name" placeholder="document.pdf" required>
+            </label>
+            <label for="file_type">
+                File Type
+                <input type="text" id="file_type" name="file_type" placeholder="pdf, doc, xls, etc.">
+            </label>
+        </div>
+        <label for="file_path">
+            File Path
+            <input type="text" id="file_path" name="file_path" placeholder="/path/to/document.pdf" required>
+        </label>
+        <div class="grid">
+            <label for="file_size">
+                File Size (bytes)
+                <input type="number" id="file_size" name="file_size" placeholder="1024000">
+            </label>
+            <label for="uploaded_by">
+                Uploaded By
+                <input type="text" id="uploaded_by" name="uploaded_by" placeholder="user@example.com">
+            </label>
+        </div>
+        <label for="description">
+            Description
+            <textarea id="description" name="description" placeholder="Document description (optional)" rows="3"></textarea>
+        </label>
+        <button type="submit">Add Document</button>
+        <button type="button" onclick="toggleForm('add-document-form')" class="secondary">Cancel</button>
+    </form>
+</article>
+
+<figure id="documents-table">
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Entity Type</th>
+                <th>Entity ID</th>
+                <th>File Name</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>Uploaded By</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Documents}}
+            <tr id="doc-{{.ID}}">
+                <td>{{.ID}}</td>
+                <td>{{.EntityType}}</td>
+                <td>{{.EntityID}}</td>
+                <td><code>{{.FileName}}</code></td>
+                <td>{{.FileType}}</td>
+                <td>
+                    {{if gt .FileSize 0}}
+                        {{printf "%.1f KB" (div (mul .FileSize 1.0) 1024.0)}}
+                    {{else}}
+                        <span style="color: gray;">—</span>
+                    {{end}}
+                </td>
+                <td>{{if .UploadedBy}}{{.UploadedBy}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+                <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                <td>
+                    <div class="actions">
+                        <button class="btn-sm contrast"
+                                hx-delete="/documents/{{.ID}}"
+                                hx-target="#doc-{{.ID}}"
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to delete this document?">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</figure>
+{{end}}

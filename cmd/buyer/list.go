@@ -12,7 +12,7 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List entities (specifications, brands, products, vendors, quotes, forex, requisitions, projects)",
+	Short: "List entities (specifications, brands, products, vendors, quotes, forex, requisitions, projects, documents, vendor-ratings)",
 	Long:  "List all entities with optional pagination",
 }
 
@@ -419,6 +419,119 @@ var listPurchaseOrdersCmd = &cobra.Command{
 	},
 }
 
+var listDocumentsCmd = &cobra.Command{
+	Use:   "documents [--entity-type TYPE] [--entity-id ID]",
+	Short: "List all documents or documents for a specific entity",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+		entityType, _ := cmd.Flags().GetString("entity-type")
+		entityID, _ := cmd.Flags().GetUint("entity-id")
+
+		svc := services.NewDocumentService(cfg.DB)
+		var docs []*models.Document
+		var err error
+
+		if entityType != "" && entityID > 0 {
+			docs, err = svc.ListByEntity(entityType, entityID)
+		} else if entityType != "" {
+			docs, err = svc.ListByEntityType(entityType, limit, offset)
+		} else {
+			docs, err = svc.List(limit, offset)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(docs) == 0 {
+			fmt.Println("No documents found.")
+			return
+		}
+
+		tbl := table.New("ID", "Entity Type", "Entity ID", "File Name", "Type", "Size", "Uploaded By", "Date")
+		for _, doc := range docs {
+			sizeStr := "-"
+			if doc.FileSize > 0 {
+				sizeStr = fmt.Sprintf("%.1f KB", float64(doc.FileSize)/1024)
+			}
+			uploadedBy := doc.UploadedBy
+			if uploadedBy == "" {
+				uploadedBy = "-"
+			}
+			tbl.AddRow(doc.ID, doc.EntityType, doc.EntityID, doc.FileName, doc.FileType, sizeStr, uploadedBy, doc.CreatedAt.Format("2006-01-02"))
+		}
+		tbl.Print()
+	},
+}
+
+var listVendorRatingsCmd = &cobra.Command{
+	Use:   "vendor-ratings [--vendor-id ID]",
+	Short: "List all vendor ratings or ratings for a specific vendor",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+		vendorID, _ := cmd.Flags().GetUint("vendor-id")
+
+		svc := services.NewVendorRatingService(cfg.DB)
+		var ratings []*models.VendorRating
+		var err error
+
+		if vendorID > 0 {
+			ratings, err = svc.ListByVendor(vendorID, limit, offset)
+		} else {
+			ratings, err = svc.List(limit, offset)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(ratings) == 0 {
+			fmt.Println("No vendor ratings found.")
+			return
+		}
+
+		tbl := table.New("ID", "Vendor", "PO ID", "Price", "Quality", "Delivery", "Service", "Rated By", "Date")
+		for _, rating := range ratings {
+			vendorName := ""
+			if rating.Vendor != nil {
+				vendorName = rating.Vendor.Name
+			}
+
+			poID := "-"
+			if rating.PurchaseOrderID != nil {
+				poID = fmt.Sprintf("%d", *rating.PurchaseOrderID)
+			}
+
+			priceStr := "-"
+			if rating.PriceRating != nil {
+				priceStr = fmt.Sprintf("%d", *rating.PriceRating)
+			}
+
+			qualityStr := "-"
+			if rating.QualityRating != nil {
+				qualityStr = fmt.Sprintf("%d", *rating.QualityRating)
+			}
+
+			deliveryStr := "-"
+			if rating.DeliveryRating != nil {
+				deliveryStr = fmt.Sprintf("%d", *rating.DeliveryRating)
+			}
+
+			serviceStr := "-"
+			if rating.ServiceRating != nil {
+				serviceStr = fmt.Sprintf("%d", *rating.ServiceRating)
+			}
+
+			tbl.AddRow(rating.ID, vendorName, poID, priceStr, qualityStr, deliveryStr, serviceStr, rating.RatedBy, rating.CreatedAt.Format("2006-01-02"))
+		}
+		tbl.Print()
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listSpecificationsCmd)
 	listCmd.AddCommand(listBrandsCmd)
@@ -431,13 +544,22 @@ func init() {
 	listCmd.AddCommand(listProjectsCmd)
 	listCmd.AddCommand(listBOMCmd)
 	listCmd.AddCommand(listProjectRequisitionsCmd)
+	listCmd.AddCommand(listDocumentsCmd)
+	listCmd.AddCommand(listVendorRatingsCmd)
 
 	// Add common pagination flags
-	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listPurchaseOrdersCmd, listForexCmd, listRequisitionsCmd, listProjectsCmd, listProjectRequisitionsCmd} {
+	for _, cmd := range []*cobra.Command{listSpecificationsCmd, listBrandsCmd, listProductsCmd, listVendorsCmd, listQuotesCmd, listPurchaseOrdersCmd, listForexCmd, listRequisitionsCmd, listProjectsCmd, listProjectRequisitionsCmd, listDocumentsCmd, listVendorRatingsCmd} {
 		cmd.Flags().Int("limit", 0, "Maximum number of results (0 = no limit)")
 		cmd.Flags().Int("offset", 0, "Number of results to skip")
 	}
 
 	// Purchase order specific flags
 	listPurchaseOrdersCmd.Flags().String("status", "", "Filter by status (pending, approved, ordered, shipped, received, cancelled)")
+
+	// Document specific flags
+	listDocumentsCmd.Flags().String("entity-type", "", "Filter by entity type (vendor, brand, product, quote, purchase_order, requisition, project)")
+	listDocumentsCmd.Flags().Uint("entity-id", 0, "Filter by entity ID (requires --entity-type)")
+
+	// Vendor rating specific flags
+	listVendorRatingsCmd.Flags().Uint("vendor-id", 0, "Filter by vendor ID")
 }

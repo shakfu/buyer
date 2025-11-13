@@ -842,3 +842,114 @@ func RenderPurchaseOrderRow(po *models.PurchaseOrder) (SafeHTML, error) {
 
 	return SafeHTML{content: buf.String()}, nil
 }
+func RenderDocumentRow(doc *models.Document) (SafeHTML, error) {
+	tmpl := `
+<tr id="doc-{{.ID}}">
+	<td>{{.ID}}</td>
+	<td>{{.EntityType}}</td>
+	<td>{{.EntityID}}</td>
+	<td><code>{{.FileName}}</code></td>
+	<td>{{.FileType}}</td>
+	<td>
+		{{if gt .FileSize 0}}
+			{{printf "%.1f KB" (div (toFloat .FileSize) 1024.0)}}
+		{{else}}
+			<span style="color: gray;">—</span>
+		{{end}}
+	</td>
+	<td>{{if .UploadedBy}}{{.UploadedBy}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>{{.CreatedAt.Format "2006-01-02"}}</td>
+	<td>
+		<div class="actions">
+			<button class="btn-sm contrast"
+					hx-delete="/documents/{{.ID}}"
+					hx-target="#doc-{{.ID}}"
+					hx-swap="outerHTML"
+					hx-confirm="Are you sure you want to delete this document?">
+				Delete
+			</button>
+		</div>
+	</td>
+</tr>
+`
+
+	funcMap := template.FuncMap{
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"toFloat": func(i int64) float64 {
+			return float64(i)
+		},
+	}
+
+	t, err := template.New("document-row").Funcs(funcMap).Parse(tmpl)
+	if err != nil {
+		return SafeHTML{}, err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, doc); err != nil {
+		return SafeHTML{}, err
+	}
+
+	return SafeHTML{content: buf.String()}, nil
+}
+
+func RenderVendorRatingRow(rating *models.VendorRating) (SafeHTML, error) {
+	tmpl := `
+<tr id="rating-{{.ID}}">
+	<td>{{.ID}}</td>
+	<td>{{if .Vendor}}{{.Vendor.Name}}{{end}}</td>
+	<td>
+		{{if .PurchaseOrderID}}
+			{{.PurchaseOrderID}}
+		{{else}}
+			<span style="color: gray;">—</span>
+		{{end}}
+	</td>
+	<td>{{if .PriceRating}}{{.PriceRating}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>{{if .QualityRating}}{{.QualityRating}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>{{if .DeliveryRating}}{{.DeliveryRating}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>{{if .ServiceRating}}{{.ServiceRating}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>
+		{{if .Comments}}
+			{{if gt (len .Comments) 50}}
+				{{slice .Comments 0 47}}...
+			{{else}}
+				{{.Comments}}
+			{{end}}
+		{{else}}
+			<span style="color: gray;">—</span>
+		{{end}}
+	</td>
+	<td>{{if .RatedBy}}{{.RatedBy}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+	<td>{{.CreatedAt.Format "2006-01-02"}}</td>
+	<td>
+		<div class="actions">
+			<button class="btn-sm contrast"
+					hx-delete="/vendor-ratings/{{.ID}}"
+					hx-target="#rating-{{.ID}}"
+					hx-swap="outerHTML"
+					hx-confirm="Are you sure you want to delete this rating?">
+				Delete
+			</button>
+		</div>
+	</td>
+</tr>
+`
+
+	t, err := template.New("vendor-rating-row").Parse(tmpl)
+	if err != nil {
+		return SafeHTML{}, err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, rating); err != nil {
+		return SafeHTML{}, err
+	}
+
+	return SafeHTML{content: buf.String()}, nil
+}

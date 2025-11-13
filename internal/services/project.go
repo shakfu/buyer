@@ -311,4 +311,3 @@ func (s *ProjectService) DeleteBillOfMaterialsItem(itemID uint) error {
 
 	return nil
 }
-

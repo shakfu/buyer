@@ -7,7 +7,7 @@ import (
 
 func TestQuoteService_Create(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -135,7 +135,7 @@ func TestQuoteService_Create(t *testing.T) {
 
 func TestQuoteService_GetBestQuote(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -206,7 +206,7 @@ func TestQuoteService_GetBestQuote(t *testing.T) {
 
 func TestQuoteService_ListByProduct(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -292,7 +292,7 @@ func TestQuoteService_ListByProduct(t *testing.T) {
 
 func TestQuoteService_ListByVendor(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -361,7 +361,7 @@ func TestQuoteService_ListByVendor(t *testing.T) {
 
 func TestQuoteService_GetByID(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -444,7 +444,7 @@ func TestQuoteService_GetByID(t *testing.T) {
 
 func TestQuoteService_List(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -542,7 +542,7 @@ func TestQuoteService_List(t *testing.T) {
 
 func TestQuoteService_Delete(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -620,7 +620,7 @@ func TestQuoteService_Delete(t *testing.T) {
 
 func TestQuoteService_Count(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -678,7 +678,7 @@ func TestQuoteService_Count(t *testing.T) {
 
 func TestQuoteService_ListActiveQuotes(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -754,7 +754,7 @@ func TestQuoteService_ListActiveQuotes(t *testing.T) {
 
 func TestQuoteService_CompareQuotesForProduct(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -821,7 +821,7 @@ func TestQuoteService_CompareQuotesForProduct(t *testing.T) {
 
 func TestQuoteService_CompareQuotesForSpecification(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)
@@ -892,7 +892,7 @@ func TestQuoteService_CompareQuotesForSpecification(t *testing.T) {
 
 func TestQuoteService_GetBestQuoteForSpecification(t *testing.T) {
 	cfg := setupTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	brandSvc := NewBrandService(cfg.DB)
 	productSvc := NewProductService(cfg.DB)

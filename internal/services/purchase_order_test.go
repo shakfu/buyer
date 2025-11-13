@@ -30,6 +30,8 @@ func setupPurchaseOrderTestDB(t *testing.T) *config.Config {
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
 		&models.PurchaseOrder{},
+		&models.Document{},
+		&models.VendorRating{},
 	); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
@@ -39,7 +41,7 @@ func setupPurchaseOrderTestDB(t *testing.T) *config.Config {
 
 func TestPurchaseOrderService_Create(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -76,11 +78,11 @@ func TestPurchaseOrderService_Create(t *testing.T) {
 		{
 			name: "valid purchase order",
 			input: CreatePurchaseOrderInput{
-				QuoteID:   quote.ID,
-				PONumber:  "PO-001",
-				Quantity:  5,
+				QuoteID:      quote.ID,
+				PONumber:     "PO-001",
+				Quantity:     5,
 				ShippingCost: 50.0,
-				Tax:       25.0,
+				Tax:          25.0,
 			},
 			wantErr: false,
 		},
@@ -232,7 +234,7 @@ func TestPurchaseOrderService_Create(t *testing.T) {
 
 func TestPurchaseOrderService_GetByID(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -307,7 +309,7 @@ func TestPurchaseOrderService_GetByID(t *testing.T) {
 
 func TestPurchaseOrderService_GetByPONumber(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -382,7 +384,7 @@ func TestPurchaseOrderService_GetByPONumber(t *testing.T) {
 
 func TestPurchaseOrderService_UpdateStatus(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -502,7 +504,7 @@ func TestPurchaseOrderService_UpdateStatus(t *testing.T) {
 
 func TestPurchaseOrderService_UpdateDeliveryDates(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -565,7 +567,7 @@ func TestPurchaseOrderService_UpdateDeliveryDates(t *testing.T) {
 
 func TestPurchaseOrderService_Delete(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -677,7 +679,7 @@ func TestPurchaseOrderService_Delete(t *testing.T) {
 
 func TestPurchaseOrderService_List(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)
@@ -753,7 +755,7 @@ func TestPurchaseOrderService_List(t *testing.T) {
 
 func TestPurchaseOrderService_ListByStatus(t *testing.T) {
 	cfg := setupPurchaseOrderTestDB(t)
-	defer cfg.Close()
+	defer func() { _ = cfg.Close() }()
 
 	// Setup test data
 	vendorSvc := NewVendorService(cfg.DB)

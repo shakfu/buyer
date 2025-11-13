@@ -158,9 +158,9 @@ func TestSpecificationService_GetByName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
+		name     string
 		specName string
-		wantErr bool
+		wantErr  bool
 	}{
 		{
 			name:     "existing specification",
