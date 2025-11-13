@@ -31,6 +31,9 @@ func setupTestDB(t *testing.T) *config.Config {
 		&models.BillOfMaterials{},
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
+		&models.PurchaseOrder{},
+		&models.Document{},
+		&models.VendorRating{},
 	); err != nil {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}

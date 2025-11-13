@@ -2,12 +2,15 @@
 
 ## Summary
 
-**Fixed**: Build errors from migration script have been resolved.
+**Fixed**:
+- Build errors from migration script have been resolved.
+- Missing PurchaseOrder, Document, and VendorRating models added to CLI test setup.
+
 **Status**: Core application tests pass; cmd/buyer tests fail due to environment limitations.
 
 ## What Was Fixed
 
-### Migration Script Build Errors
+### 1. Migration Script Build Errors
 
 The `scripts/migrate_to_minio.go` file was causing build and test failures because it imports `internal/storage` package which doesn't exist yet (it's part of the planned MinIO implementation).
 
@@ -22,6 +25,42 @@ The script can still be built explicitly when needed:
 ```bash
 go build -o migrate-docs ./scripts/migrate_to_minio.go
 ```
+
+### 2. Missing Models in CLI Test Setup
+
+The `cmd/buyer/cli_test.go` file had incomplete database migrations in the `setupTestDB` function. It was missing three models that were added in recent enhancements:
+- `PurchaseOrder`
+- `Document`
+- `VendorRating`
+
+This caused "no such table: purchase_orders" errors when tests tried to reference these tables.
+
+**Solution**: Updated AutoMigrate call in `setupTestDB` function (cmd/buyer/cli_test.go:21-39):
+
+```go
+// Run auto-migration
+if err := testCfg.AutoMigrate(
+    &models.Vendor{},
+    &models.Brand{},
+    &models.Specification{},
+    &models.Product{},
+    &models.Requisition{},
+    &models.RequisitionItem{},
+    &models.Quote{},
+    &models.Forex{},
+    &models.Project{},
+    &models.BillOfMaterials{},
+    &models.BillOfMaterialsItem{},
+    &models.ProjectRequisition{},
+    &models.PurchaseOrder{},      // Added
+    &models.Document{},           // Added
+    &models.VendorRating{},       // Added
+); err != nil {
+    t.Fatalf("Failed to migrate database: %v", err)
+}
+```
+
+**Note**: The `web_test.go` file already had these models in its AutoMigrate call.
 
 ## Current Test Status
 
