@@ -289,6 +289,809 @@ func Load() (*Config, error) {
 }
 ```
 
+## MinIO Go SDK Deep Dive
+
+### Overview
+
+The MinIO Go Client SDK (`minio-go`) provides a comprehensive, idiomatic Go interface for interacting with MinIO and any S3-compatible object storage. The SDK is actively maintained, feature-complete, and used in production by thousands of organizations.
+
+**Repository**: https://github.com/minio/minio-go
+**Documentation**: https://pkg.go.dev/github.com/minio/minio-go/v7
+**License**: Apache License 2.0
+
+### Installation
+
+```bash
+# Install the latest version
+go get github.com/minio/minio-go/v7
+
+# Import in your code
+import (
+    "github.com/minio/minio-go/v7"
+    "github.com/minio/minio-go/v7/pkg/credentials"
+)
+```
+
+### Client Initialization
+
+#### Basic Initialization
+
+```go
+package main
+
+import (
+    "log"
+
+    "github.com/minio/minio-go/v7"
+    "github.com/minio/minio-go/v7/pkg/credentials"
+)
+
+func main() {
+    endpoint := "localhost:9000"
+    accessKeyID := "minioadmin"
+    secretAccessKey := "minioadmin"
+    useSSL := false
+
+    // Initialize MinIO client
+    minioClient, err := minio.New(endpoint, &minio.Options{
+        Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+        Secure: useSSL,
+    })
+    if err != nil {
+        log.Fatalln(err)
+    }
+
+    log.Printf("%#v\n", minioClient)
+}
+```
+
+#### Credential Options
+
+The SDK supports multiple credential providers:
+
+```go
+// 1. Static credentials (as shown above)
+creds := credentials.NewStaticV4(accessKey, secretKey, "")
+
+// 2. IAM credentials (for AWS EC2/ECS)
+creds := credentials.NewIAM("")
+
+// 3. Environment variables
+// Reads from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+creds := credentials.NewEnvAWS()
+
+// 4. MinIO environment variables
+// Reads from MINIO_ACCESS_KEY and MINIO_SECRET_KEY
+creds := credentials.NewEnvMinio()
+
+// 5. Chained credentials (try multiple providers)
+creds := credentials.NewChainCredentials([]credentials.Provider{
+    &credentials.EnvAWS{},
+    &credentials.EnvMinio{},
+    &credentials.IAM{},
+})
+```
+
+#### Client with Custom Transport
+
+```go
+import (
+    "crypto/tls"
+    "net/http"
+    "time"
+)
+
+// Custom HTTP transport for production
+transport := &http.Transport{
+    MaxIdleConns:       100,
+    IdleConnTimeout:    90 * time.Second,
+    TLSHandshakeTimeout: 10 * time.Second,
+    TLSClientConfig: &tls.Config{
+        // Skip certificate verification (not recommended for production)
+        InsecureSkipVerify: false,
+    },
+}
+
+minioClient, err := minio.New(endpoint, &minio.Options{
+    Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+    Secure:    true,
+    Transport: transport,
+    Region:    "us-east-1",
+})
+```
+
+### Core API Operations
+
+#### Bucket Operations
+
+```go
+import (
+    "context"
+    "log"
+)
+
+ctx := context.Background()
+
+// 1. Check if bucket exists
+exists, err := minioClient.BucketExists(ctx, "vendor-docs")
+if err != nil {
+    log.Fatalln(err)
+}
+if !exists {
+    log.Println("Bucket does not exist")
+}
+
+// 2. Create a bucket
+err = minioClient.MakeBucket(ctx, "vendor-docs", minio.MakeBucketOptions{
+    Region: "us-east-1",
+})
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 3. List all buckets
+buckets, err := minioClient.ListBuckets(ctx)
+if err != nil {
+    log.Fatalln(err)
+}
+for _, bucket := range buckets {
+    log.Println(bucket.Name, bucket.CreationDate)
+}
+
+// 4. Remove a bucket (must be empty)
+err = minioClient.RemoveBucket(ctx, "vendor-docs")
+if err != nil {
+    log.Fatalln(err)
+}
+```
+
+#### Object Upload Operations
+
+```go
+import (
+    "bytes"
+    "os"
+)
+
+// 1. Upload from memory (PutObject)
+data := []byte("Hello MinIO!")
+reader := bytes.NewReader(data)
+
+info, err := minioClient.PutObject(ctx, "vendor-docs", "hello.txt", reader, int64(len(data)), minio.PutObjectOptions{
+    ContentType: "text/plain",
+    UserMetadata: map[string]string{
+        "uploaded-by": "buyer-app",
+        "entity-type": "vendor",
+    },
+})
+if err != nil {
+    log.Fatalln(err)
+}
+log.Printf("Successfully uploaded %s of size %d\n", info.Key, info.Size)
+
+// 2. Upload from file (FPutObject)
+info, err = minioClient.FPutObject(ctx, "vendor-docs", "contract.pdf", "/path/to/contract.pdf", minio.PutObjectOptions{
+    ContentType: "application/pdf",
+})
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 3. Upload with progress tracking
+progress := make(chan int64)
+go func() {
+    for p := range progress {
+        log.Printf("Uploaded: %d bytes\n", p)
+    }
+}()
+
+info, err = minioClient.PutObject(ctx, "vendor-docs", "large-file.zip", reader, fileSize, minio.PutObjectOptions{
+    ContentType: "application/zip",
+    Progress:    progress,
+})
+
+// 4. Upload with server-side encryption
+info, err = minioClient.PutObject(ctx, "vendor-docs", "secure.txt", reader, size, minio.PutObjectOptions{
+    ServerSideEncryption: encrypt.NewSSE(),
+})
+```
+
+#### Object Download Operations
+
+```go
+// 1. Download to memory (GetObject)
+object, err := minioClient.GetObject(ctx, "vendor-docs", "hello.txt", minio.GetObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+defer object.Close()
+
+// Read into buffer
+buf := new(bytes.Buffer)
+_, err = buf.ReadFrom(object)
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println(buf.String())
+
+// 2. Download to file (FGetObject)
+err = minioClient.FGetObject(ctx, "vendor-docs", "contract.pdf", "/tmp/contract.pdf", minio.GetObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 3. Download with byte range (partial download)
+options := minio.GetObjectOptions{}
+options.SetRange(0, 1023)  // First 1KB
+object, err = minioClient.GetObject(ctx, "vendor-docs", "large-file.zip", options)
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 4. Stream download with progress
+object, err = minioClient.GetObject(ctx, "vendor-docs", "video.mp4", minio.GetObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+defer object.Close()
+
+file, err := os.Create("/tmp/video.mp4")
+if err != nil {
+    log.Fatalln(err)
+}
+defer file.Close()
+
+n, err := io.Copy(file, object)
+log.Printf("Downloaded %d bytes\n", n)
+```
+
+#### Object Information and Metadata
+
+```go
+// 1. Get object statistics
+stat, err := minioClient.StatObject(ctx, "vendor-docs", "hello.txt", minio.StatObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+log.Printf("Object: %s, Size: %d, ContentType: %s, LastModified: %s\n",
+    stat.Key, stat.Size, stat.ContentType, stat.LastModified)
+
+// Access user metadata
+for key, val := range stat.UserMetadata {
+    log.Printf("Metadata: %s = %s\n", key, val)
+}
+
+// 2. Check if object exists
+_, err = minioClient.StatObject(ctx, "vendor-docs", "hello.txt", minio.StatObjectOptions{})
+if err != nil {
+    errResponse := minio.ToErrorResponse(err)
+    if errResponse.Code == "NoSuchKey" {
+        log.Println("Object does not exist")
+    }
+}
+```
+
+#### Object Deletion
+
+```go
+// 1. Delete single object
+err = minioClient.RemoveObject(ctx, "vendor-docs", "hello.txt", minio.RemoveObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 2. Delete multiple objects
+objectsCh := make(chan minio.ObjectInfo)
+
+// Send objects to delete
+go func() {
+    defer close(objectsCh)
+    objectsCh <- minio.ObjectInfo{Key: "file1.txt"}
+    objectsCh <- minio.ObjectInfo{Key: "file2.txt"}
+    objectsCh <- minio.ObjectInfo{Key: "file3.txt"}
+}()
+
+// Delete objects
+for rErr := range minioClient.RemoveObjects(ctx, "vendor-docs", objectsCh, minio.RemoveObjectsOptions{}) {
+    log.Printf("Error deleting %s: %s\n", rErr.ObjectName, rErr.Err)
+}
+
+// 3. Delete with versioning
+opts := minio.RemoveObjectOptions{
+    VersionID: "version-id-here",
+}
+err = minioClient.RemoveObject(ctx, "vendor-docs", "hello.txt", opts)
+```
+
+#### List Objects
+
+```go
+// 1. List all objects in a bucket
+for object := range minioClient.ListObjects(ctx, "vendor-docs", minio.ListObjectsOptions{}) {
+    if object.Err != nil {
+        log.Println(object.Err)
+        return
+    }
+    log.Println(object.Key, object.Size, object.LastModified)
+}
+
+// 2. List with prefix (like a directory)
+opts := minio.ListObjectsOptions{
+    Prefix:    "vendor/123/",
+    Recursive: true,
+}
+for object := range minioClient.ListObjects(ctx, "vendor-docs", opts) {
+    if object.Err != nil {
+        log.Println(object.Err)
+        return
+    }
+    log.Println(object.Key)
+}
+
+// 3. List with pagination
+opts = minio.ListObjectsOptions{
+    Prefix:    "vendor/",
+    MaxKeys:   100,
+    Recursive: false,  // Don't recurse into subdirectories
+}
+for object := range minioClient.ListObjects(ctx, "vendor-docs", opts) {
+    log.Println(object.Key)
+}
+```
+
+#### Presigned URLs
+
+```go
+import "net/url"
+
+// 1. Generate presigned GET URL (for downloads)
+presignedURL, err := minioClient.PresignedGetObject(ctx, "vendor-docs", "contract.pdf", time.Hour, nil)
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println("Download URL:", presignedURL)
+
+// 2. Generate presigned PUT URL (for uploads)
+presignedURL, err = minioClient.PresignedPutObject(ctx, "vendor-docs", "upload.pdf", time.Hour*24)
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println("Upload URL:", presignedURL)
+
+// 3. Generate presigned URL with custom query parameters
+reqParams := make(url.Values)
+reqParams.Set("response-content-disposition", "attachment; filename=\"download.pdf\"")
+reqParams.Set("response-content-type", "application/pdf")
+
+presignedURL, err = minioClient.PresignedGetObject(ctx, "vendor-docs", "contract.pdf", time.Hour, reqParams)
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 4. Generate POST policy for browser uploads
+policy := minio.NewPostPolicy()
+policy.SetBucket("vendor-docs")
+policy.SetKey("upload/")
+policy.SetExpires(time.Now().UTC().Add(24 * time.Hour))
+policy.SetContentType("image/jpeg")
+policy.SetContentLengthRange(1024, 1024*1024*10)  // 1KB to 10MB
+
+url, formData, err := minioClient.PresignedPostPolicy(ctx, policy)
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println("POST URL:", url)
+for k, v := range formData {
+    log.Printf("Form field: %s = %s\n", k, v)
+}
+```
+
+### Advanced Features
+
+#### Multipart Upload
+
+For large files, MinIO automatically uses multipart uploads:
+
+```go
+// Automatic multipart upload (SDK handles it internally)
+info, err := minioClient.FPutObject(ctx, "vendor-docs", "large-video.mp4", "/path/to/large-video.mp4", minio.PutObjectOptions{
+    ContentType: "video/mp4",
+    PartSize:    10 * 1024 * 1024,  // 10MB parts
+})
+```
+
+Manual multipart upload for more control:
+
+```go
+// 1. Initiate multipart upload
+uploadID, err := minioClient.NewMultipartUpload(ctx, "vendor-docs", "manual-upload.bin", minio.PutObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 2. Upload parts
+var completeParts []minio.CompletePart
+partNumber := 1
+partSize := int64(5 * 1024 * 1024)  // 5MB
+
+for {
+    // Read part data
+    partData := make([]byte, partSize)
+    n, err := file.Read(partData)
+    if n == 0 {
+        break
+    }
+
+    // Upload part
+    part, err := minioClient.PutObjectPart(ctx, "vendor-docs", "manual-upload.bin", uploadID, partNumber,
+        bytes.NewReader(partData[:n]), int64(n), minio.PutObjectPartOptions{})
+    if err != nil {
+        log.Fatalln(err)
+    }
+
+    completeParts = append(completeParts, minio.CompletePart{
+        PartNumber: partNumber,
+        ETag:       part.ETag,
+    })
+    partNumber++
+}
+
+// 3. Complete multipart upload
+_, err = minioClient.CompleteMultipartUpload(ctx, "vendor-docs", "manual-upload.bin", uploadID,
+    completeParts, minio.PutObjectOptions{})
+if err != nil {
+    log.Fatalln(err)
+}
+```
+
+#### Object Copying
+
+```go
+// 1. Copy object within same bucket
+src := minio.CopySrcOptions{
+    Bucket: "vendor-docs",
+    Object: "original.pdf",
+}
+dst := minio.CopyDestOptions{
+    Bucket: "vendor-docs",
+    Object: "copy.pdf",
+}
+
+_, err = minioClient.CopyObject(ctx, dst, src)
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 2. Copy with metadata changes
+dst = minio.CopyDestOptions{
+    Bucket:          "vendor-docs",
+    Object:          "copy-with-metadata.pdf",
+    ReplaceMetadata: true,
+    UserMetadata: map[string]string{
+        "copied-from": "original.pdf",
+        "copy-date":   time.Now().Format(time.RFC3339),
+    },
+}
+
+_, err = minioClient.CopyObject(ctx, dst, src)
+```
+
+#### Bucket Policies
+
+```go
+import "encoding/json"
+
+// 1. Get bucket policy
+policy, err := minioClient.GetBucketPolicy(ctx, "vendor-docs")
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println(policy)
+
+// 2. Set bucket policy (make bucket publicly readable)
+policyJSON := `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"AWS": ["*"]},
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::vendor-docs/*"]
+    }
+  ]
+}`
+
+err = minioClient.SetBucketPolicy(ctx, "vendor-docs", policyJSON)
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 3. Delete bucket policy
+err = minioClient.DeleteBucketPolicy(ctx, "vendor-docs")
+```
+
+#### Object Versioning
+
+```go
+// 1. Enable versioning
+err = minioClient.EnableVersioning(ctx, "vendor-docs")
+if err != nil {
+    log.Fatalln(err)
+}
+
+// 2. Check versioning status
+status, err := minioClient.GetBucketVersioning(ctx, "vendor-docs")
+if err != nil {
+    log.Fatalln(err)
+}
+log.Println("Versioning status:", status.Status)
+
+// 3. List object versions
+opts := minio.ListObjectsOptions{
+    Prefix:       "document.pdf",
+    WithVersions: true,
+}
+for object := range minioClient.ListObjects(ctx, "vendor-docs", opts) {
+    log.Printf("Version: %s, IsLatest: %v, LastModified: %s\n",
+        object.VersionID, object.IsLatest, object.LastModified)
+}
+
+// 4. Download specific version
+opts := minio.GetObjectOptions{
+    VersionID: "version-id-here",
+}
+object, err := minioClient.GetObject(ctx, "vendor-docs", "document.pdf", opts)
+```
+
+### Error Handling
+
+#### Checking Specific Errors
+
+```go
+import (
+    "errors"
+    "github.com/minio/minio-go/v7"
+)
+
+info, err := minioClient.StatObject(ctx, "vendor-docs", "file.txt", minio.StatObjectOptions{})
+if err != nil {
+    // Convert to MinIO error response
+    errResponse := minio.ToErrorResponse(err)
+
+    switch errResponse.Code {
+    case "NoSuchKey":
+        log.Println("Object does not exist")
+    case "NoSuchBucket":
+        log.Println("Bucket does not exist")
+    case "AccessDenied":
+        log.Println("Access denied")
+    case "InvalidBucketName":
+        log.Println("Invalid bucket name")
+    default:
+        log.Printf("Error: %s - %s\n", errResponse.Code, errResponse.Message)
+    }
+    return
+}
+```
+
+#### Retry Logic
+
+```go
+import "time"
+
+func uploadWithRetry(ctx context.Context, client *minio.Client, bucket, key string, reader io.Reader, size int64, maxRetries int) error {
+    var err error
+    for attempt := 0; attempt < maxRetries; attempt++ {
+        _, err = client.PutObject(ctx, bucket, key, reader, size, minio.PutObjectOptions{})
+        if err == nil {
+            return nil
+        }
+
+        // Check if error is retryable
+        errResponse := minio.ToErrorResponse(err)
+        if errResponse.StatusCode >= 500 {
+            // Server error, retry
+            waitTime := time.Duration(attempt+1) * 2 * time.Second
+            log.Printf("Upload failed (attempt %d/%d), retrying in %s: %v\n",
+                attempt+1, maxRetries, waitTime, err)
+            time.Sleep(waitTime)
+            continue
+        }
+
+        // Client error, don't retry
+        return err
+    }
+    return fmt.Errorf("upload failed after %d attempts: %w", maxRetries, err)
+}
+```
+
+### Best Practices
+
+#### 1. Use Context for Cancellation
+
+```go
+// Create context with timeout
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// All operations respect context cancellation
+_, err := minioClient.PutObject(ctx, bucket, key, reader, size, minio.PutObjectOptions{})
+```
+
+#### 2. Reuse Client Instances
+
+```go
+// Bad: Creating new client for each operation
+func uploadFile(endpoint, key string) error {
+    client, _ := minio.New(endpoint, &minio.Options{...})
+    return client.FPutObject(ctx, "bucket", key, "/path", minio.PutObjectOptions{})
+}
+
+// Good: Reuse client instance
+type DocumentService struct {
+    minioClient *minio.Client
+}
+
+func (s *DocumentService) uploadFile(key string) error {
+    return s.minioClient.FPutObject(ctx, "bucket", key, "/path", minio.PutObjectOptions{})
+}
+```
+
+#### 3. Close Readers Properly
+
+```go
+object, err := minioClient.GetObject(ctx, bucket, key, minio.GetObjectOptions{})
+if err != nil {
+    return err
+}
+defer object.Close()  // Always close
+
+// Use the object
+data, err := io.ReadAll(object)
+```
+
+#### 4. Set Appropriate Content Types
+
+```go
+import "mime"
+
+contentType := mime.TypeByExtension(filepath.Ext(filename))
+if contentType == "" {
+    contentType = "application/octet-stream"
+}
+
+_, err := minioClient.PutObject(ctx, bucket, key, reader, size, minio.PutObjectOptions{
+    ContentType: contentType,
+})
+```
+
+#### 5. Use User Metadata for Tracking
+
+```go
+_, err := minioClient.PutObject(ctx, bucket, key, reader, size, minio.PutObjectOptions{
+    UserMetadata: map[string]string{
+        "entity-type":   "vendor",
+        "entity-id":     "123",
+        "uploaded-by":   "user@example.com",
+        "upload-time":   time.Now().Format(time.RFC3339),
+        "app-version":   "1.0.0",
+    },
+})
+```
+
+#### 6. Implement Health Checks
+
+```go
+func (s *DocumentService) HealthCheck(ctx context.Context) error {
+    // Try to list buckets as health check
+    _, err := s.minioClient.ListBuckets(ctx)
+    if err != nil {
+        return fmt.Errorf("MinIO health check failed: %w", err)
+    }
+    return nil
+}
+```
+
+### Performance Optimization
+
+#### Concurrent Uploads
+
+```go
+import "sync"
+
+func uploadFilesParallel(files []string) error {
+    var wg sync.WaitGroup
+    errChan := make(chan error, len(files))
+
+    // Limit concurrent uploads
+    semaphore := make(chan struct{}, 10)
+
+    for _, file := range files {
+        wg.Add(1)
+        go func(f string) {
+            defer wg.Done()
+            semaphore <- struct{}{}        // Acquire
+            defer func() { <-semaphore }() // Release
+
+            err := uploadFile(f)
+            if err != nil {
+                errChan <- err
+            }
+        }(file)
+    }
+
+    wg.Wait()
+    close(errChan)
+
+    // Check for errors
+    for err := range errChan {
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+}
+```
+
+#### Connection Pooling
+
+```go
+transport := &http.Transport{
+    MaxIdleConns:        100,
+    MaxIdleConnsPerHost: 100,
+    IdleConnTimeout:     90 * time.Second,
+}
+
+minioClient, err := minio.New(endpoint, &minio.Options{
+    Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+    Secure:    true,
+    Transport: transport,
+})
+```
+
+### Testing
+
+#### Mock Client for Unit Tests
+
+```go
+// Define interface
+type ObjectStorage interface {
+    Upload(ctx context.Context, bucket, key string, reader io.Reader, size int64) error
+    Download(ctx context.Context, bucket, key string) (io.ReadCloser, error)
+}
+
+// Real implementation
+type MinioStorage struct {
+    client *minio.Client
+}
+
+// Mock implementation for tests
+type MockStorage struct {
+    storage map[string][]byte
+}
+
+func (m *MockStorage) Upload(ctx context.Context, bucket, key string, reader io.Reader, size int64) error {
+    data, _ := io.ReadAll(reader)
+    m.storage[bucket+"/"+key] = data
+    return nil
+}
+
+// Use in tests
+func TestDocumentService(t *testing.T) {
+    mockStorage := &MockStorage{storage: make(map[string][]byte)}
+    service := NewDocumentService(mockStorage)
+    // Test service...
+}
+```
+
+### Additional Resources
+
+- **Official Documentation**: https://min.io/docs/minio/linux/developers/go/minio-go.html
+- **API Reference**: https://pkg.go.dev/github.com/minio/minio-go/v7
+- **GitHub Repository**: https://github.com/minio/minio-go
+- **Examples**: https://github.com/minio/minio-go/tree/master/examples
+- **Community**: https://slack.min.io
+
 ## Implementation
 
 ### 1. Install Go SDK
