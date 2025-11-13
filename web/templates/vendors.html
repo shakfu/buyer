@@ -7,7 +7,7 @@
 
 <article id="add-vendor-form" class="hidden">
     <h2>Add New Vendor</h2>
-    <form hx-post="/vendors" hx-target="#vendors-table tbody" hx-swap="beforeend">
+    <form hx-post="/vendors" hx-target="#vendors-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="name">
             Vendor Name
             <input type="text" id="name" name="name" placeholder="Enter vendor name" required>

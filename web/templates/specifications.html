@@ -7,7 +7,7 @@
 
 <article id="add-spec-form" class="hidden">
     <h2>Add New Specification</h2>
-    <form hx-post="/specifications" hx-target="#specs-table tbody" hx-swap="beforeend">
+    <form hx-post="/specifications" hx-target="#specs-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="name">
             Name
             <input type="text" id="name" name="name" placeholder="e.g., smartphone, 17-inch 4K Monitor" required>

@@ -18,10 +18,13 @@ The following critical security and quality issues have been **FIXED**:
 - **✅ S6 (HIGH):** Removed default credentials - authentication now requires explicit env vars
 - **✅ S7 (HIGH):** Implemented bcrypt password hashing with secure verification
 - **✅ S3 (HIGH):** Added authentication-specific rate limiting (5 attempts/minute)
+- **✅ C1 (HIGH):** Eliminated ~850 lines of duplicated code by consolidating CRUD handlers
 - **✅ CF2 (MEDIUM):** Added graceful shutdown with signal handling
 - **✅ C2 (MEDIUM):** Fixed all error handlers to properly escape HTML output
 
 **Security improvements:** The application now enforces strong passwords (12+ chars, uppercase, lowercase, digit, special char) and requires explicit configuration when authentication is enabled. No more dangerous defaults.
+
+**Code quality improvements:** Massive code duplication eliminated - all CRUD handlers now consistently use the render functions from `web_handlers.go`, making the codebase much more maintainable.
 
 ---
 
@@ -29,42 +32,23 @@ The following critical security and quality issues have been **FIXED**:
 
 ### CRITICAL Issues
 
-#### **C1: Massive Route Handler Function with Code Duplication**
+#### **C1: Massive Route Handler Function with Code Duplication** ✅ FIXED
 **Severity: HIGH**
-**Location:** `cmd/buyer/web.go` lines 530-1320
+**Location:** `cmd/buyer/web.go` (was lines 530-1320, now consolidated)
+**Status:** Eliminated ~850 lines of duplicated code
 
-The `setupRoutes` function is 1,320 lines long with massive code duplication. Handlers for products, vendors, specifications contain nearly identical HTML string generation logic:
+~~The `setupRoutes` function was 1,320 lines long with massive code duplication. Handlers for products, vendors, specifications contained nearly identical HTML string generation logic with inline `fmt.Sprintf()` calls.~~
 
-```go
-// Lines 530-556: Inline HTML generation in PUT /products/:id
-return c.SendString(fmt.Sprintf(`<tr id="product-%d">...</tr>`, ...))
+**Resolution:**
+- Replaced all duplicated CRUD handlers with a single call to `SetupCRUDHandlers(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)`
+- Removed ~850 lines of duplicated inline HTML generation code
+- All handlers now consistently use the `RenderXRow()` functions from `web_handlers.go`
+- The `setupRoutes` function is now much smaller and more maintainable
 
-// Lines 578-600: Similar pattern in POST /vendors
-return c.SendString(fmt.Sprintf(`<tr id="vendor-%d">...</tr>`, ...))
-```
-
-**Problems:**
-- Violates DRY principle massively
-- Maintenance nightmare - same bug needs fixing in multiple places
-- Template rendering functions exist in `web_security.go` (e.g., `RenderBrandRow`, `RenderProductRow`) but aren't consistently used
-- Inconsistent: Some handlers use `RenderXRow()`, others use inline `fmt.Sprintf()`
-
-**Recommendation:**
-```go
-// Consolidate duplicate handlers using the existing render functions
-app.Put("/products/:id", func(c *fiber.Ctx) error {
-    // ... validation logic ...
-    product, err := productSvc.Update(uint(id), name, specIDPtr)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
-    }
-    html, err := RenderProductRow(product) // Use existing function consistently
-    if err != nil {
-        return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
-    }
-    return c.SendString(html.String())
-})
-```
+**Files Modified:**
+- `cmd/buyer/web.go`: Removed lines 496-1345 (old duplicated handlers)
+- Added single 2-line call to `SetupCRUDHandlers()` which was already implemented in `web_handlers.go`
+- All tests continue to pass
 
 #### **C2: Missing Error Handling in Template Execution** ✅ FIXED
 **Severity: MEDIUM**

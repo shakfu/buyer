@@ -78,7 +78,7 @@
 
     <article id="add-bom-item-form" class="hidden">
         <h3>Add BOM Item</h3>
-        <form hx-post="/projects/{{.Project.ID}}/bom-items" hx-target="#bom-items-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-bom-item-form')">
+        <form hx-post="/projects/{{.Project.ID}}/bom-items" hx-target="#bom-items-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) { this.reset(); toggleForm('add-bom-item-form'); }">
             <label>
                 Specification
                 <select name="specification_id" required>
@@ -150,7 +150,7 @@
 
     <article id="add-project-requisition-form" class="hidden">
         <h3>Create Project Requisition</h3>
-        <form hx-post="/project-requisitions" hx-target="#project-requisitions-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-project-requisition-form')">
+        <form hx-post="/project-requisitions" hx-target="#project-requisitions-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) { this.reset(); resetBOMItemFields(); toggleForm('add-project-requisition-form'); }">
             <input type="hidden" name="project_id" value="{{.Project.ID}}">
             <label>
                 Requisition Name
@@ -310,6 +310,21 @@ function toggleBOMItemFields(itemId) {
         fieldsDiv.style.display = 'none';
         inputs.forEach(input => input.disabled = true);
     }
+}
+
+function resetBOMItemFields() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="bom_item_"]');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            checkbox.checked = false;
+            const itemId = checkbox.name.replace('bom_item_', '');
+            const fieldsDiv = document.getElementById(`bom-item-fields-${itemId}`);
+            if (fieldsDiv) {
+                fieldsDiv.style.display = 'none';
+                fieldsDiv.querySelectorAll('input').forEach(input => input.disabled = true);
+            }
+        }
+    });
 }
 </script>
 {{end}}

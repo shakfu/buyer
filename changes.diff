@@ -1,0 +1,134 @@
+diff --git a/web/templates/brands.html b/web/templates/brands.html
+index 7fd6441..ee88674 100644
+--- a/web/templates/brands.html
++++ b/web/templates/brands.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-brand-form" class="hidden">
+     <h2>Add New Brand</h2>
+-    <form hx-post="/brands" hx-target="#brands-table tbody" hx-swap="beforeend">
++    <form hx-post="/brands" hx-target="#brands-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="name">
+             Brand Name
+             <input type="text" id="name" name="name" placeholder="Enter brand name" required>
+diff --git a/web/templates/forex.html b/web/templates/forex.html
+index c0669e3..7a88630 100644
+--- a/web/templates/forex.html
++++ b/web/templates/forex.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-forex-form" class="hidden">
+     <h2>Add New Forex Rate</h2>
+-    <form hx-post="/forex" hx-target="#forex-table tbody" hx-swap="beforeend">
++    <form hx-post="/forex" hx-target="#forex-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="from_currency">
+             From Currency
+             <select id="from_currency" name="from_currency" required>
+diff --git a/web/templates/products.html b/web/templates/products.html
+index eb2550c..9cd7357 100644
+--- a/web/templates/products.html
++++ b/web/templates/products.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-product-form" class="hidden">
+     <h2>Add New Product</h2>
+-    <form hx-post="/products" hx-target="#products-table tbody" hx-swap="beforeend">
++    <form hx-post="/products" hx-target="#products-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="name">
+             Product Name
+             <input type="text" id="name" name="name" placeholder="Enter product name" required>
+diff --git a/web/templates/project-detail.html b/web/templates/project-detail.html
+index cff2228..583ba1d 100644
+--- a/web/templates/project-detail.html
++++ b/web/templates/project-detail.html
+@@ -78,7 +78,7 @@
+ 
+     <article id="add-bom-item-form" class="hidden">
+         <h3>Add BOM Item</h3>
+-        <form hx-post="/projects/{{.Project.ID}}/bom-items" hx-target="#bom-items-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-bom-item-form')">
++        <form hx-post="/projects/{{.Project.ID}}/bom-items" hx-target="#bom-items-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) { this.reset(); toggleForm('add-bom-item-form'); }">
+             <label>
+                 Specification
+                 <select name="specification_id" required>
+@@ -150,7 +150,7 @@
+ 
+     <article id="add-project-requisition-form" class="hidden">
+         <h3>Create Project Requisition</h3>
+-        <form hx-post="/project-requisitions" hx-target="#project-requisitions-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) toggleForm('add-project-requisition-form')">
++        <form hx-post="/project-requisitions" hx-target="#project-requisitions-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) { this.reset(); resetBOMItemFields(); toggleForm('add-project-requisition-form'); }">
+             <input type="hidden" name="project_id" value="{{.Project.ID}}">
+             <label>
+                 Requisition Name
+@@ -311,5 +311,20 @@ function toggleBOMItemFields(itemId) {
+         inputs.forEach(input => input.disabled = true);
+     }
+ }
++
++function resetBOMItemFields() {
++    const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="bom_item_"]');
++    checkboxes.forEach(checkbox => {
++        if (checkbox.checked) {
++            checkbox.checked = false;
++            const itemId = checkbox.name.replace('bom_item_', '');
++            const fieldsDiv = document.getElementById(`bom-item-fields-${itemId}`);
++            if (fieldsDiv) {
++                fieldsDiv.style.display = 'none';
++                fieldsDiv.querySelectorAll('input').forEach(input => input.disabled = true);
++            }
++        }
++    });
++}
+ </script>
+ {{end}}
+diff --git a/web/templates/projects.html b/web/templates/projects.html
+index 6a8c205..8182bec 100644
+--- a/web/templates/projects.html
++++ b/web/templates/projects.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-project-form" class="hidden">
+     <h2>Add New Project</h2>
+-    <form hx-post="/projects" hx-target="#projects-table tbody" hx-swap="beforeend">
++    <form hx-post="/projects" hx-target="#projects-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="name">
+             Project Name
+             <input type="text" id="name" name="name" placeholder="Enter project name" required>
+diff --git a/web/templates/quotes.html b/web/templates/quotes.html
+index df7672d..18a43ca 100644
+--- a/web/templates/quotes.html
++++ b/web/templates/quotes.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-quote-form" class="hidden">
+     <h2>Add New Quote</h2>
+-    <form hx-post="/quotes" hx-target="#quotes-table tbody" hx-swap="beforeend">
++    <form hx-post="/quotes" hx-target="#quotes-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="vendor_id">
+             Vendor
+             <select id="vendor_id" name="vendor_id" required>
+diff --git a/web/templates/specifications.html b/web/templates/specifications.html
+index e343518..91e2b44 100644
+--- a/web/templates/specifications.html
++++ b/web/templates/specifications.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-spec-form" class="hidden">
+     <h2>Add New Specification</h2>
+-    <form hx-post="/specifications" hx-target="#specs-table tbody" hx-swap="beforeend">
++    <form hx-post="/specifications" hx-target="#specs-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="name">
+             Name
+             <input type="text" id="name" name="name" placeholder="e.g., smartphone, 17-inch 4K Monitor" required>
+diff --git a/web/templates/vendors.html b/web/templates/vendors.html
+index fdd6925..99fe861 100644
+--- a/web/templates/vendors.html
++++ b/web/templates/vendors.html
+@@ -7,7 +7,7 @@
+ 
+ <article id="add-vendor-form" class="hidden">
+     <h2>Add New Vendor</h2>
+-    <form hx-post="/vendors" hx-target="#vendors-table tbody" hx-swap="beforeend">
++    <form hx-post="/vendors" hx-target="#vendors-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
+         <label for="name">
+             Vendor Name
+             <input type="text" id="name" name="name" placeholder="Enter vendor name" required>

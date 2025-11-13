@@ -7,7 +7,7 @@
 
 <article id="add-quote-form" class="hidden">
     <h2>Add New Quote</h2>
-    <form hx-post="/quotes" hx-target="#quotes-table tbody" hx-swap="beforeend">
+    <form hx-post="/quotes" hx-target="#quotes-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="vendor_id">
             Vendor
             <select id="vendor_id" name="vendor_id" required>

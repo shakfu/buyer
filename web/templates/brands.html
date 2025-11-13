@@ -7,7 +7,7 @@
 
 <article id="add-brand-form" class="hidden">
     <h2>Add New Brand</h2>
-    <form hx-post="/brands" hx-target="#brands-table tbody" hx-swap="beforeend">
+    <form hx-post="/brands" hx-target="#brands-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="name">
             Brand Name
             <input type="text" id="name" name="name" placeholder="Enter brand name" required>

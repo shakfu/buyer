@@ -7,7 +7,7 @@
 
 <article id="add-product-form" class="hidden">
     <h2>Add New Product</h2>
-    <form hx-post="/products" hx-target="#products-table tbody" hx-swap="beforeend">
+    <form hx-post="/products" hx-target="#products-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="name">
             Product Name
             <input type="text" id="name" name="name" placeholder="Enter product name" required>

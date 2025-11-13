@@ -7,7 +7,7 @@
 
 <article id="add-forex-form" class="hidden">
     <h2>Add New Forex Rate</h2>
-    <form hx-post="/forex" hx-target="#forex-table tbody" hx-swap="beforeend">
+    <form hx-post="/forex" hx-target="#forex-table tbody" hx-swap="beforeend" hx-on::after-request="if(event.detail.successful) this.reset()">
         <label for="from_currency">
             From Currency
             <select id="from_currency" name="from_currency" required>
