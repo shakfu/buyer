@@ -155,3 +155,15 @@ INSERT INTO documents (id, entity_type, entity_id, file_name, file_type, file_si
 (10, 'product', 1, 'macbook-pro-datasheet.pdf', 'pdf', 445440, '/docs/products/macbook-pro-datasheet.pdf', 'Official Apple technical specifications', 'admin', datetime('now', '-20 days')),
 (11, 'product', 4, 'dell-monitor-warranty.pdf', 'pdf', 234560, '/docs/products/dell-monitor-warranty.pdf', '3-year premium warranty details', 'admin', datetime('now', '-18 days')),
 (12, 'product', 9, 'logitech-keyboard-manual.pdf', 'pdf', 678400, '/docs/products/logitech-keyboard-manual.pdf', 'User manual and quick start guide', 'admin', datetime('now', '-10 days'));
+
+-- Vendor Ratings (performance tracking)
+INSERT INTO vendor_ratings (id, vendor_id, purchase_order_id, price_rating, quality_rating, delivery_rating, service_rating, comments, rated_by, created_at, updated_at) VALUES
+-- Ratings for completed purchase orders
+(1, 2, 2, 4, 5, 5, 5, 'Excellent service from B&H Photo. Camera arrived well-packaged and on time. Competitive pricing.', 'procurement@company.com', datetime('now', '-2 days'), datetime('now', '-2 days')),
+(2, 3, 3, 5, 5, 4, 5, 'CDW provided great bulk pricing on keyboards. Minor delay in shipping but overall excellent transaction.', 'admin@company.com', datetime('now', '-4 days'), datetime('now', '-4 days')),
+(3, 4, 4, 3, 4, 5, 4, 'Newegg had good prices on monitors. Quality is solid, delivered ahead of schedule.', 'procurement@company.com', datetime('now', '-7 days'), datetime('now', '-7 days')),
+(4, 5, 5, 2, 3, 2, 3, 'Alibaba pricing was competitive but shipping took longer than expected. Product quality acceptable but not premium.', 'sourcing@company.com', datetime('now', '-10 days'), datetime('now', '-10 days')),
+-- General vendor ratings (not tied to specific POs)
+(5, 1, NULL, 5, 5, 5, 5, 'Best Buy is our go-to for quick procurement needs. Consistently reliable.', 'admin@company.com', datetime('now', '-15 days'), datetime('now', '-15 days')),
+(6, 2, NULL, 5, 5, 5, 5, 'B&H Photo has been excellent for all our camera and video equipment needs.', 'media@company.com', datetime('now', '-20 days'), datetime('now', '-20 days')),
+(7, 3, NULL, 4, 5, 4, 5, 'CDW is very professional and offers good enterprise support.', 'it@company.com', datetime('now', '-25 days'), datetime('now', '-25 days'));

@@ -106,7 +106,8 @@ func (s *RequisitionService) Create(name, justification string, budget float64, 
 // GetByID retrieves a requisition by ID with preloaded items
 func (s *RequisitionService) GetByID(id uint) (*models.Requisition, error) {
 	var requisition models.Requisition
-	err := s.db.Preload("Items.Specification").First(&requisition, id).Error
+	err := s.db.Preload("Items.Specification").Preload("PurchaseOrders").
+		First(&requisition, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, &NotFoundError{Entity: "Requisition", ID: id}
 	}
@@ -288,7 +289,8 @@ func (s *RequisitionService) Delete(id uint) error {
 // List retrieves all requisitions with optional pagination
 func (s *RequisitionService) List(limit, offset int) ([]models.Requisition, error) {
 	var requisitions []models.Requisition
-	query := s.db.Preload("Items.Specification").Order("name")
+	query := s.db.Preload("Items.Specification").Preload("PurchaseOrders").
+		Order("name")
 
 	if limit > 0 {
 		query = query.Limit(limit)

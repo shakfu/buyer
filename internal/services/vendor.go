@@ -58,13 +58,18 @@ func (s *VendorService) Create(name, currency, discountCode string) (*models.Ven
 // GetByID retrieves a vendor by ID with preloaded relationships
 func (s *VendorService) GetByID(id uint) (*models.Vendor, error) {
 	var vendor models.Vendor
-	err := s.db.Preload("Brands").Preload("Quotes").First(&vendor, id).Error
+	err := s.db.Preload("Brands").Preload("Quotes").Preload("VendorRatings").
+		Preload("PurchaseOrders").First(&vendor, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, &NotFoundError{Entity: "Vendor", ID: id}
 	}
 	if err != nil {
 		return nil, err
 	}
+
+	// Load documents separately (polymorphic relationship)
+	s.loadDocuments(&vendor)
+
 	return &vendor, nil
 }
 
@@ -84,7 +89,8 @@ func (s *VendorService) GetByName(name string) (*models.Vendor, error) {
 // List retrieves all vendors with optional pagination
 func (s *VendorService) List(limit, offset int) ([]models.Vendor, error) {
 	var vendors []models.Vendor
-	query := s.db.Preload("Brands").Preload("Quotes").Order("name ASC")
+	query := s.db.Preload("Brands").Preload("Quotes").Preload("VendorRatings").
+		Preload("PurchaseOrders").Order("name ASC")
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -94,7 +100,16 @@ func (s *VendorService) List(limit, offset int) ([]models.Vendor, error) {
 	}
 
 	err := query.Find(&vendors).Error
-	return vendors, err
+	if err != nil {
+		return vendors, err
+	}
+
+	// Load documents for all vendors
+	for i := range vendors {
+		s.loadDocuments(&vendors[i])
+	}
+
+	return vendors, nil
 }
 
 // Update updates a vendor's information
@@ -181,4 +196,11 @@ func (s *VendorService) Count() (int64, error) {
 	var count int64
 	err := s.db.Model(&models.Vendor{}).Count(&count).Error
 	return count, err
+}
+
+// loadDocuments loads documents for a vendor (polymorphic relationship)
+func (s *VendorService) loadDocuments(vendor *models.Vendor) {
+	var docs []models.Document
+	s.db.Where("entity_type = ? AND entity_id = ?", "vendor", vendor.ID).Find(&docs)
+	vendor.Documents = docs
 }

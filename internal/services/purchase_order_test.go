@@ -30,6 +30,8 @@ func setupPurchaseOrderTestDB(t *testing.T) *config.Config {
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
 		&models.PurchaseOrder{},
+		&models.Document{},
+		&models.VendorRating{},
 	); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

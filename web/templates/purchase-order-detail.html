@@ -120,6 +120,77 @@
         </div>
     </section>
 
+    {{if .PurchaseOrder.Documents}}
+    <section>
+        <h3>Documents ({{len .PurchaseOrder.Documents}})</h3>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Uploaded By</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .PurchaseOrder.Documents}}
+                    <tr>
+                        <td><code>{{.FileName}}</code></td>
+                        <td>{{.FileType}}</td>
+                        <td>{{.Description}}</td>
+                        <td>{{.UploadedBy}}</td>
+                        <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </section>
+    {{end}}
+
+    {{if .PurchaseOrder.VendorRatings}}
+    <section>
+        <h3>Vendor Ratings ({{len .PurchaseOrder.VendorRatings}})</h3>
+        {{range .PurchaseOrder.VendorRatings}}
+        <article>
+            <header>
+                <h4>Rating for this Purchase Order</h4>
+            </header>
+            <div class="grid">
+                {{if .PriceRating}}
+                <div>
+                    <strong>Price:</strong> {{.PriceRating}}/5
+                </div>
+                {{end}}
+                {{if .QualityRating}}
+                <div>
+                    <strong>Quality:</strong> {{.QualityRating}}/5
+                </div>
+                {{end}}
+                {{if .DeliveryRating}}
+                <div>
+                    <strong>Delivery:</strong> {{.DeliveryRating}}/5
+                </div>
+                {{end}}
+                {{if .ServiceRating}}
+                <div>
+                    <strong>Service:</strong> {{.ServiceRating}}/5
+                </div>
+                {{end}}
+            </div>
+            {{if .Comments}}
+            <p><em>"{{.Comments}}"</em></p>
+            {{end}}
+            <footer>
+                <small>Rated by {{.RatedBy}} on {{.CreatedAt.Format "2006-01-02"}}</small>
+            </footer>
+        </article>
+        {{end}}
+    </section>
+    {{end}}
+
     <footer>
         <a href="/purchase-orders" role="button" class="secondary">Back to Purchase Orders</a>
         {{if or (eq .PurchaseOrder.Status "pending") (eq .PurchaseOrder.Status "cancelled")}}
