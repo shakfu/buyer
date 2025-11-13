@@ -80,7 +80,7 @@ func (s *PurchaseOrderService) Create(input CreatePurchaseOrderInput) (*models.P
 		ProductID:        quote.ProductID,
 		RequisitionID:    input.RequisitionID,
 		PONumber:         poNumber,
-		Status:           "pending", // Will be set by BeforeCreate hook if empty
+		Status:           "pending",  // Will be set by BeforeCreate hook if empty
 		OrderDate:        time.Now(), // Will be set by BeforeCreate hook if zero
 		ExpectedDelivery: input.ExpectedDelivery,
 		Quantity:         input.Quantity,

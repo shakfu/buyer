@@ -314,11 +314,11 @@ func TestBrandService_List(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		limit    int
-		offset   int
-		wantMin  int
-		wantMax  int
+		name    string
+		limit   int
+		offset  int
+		wantMin int
+		wantMax int
 	}{
 		{
 			name:    "all brands",

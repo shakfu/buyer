@@ -434,11 +434,11 @@ func TestVendorRatingService_GetAverageRatings(t *testing.T) {
 	}
 
 	// Expected averages
-	expectedPrice := 4.0     // (5 + 3) / 2
-	expectedQuality := 4.0   // (4 + 4) / 2
-	expectedDelivery := 4.0  // (5 + 3) / 2
-	expectedService := 4.0   // (5 + 3) / 2
-	expectedOverall := 4.0   // (5+4+5+5 + 3+4+3+3) / 8
+	expectedPrice := 4.0    // (5 + 3) / 2
+	expectedQuality := 4.0  // (4 + 4) / 2
+	expectedDelivery := 4.0 // (5 + 3) / 2
+	expectedService := 4.0  // (5 + 3) / 2
+	expectedOverall := 4.0  // (5+4+5+5 + 3+4+3+3) / 8
 
 	if averages["price"] != expectedPrice {
 		t.Errorf("Average price = %v, want %v", averages["price"], expectedPrice)

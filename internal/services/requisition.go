@@ -305,24 +305,24 @@ func (s *RequisitionService) List(limit, offset int) ([]models.Requisition, erro
 
 // QuoteComparison holds quote comparison data for a requisition item
 type QuoteComparison struct {
-	Item              *models.RequisitionItem
-	Specification     *models.Specification
-	Quotes            []models.Quote
-	BestQuote         *models.Quote
-	TotalCostBest     float64 // Best quote price * quantity
-	TotalCostBudget   float64 // Budget per unit * quantity (if set)
-	SavingsVsBudget   float64 // Difference between budget and best quote
-	HasQuotes         bool
-	MissingQuotes     bool
+	Item            *models.RequisitionItem
+	Specification   *models.Specification
+	Quotes          []models.Quote
+	BestQuote       *models.Quote
+	TotalCostBest   float64 // Best quote price * quantity
+	TotalCostBudget float64 // Budget per unit * quantity (if set)
+	SavingsVsBudget float64 // Difference between budget and best quote
+	HasQuotes       bool
+	MissingQuotes   bool
 }
 
 // RequisitionQuoteComparison holds full comparison report for a requisition
 type RequisitionQuoteComparison struct {
-	Requisition      *models.Requisition
-	ItemComparisons  []QuoteComparison
-	TotalEstimate    float64 // Sum of all best quote totals
-	TotalBudget      float64 // Sum of all item budgets (if set) or requisition budget
-	TotalSavings     float64 // Budget - Estimate
+	Requisition        *models.Requisition
+	ItemComparisons    []QuoteComparison
+	TotalEstimate      float64 // Sum of all best quote totals
+	TotalBudget        float64 // Sum of all item budgets (if set) or requisition budget
+	TotalSavings       float64 // Budget - Estimate
 	AllItemsHaveQuotes bool
 }
 

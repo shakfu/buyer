@@ -9,10 +9,10 @@ import (
 
 // Vendor represents a selling entity with currency and discount information
 type Vendor struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	Name         string    `gorm:"uniqueIndex;not null" json:"name"`
-	Currency     string    `gorm:"size:3;not null" json:"currency"` // ISO 4217 currency code
-	DiscountCode string    `gorm:"size:50" json:"discount_code,omitempty"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	Name         string `gorm:"uniqueIndex;not null" json:"name"`
+	Currency     string `gorm:"size:3;not null" json:"currency"` // ISO 4217 currency code
+	DiscountCode string `gorm:"size:50" json:"discount_code,omitempty"`
 
 	// Contact Information
 	ContactPerson string `gorm:"size:100" json:"contact_person,omitempty"`
@@ -29,7 +29,7 @@ type Vendor struct {
 	Country      string `gorm:"size:2" json:"country,omitempty"` // ISO 3166-1 alpha-2
 
 	// Business Information
-	TaxID        string `gorm:"size:50" json:"tax_id,omitempty"`        // VAT/EIN/etc
+	TaxID        string `gorm:"size:50" json:"tax_id,omitempty"`         // VAT/EIN/etc
 	PaymentTerms string `gorm:"size:100" json:"payment_terms,omitempty"` // e.g., "Net 30"
 
 	// Relationships
@@ -64,31 +64,31 @@ type Specification struct {
 
 // Product represents an item associated with a brand and specification
 type Product struct {
-	ID              uint            `gorm:"primaryKey" json:"id"`
-	Name            string          `gorm:"uniqueIndex;not null" json:"name"`
-	SKU             *string         `gorm:"uniqueIndex;size:100" json:"sku,omitempty"` // Stock Keeping Unit (nullable, unique when present)
-	Description     string          `gorm:"type:text" json:"description,omitempty"`
-	BrandID         uint            `gorm:"not null;index" json:"brand_id"`
-	Brand           *Brand          `gorm:"foreignKey:BrandID;constraint:OnDelete:RESTRICT" json:"brand,omitempty"`
-	SpecificationID *uint           `gorm:"index" json:"specification_id,omitempty"`
-	Specification   *Specification  `gorm:"foreignKey:SpecificationID;constraint:OnDelete:SET NULL" json:"specification,omitempty"`
+	ID              uint           `gorm:"primaryKey" json:"id"`
+	Name            string         `gorm:"uniqueIndex;not null" json:"name"`
+	SKU             *string        `gorm:"uniqueIndex;size:100" json:"sku,omitempty"` // Stock Keeping Unit (nullable, unique when present)
+	Description     string         `gorm:"type:text" json:"description,omitempty"`
+	BrandID         uint           `gorm:"not null;index" json:"brand_id"`
+	Brand           *Brand         `gorm:"foreignKey:BrandID;constraint:OnDelete:RESTRICT" json:"brand,omitempty"`
+	SpecificationID *uint          `gorm:"index" json:"specification_id,omitempty"`
+	Specification   *Specification `gorm:"foreignKey:SpecificationID;constraint:OnDelete:SET NULL" json:"specification,omitempty"`
 
 	// Product Details
-	UnitOfMeasure   string          `gorm:"size:20;default:'each'" json:"unit_of_measure,omitempty"` // each, box, case, kg, etc.
-	MinOrderQty     int             `json:"min_order_qty,omitempty"`  // Minimum order quantity
-	LeadTimeDays    int             `json:"lead_time_days,omitempty"` // Typical delivery time
+	UnitOfMeasure string `gorm:"size:20;default:'each'" json:"unit_of_measure,omitempty"` // each, box, case, kg, etc.
+	MinOrderQty   int    `json:"min_order_qty,omitempty"`                                 // Minimum order quantity
+	LeadTimeDays  int    `json:"lead_time_days,omitempty"`                                // Typical delivery time
 
 	// Lifecycle
-	IsActive        bool            `gorm:"default:true" json:"is_active"`  // Product still available?
-	DiscontinuedAt  *time.Time      `json:"discontinued_at,omitempty"`
+	IsActive       bool       `gorm:"default:true" json:"is_active"` // Product still available?
+	DiscontinuedAt *time.Time `json:"discontinued_at,omitempty"`
 
-	Quotes          []Quote         `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"quotes,omitempty"`
+	Quotes []Quote `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE" json:"quotes,omitempty"`
 
 	// Audit fields
-	CreatedBy       string          `gorm:"size:100" json:"created_by,omitempty"`
-	UpdatedBy       string          `gorm:"size:100" json:"updated_by,omitempty"`
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	CreatedBy string    `gorm:"size:100" json:"created_by,omitempty"`
+	UpdatedBy string    `gorm:"size:100" json:"updated_by,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Requisition represents a purchasing requirement
@@ -111,7 +111,7 @@ type RequisitionItem struct {
 	SpecificationID uint           `gorm:"not null;index" json:"specification_id"`
 	Specification   *Specification `gorm:"foreignKey:SpecificationID;constraint:OnDelete:RESTRICT" json:"specification,omitempty"`
 	Quantity        int            `gorm:"not null" json:"quantity"`
-	BudgetPerUnit   float64        `json:"budget_per_unit,omitempty"` // Optional budget per unit
+	BudgetPerUnit   float64        `json:"budget_per_unit,omitempty"`              // Optional budget per unit
 	Description     string         `gorm:"type:text" json:"description,omitempty"` // Optional description for details
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
@@ -119,39 +119,39 @@ type RequisitionItem struct {
 
 // Quote represents a price quote from a vendor for a product
 type Quote struct {
-	ID               uint            `gorm:"primaryKey" json:"id"`
-	VendorID         uint            `gorm:"not null;index" json:"vendor_id"`
-	Vendor           *Vendor         `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"vendor,omitempty"`
-	ProductID        uint            `gorm:"not null;index" json:"product_id"`
-	Product          *Product        `gorm:"foreignKey:ProductID;constraint:OnDelete:RESTRICT" json:"product,omitempty"`
+	ID        uint     `gorm:"primaryKey" json:"id"`
+	VendorID  uint     `gorm:"not null;index" json:"vendor_id"`
+	Vendor    *Vendor  `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"vendor,omitempty"`
+	ProductID uint     `gorm:"not null;index" json:"product_id"`
+	Product   *Product `gorm:"foreignKey:ProductID;constraint:OnDelete:RESTRICT" json:"product,omitempty"`
 
 	// Version Tracking
-	Version          int             `gorm:"not null;default:1" json:"version"` // Quote revision number
-	PreviousQuoteID  *uint           `gorm:"index" json:"previous_quote_id,omitempty"` // Link to previous version
-	ReplacedBy       *uint           `gorm:"index" json:"replaced_by,omitempty"` // Link to newer version
+	Version         int   `gorm:"not null;default:1" json:"version"`        // Quote revision number
+	PreviousQuoteID *uint `gorm:"index" json:"previous_quote_id,omitempty"` // Link to previous version
+	ReplacedBy      *uint `gorm:"index" json:"replaced_by,omitempty"`       // Link to newer version
 
 	// Pricing
-	Price            float64         `gorm:"not null" json:"price"`
-	Currency         string          `gorm:"size:3;not null" json:"currency"`
-	ConvertedPrice   float64         `gorm:"not null" json:"converted_price"` // Price in USD
-	ConversionRate   float64         `gorm:"not null" json:"conversion_rate"`
-	MinQuantity      int             `json:"min_quantity,omitempty"` // Minimum order for this price
+	Price          float64 `gorm:"not null" json:"price"`
+	Currency       string  `gorm:"size:3;not null" json:"currency"`
+	ConvertedPrice float64 `gorm:"not null" json:"converted_price"` // Price in USD
+	ConversionRate float64 `gorm:"not null" json:"conversion_rate"`
+	MinQuantity    int     `json:"min_quantity,omitempty"` // Minimum order for this price
 
 	// Quote Details
-	QuoteDate        time.Time       `gorm:"not null;index" json:"quote_date"`
-	ValidUntil       *time.Time      `gorm:"index" json:"valid_until,omitempty"` // Optional expiration date
+	QuoteDate  time.Time  `gorm:"not null;index" json:"quote_date"`
+	ValidUntil *time.Time `gorm:"index" json:"valid_until,omitempty"` // Optional expiration date
 
 	// Status Tracking
-	Status           string          `gorm:"size:20;default:'active'" json:"status"` // active, superseded, expired, accepted, declined
+	Status string `gorm:"size:20;default:'active'" json:"status"` // active, superseded, expired, accepted, declined
 
-	Notes            string          `gorm:"type:text" json:"notes,omitempty"`
-	PurchaseOrders   []PurchaseOrder `gorm:"foreignKey:QuoteID;constraint:OnDelete:RESTRICT" json:"purchase_orders,omitempty"`
+	Notes          string          `gorm:"type:text" json:"notes,omitempty"`
+	PurchaseOrders []PurchaseOrder `gorm:"foreignKey:QuoteID;constraint:OnDelete:RESTRICT" json:"purchase_orders,omitempty"`
 
 	// Audit fields
-	CreatedBy        string          `gorm:"size:100" json:"created_by,omitempty"`
-	UpdatedBy        string          `gorm:"size:100" json:"updated_by,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	UpdatedAt        time.Time       `json:"updated_at"`
+	CreatedBy string    `gorm:"size:100" json:"created_by,omitempty"`
+	UpdatedBy string    `gorm:"size:100" json:"updated_by,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // PurchaseOrder represents an accepted quote that has been ordered
@@ -165,15 +165,15 @@ type PurchaseOrder struct {
 	Product          *Product     `gorm:"foreignKey:ProductID;constraint:OnDelete:RESTRICT" json:"product,omitempty"`
 	RequisitionID    *uint        `gorm:"index" json:"requisition_id,omitempty"` // Optional link to requisition
 	Requisition      *Requisition `gorm:"foreignKey:RequisitionID;constraint:OnDelete:SET NULL" json:"requisition,omitempty"`
-	PONumber         string       `gorm:"uniqueIndex;not null;size:50" json:"po_number"` // Generated or manual PO number
+	PONumber         string       `gorm:"uniqueIndex;not null;size:50" json:"po_number"`          // Generated or manual PO number
 	Status           string       `gorm:"size:20;not null;default:'pending';index" json:"status"` // pending, approved, ordered, shipped, received, cancelled
 	OrderDate        time.Time    `gorm:"not null;index" json:"order_date"`
 	ExpectedDelivery *time.Time   `json:"expected_delivery,omitempty"`
 	ActualDelivery   *time.Time   `json:"actual_delivery,omitempty"`
-	Quantity         int          `gorm:"not null" json:"quantity"`     // Can order multiple units
-	UnitPrice        float64      `gorm:"not null" json:"unit_price"`   // Price per unit in original currency
+	Quantity         int          `gorm:"not null" json:"quantity"`        // Can order multiple units
+	UnitPrice        float64      `gorm:"not null" json:"unit_price"`      // Price per unit in original currency
 	Currency         string       `gorm:"size:3;not null" json:"currency"` // Quote currency
-	TotalAmount      float64      `gorm:"not null" json:"total_amount"` // Total cost (unit_price * quantity)
+	TotalAmount      float64      `gorm:"not null" json:"total_amount"`    // Total cost (unit_price * quantity)
 	ShippingCost     float64      `json:"shipping_cost,omitempty"`
 	Tax              float64      `json:"tax,omitempty"`
 	GrandTotal       float64      `gorm:"not null" json:"grand_total"` // total_amount + shipping_cost + tax
@@ -181,97 +181,97 @@ type PurchaseOrder struct {
 	Notes            string       `gorm:"type:text" json:"notes,omitempty"`
 
 	// Relationships
-	Documents        []Document      `gorm:"-" json:"documents,omitempty"` // Polymorphic - query via EntityType="purchase_order" and EntityID=ID
-	VendorRatings    []VendorRating  `gorm:"foreignKey:PurchaseOrderID;constraint:OnDelete:CASCADE" json:"vendor_ratings,omitempty"`
+	Documents     []Document     `gorm:"-" json:"documents,omitempty"` // Polymorphic - query via EntityType="purchase_order" and EntityID=ID
+	VendorRatings []VendorRating `gorm:"foreignKey:PurchaseOrderID;constraint:OnDelete:CASCADE" json:"vendor_ratings,omitempty"`
 
 	// Audit fields
-	CreatedBy        string       `gorm:"size:100" json:"created_by,omitempty"`
-	UpdatedBy        string       `gorm:"size:100" json:"updated_by,omitempty"`
-	CreatedAt        time.Time    `json:"created_at"`
-	UpdatedAt        time.Time    `json:"updated_at"`
+	CreatedBy string    `gorm:"size:100" json:"created_by,omitempty"`
+	UpdatedBy string    `gorm:"size:100" json:"updated_by,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // VendorRating represents performance ratings for vendors
 type VendorRating struct {
-	ID              uint          `gorm:"primaryKey" json:"id"`
-	VendorID        uint          `gorm:"not null;index" json:"vendor_id"`
-	Vendor          *Vendor       `gorm:"foreignKey:VendorID;constraint:OnDelete:CASCADE" json:"vendor,omitempty"`
-	PurchaseOrderID *uint         `gorm:"index" json:"purchase_order_id,omitempty"` // Optional link to specific order
+	ID              uint           `gorm:"primaryKey" json:"id"`
+	VendorID        uint           `gorm:"not null;index" json:"vendor_id"`
+	Vendor          *Vendor        `gorm:"foreignKey:VendorID;constraint:OnDelete:CASCADE" json:"vendor,omitempty"`
+	PurchaseOrderID *uint          `gorm:"index" json:"purchase_order_id,omitempty"` // Optional link to specific order
 	PurchaseOrder   *PurchaseOrder `gorm:"foreignKey:PurchaseOrderID;constraint:OnDelete:SET NULL" json:"purchase_order,omitempty"`
 
 	// Ratings (1-5 scale)
-	PriceRating     *int          `json:"price_rating,omitempty"`    // 1-5 scale
-	QualityRating   *int          `json:"quality_rating,omitempty"`  // 1-5 scale
-	DeliveryRating  *int          `json:"delivery_rating,omitempty"` // 1-5 scale
-	ServiceRating   *int          `json:"service_rating,omitempty"`  // 1-5 scale
+	PriceRating    *int `json:"price_rating,omitempty"`    // 1-5 scale
+	QualityRating  *int `json:"quality_rating,omitempty"`  // 1-5 scale
+	DeliveryRating *int `json:"delivery_rating,omitempty"` // 1-5 scale
+	ServiceRating  *int `json:"service_rating,omitempty"`  // 1-5 scale
 
-	Comments        string        `gorm:"type:text" json:"comments,omitempty"`
-	RatedBy         string        `gorm:"size:100" json:"rated_by,omitempty"`
-	CreatedAt       time.Time     `json:"created_at"`
-	UpdatedAt       time.Time     `json:"updated_at"`
+	Comments  string    `gorm:"type:text" json:"comments,omitempty"`
+	RatedBy   string    `gorm:"size:100" json:"rated_by,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Forex represents currency exchange rates
 type Forex struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	FromCurrency string    `gorm:"size:3;not null;index:idx_forex_pair" json:"from_currency"`
-	ToCurrency   string    `gorm:"size:3;not null;index:idx_forex_pair" json:"to_currency"`
-	Rate         float64   `gorm:"not null" json:"rate"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	FromCurrency  string    `gorm:"size:3;not null;index:idx_forex_pair" json:"from_currency"`
+	ToCurrency    string    `gorm:"size:3;not null;index:idx_forex_pair" json:"to_currency"`
+	Rate          float64   `gorm:"not null" json:"rate"`
 	EffectiveDate time.Time `gorm:"not null;index" json:"effective_date"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // Project represents a project with budget, deadline, and associated Bill of Materials
 type Project struct {
-	ID              uint                  `gorm:"primaryKey" json:"id"`
-	Name            string                `gorm:"uniqueIndex;not null" json:"name"`
-	Description     string                `gorm:"type:text" json:"description,omitempty"`
-	Budget          float64               `json:"budget,omitempty"`          // Overall project budget
-	Deadline        *time.Time            `json:"deadline,omitempty"`        // Project deadline
-	Status          string                `gorm:"size:20;default:'planning'" json:"status"` // planning, active, completed, cancelled
-	BillOfMaterials *BillOfMaterials      `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
-	Requisitions    []ProjectRequisition  `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"requisitions,omitempty"` // Project-based requisitions
-	CreatedAt       time.Time             `json:"created_at"`
-	UpdatedAt       time.Time             `json:"updated_at"`
+	ID              uint                 `gorm:"primaryKey" json:"id"`
+	Name            string               `gorm:"uniqueIndex;not null" json:"name"`
+	Description     string               `gorm:"type:text" json:"description,omitempty"`
+	Budget          float64              `json:"budget,omitempty"`                         // Overall project budget
+	Deadline        *time.Time           `json:"deadline,omitempty"`                       // Project deadline
+	Status          string               `gorm:"size:20;default:'planning'" json:"status"` // planning, active, completed, cancelled
+	BillOfMaterials *BillOfMaterials     `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
+	Requisitions    []ProjectRequisition `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"requisitions,omitempty"` // Project-based requisitions
+	CreatedAt       time.Time            `json:"created_at"`
+	UpdatedAt       time.Time            `json:"updated_at"`
 }
 
 // BillOfMaterials represents the master list of specifications needed for a project
 type BillOfMaterials struct {
-	ID        uint                   `gorm:"primaryKey" json:"id"`
-	ProjectID uint                   `gorm:"uniqueIndex;not null" json:"project_id"` // One BillOfMaterials per project
-	Project   *Project               `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
-	Notes     string                 `gorm:"type:text" json:"notes,omitempty"`
-	Items     []BillOfMaterialsItem  `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	ID        uint                  `gorm:"primaryKey" json:"id"`
+	ProjectID uint                  `gorm:"uniqueIndex;not null" json:"project_id"` // One BillOfMaterials per project
+	Project   *Project              `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
+	Notes     string                `gorm:"type:text" json:"notes,omitempty"`
+	Items     []BillOfMaterialsItem `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	CreatedAt time.Time             `json:"created_at"`
+	UpdatedAt time.Time             `json:"updated_at"`
 }
 
 // BillOfMaterialsItem represents a line item in a Bill of Materials
 type BillOfMaterialsItem struct {
-	ID                uint              `gorm:"primaryKey" json:"id"`
-	BillOfMaterialsID uint              `gorm:"not null;index:idx_bom_spec,priority:1" json:"bill_of_materials_id"`
-	BillOfMaterials   *BillOfMaterials  `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
-	SpecificationID   uint              `gorm:"not null;index:idx_bom_spec,priority:2;uniqueIndex:idx_bom_spec_unique,composite:bom_spec" json:"specification_id"`
-	Specification     *Specification    `gorm:"foreignKey:SpecificationID;constraint:OnDelete:RESTRICT" json:"specification,omitempty"`
-	Quantity          int               `gorm:"not null" json:"quantity"`
-	Notes             string            `gorm:"type:text" json:"notes,omitempty"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+	ID                uint             `gorm:"primaryKey" json:"id"`
+	BillOfMaterialsID uint             `gorm:"not null;index:idx_bom_spec,priority:1" json:"bill_of_materials_id"`
+	BillOfMaterials   *BillOfMaterials `gorm:"foreignKey:BillOfMaterialsID;constraint:OnDelete:CASCADE" json:"bill_of_materials,omitempty"`
+	SpecificationID   uint             `gorm:"not null;index:idx_bom_spec,priority:2;uniqueIndex:idx_bom_spec_unique,composite:bom_spec" json:"specification_id"`
+	Specification     *Specification   `gorm:"foreignKey:SpecificationID;constraint:OnDelete:RESTRICT" json:"specification,omitempty"`
+	Quantity          int              `gorm:"not null" json:"quantity"`
+	Notes             string           `gorm:"type:text" json:"notes,omitempty"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
 }
 
 // ProjectRequisition represents a procurement request created from a project's BOM
 // Unlike standalone Requisitions, these are always tied to a project and reference BOM items
 type ProjectRequisition struct {
-	ID            uint                       `gorm:"primaryKey" json:"id"`
-	ProjectID     uint                       `gorm:"not null;index" json:"project_id"`
-	Project       *Project                   `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
-	Name          string                     `gorm:"not null" json:"name"`
-	Justification string                     `gorm:"type:text" json:"justification,omitempty"`
-	Budget        float64                    `json:"budget,omitempty"`
-	Items         []ProjectRequisitionItem   `gorm:"foreignKey:ProjectRequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
-	CreatedAt     time.Time                  `json:"created_at"`
-	UpdatedAt     time.Time                  `json:"updated_at"`
+	ID            uint                     `gorm:"primaryKey" json:"id"`
+	ProjectID     uint                     `gorm:"not null;index" json:"project_id"`
+	Project       *Project                 `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
+	Name          string                   `gorm:"not null" json:"name"`
+	Justification string                   `gorm:"type:text" json:"justification,omitempty"`
+	Budget        float64                  `json:"budget,omitempty"`
+	Items         []ProjectRequisitionItem `gorm:"foreignKey:ProjectRequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	CreatedAt     time.Time                `json:"created_at"`
+	UpdatedAt     time.Time                `json:"updated_at"`
 }
 
 // ProjectRequisitionItem represents a line item in a project requisition
@@ -289,35 +289,35 @@ type ProjectRequisitionItem struct {
 }
 
 // TableName overrides for GORM
-func (Vendor) TableName() string                  { return "vendors" }
-func (Brand) TableName() string                   { return "brands" }
-func (Specification) TableName() string           { return "specifications" }
-func (Product) TableName() string                 { return "products" }
-func (Requisition) TableName() string             { return "requisitions" }
-func (RequisitionItem) TableName() string         { return "requisition_items" }
-func (Quote) TableName() string                   { return "quotes" }
-func (PurchaseOrder) TableName() string           { return "purchase_orders" }
-func (VendorRating) TableName() string            { return "vendor_ratings" }
-func (Forex) TableName() string                   { return "forex" }
-func (Project) TableName() string                 { return "projects" }
-func (BillOfMaterials) TableName() string         { return "bills_of_materials" }
-func (BillOfMaterialsItem) TableName() string     { return "bill_of_materials_items" }
-func (ProjectRequisition) TableName() string      { return "project_requisitions" }
-func (ProjectRequisitionItem) TableName() string  { return "project_requisition_items" }
-func (Document) TableName() string                { return "documents" }
+func (Vendor) TableName() string                 { return "vendors" }
+func (Brand) TableName() string                  { return "brands" }
+func (Specification) TableName() string          { return "specifications" }
+func (Product) TableName() string                { return "products" }
+func (Requisition) TableName() string            { return "requisitions" }
+func (RequisitionItem) TableName() string        { return "requisition_items" }
+func (Quote) TableName() string                  { return "quotes" }
+func (PurchaseOrder) TableName() string          { return "purchase_orders" }
+func (VendorRating) TableName() string           { return "vendor_ratings" }
+func (Forex) TableName() string                  { return "forex" }
+func (Project) TableName() string                { return "projects" }
+func (BillOfMaterials) TableName() string        { return "bills_of_materials" }
+func (BillOfMaterialsItem) TableName() string    { return "bill_of_materials_items" }
+func (ProjectRequisition) TableName() string     { return "project_requisitions" }
+func (ProjectRequisitionItem) TableName() string { return "project_requisition_items" }
+func (Document) TableName() string               { return "documents" }
 
 // Document represents file attachments for various entities
 type Document struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	EntityType   string    `gorm:"size:50;not null;index:idx_entity" json:"entity_type"` // vendor, quote, purchase_order, product, etc.
-	EntityID     uint      `gorm:"not null;index:idx_entity" json:"entity_id"`
-	FileName     string    `gorm:"not null" json:"file_name"`
-	FileType     string    `gorm:"size:50" json:"file_type"` // pdf, xlsx, docx, png, jpg
-	FileSize     int64     `json:"file_size"` // bytes
-	FilePath     string    `gorm:"not null" json:"file_path"` // Storage location or S3 key
-	Description  string    `gorm:"type:text" json:"description,omitempty"`
-	UploadedBy   string    `gorm:"size:100" json:"uploaded_by,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	EntityType  string    `gorm:"size:50;not null;index:idx_entity" json:"entity_type"` // vendor, quote, purchase_order, product, etc.
+	EntityID    uint      `gorm:"not null;index:idx_entity" json:"entity_id"`
+	FileName    string    `gorm:"not null" json:"file_name"`
+	FileType    string    `gorm:"size:50" json:"file_type"`  // pdf, xlsx, docx, png, jpg
+	FileSize    int64     `json:"file_size"`                 // bytes
+	FilePath    string    `gorm:"not null" json:"file_path"` // Storage location or S3 key
+	Description string    `gorm:"type:text" json:"description,omitempty"`
+	UploadedBy  string    `gorm:"size:100" json:"uploaded_by,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // BeforeSave hook for RequisitionItem - validates constraints

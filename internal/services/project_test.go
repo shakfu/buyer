@@ -504,4 +504,3 @@ func TestProjectService_DeleteBillOfMaterialsItem(t *testing.T) {
 		t.Errorf("Expected NotFoundError, got %T", err)
 	}
 }
-

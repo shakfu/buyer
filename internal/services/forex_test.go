@@ -161,12 +161,12 @@ func TestForexService_Convert(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		amount         float64
-		from           string
-		to             string
-		wantConverted  float64
-		wantErr        bool
+		name          string
+		amount        float64
+		from          string
+		to            string
+		wantConverted float64
+		wantErr       bool
 	}{
 		{
 			name:          "valid conversion",

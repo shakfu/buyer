@@ -78,11 +78,11 @@ func TestPurchaseOrderService_Create(t *testing.T) {
 		{
 			name: "valid purchase order",
 			input: CreatePurchaseOrderInput{
-				QuoteID:   quote.ID,
-				PONumber:  "PO-001",
-				Quantity:  5,
+				QuoteID:      quote.ID,
+				PONumber:     "PO-001",
+				Quantity:     5,
 				ShippingCost: 50.0,
-				Tax:       25.0,
+				Tax:          25.0,
 			},
 			wantErr: false,
 		},

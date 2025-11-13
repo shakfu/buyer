@@ -19,12 +19,12 @@ func NewDashboardService(db *gorm.DB) *DashboardService {
 
 // Stats holds general statistics
 type Stats struct {
-	TotalQuotes        int64
-	ActiveQuotes       int64
-	TotalRequisitions  int64
-	TotalVendors       int64
-	TotalProducts      int64
-	TotalBrands        int64
+	TotalQuotes         int64
+	ActiveQuotes        int64
+	TotalRequisitions   int64
+	TotalVendors        int64
+	TotalProducts       int64
+	TotalBrands         int64
 	TotalSpecifications int64
 }
 
@@ -196,12 +196,12 @@ func (s *DashboardService) GetRecentQuotes(limit int) ([]models.Quote, error) {
 
 // ProjectStats holds project-level statistics
 type ProjectStats struct {
-	TotalBOMItems        int64
-	TotalRequisitions    int64
-	TotalBudget          float64
-	AllocatedBudget      float64
-	BudgetUtilization    float64 // percentage
-	TotalBOMQuantity     int
+	TotalBOMItems     int64
+	TotalRequisitions int64
+	TotalBudget       float64
+	AllocatedBudget   float64
+	BudgetUtilization float64 // percentage
+	TotalBOMQuantity  int
 }
 
 // BOMItemQuantity holds BOM item quantity data for visualization
