@@ -32,11 +32,14 @@ type Vendor struct {
 	TaxID        string `gorm:"size:50" json:"tax_id,omitempty"`        // VAT/EIN/etc
 	PaymentTerms string `gorm:"size:100" json:"payment_terms,omitempty"` // e.g., "Net 30"
 
-	Brands        []*Brand        `gorm:"many2many:vendor_brands;" json:"brands,omitempty"`
-	Quotes        []Quote         `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"quotes,omitempty"`
+	// Relationships
+	Brands         []*Brand        `gorm:"many2many:vendor_brands;" json:"brands,omitempty"`
+	Quotes         []Quote         `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"quotes,omitempty"`
 	PurchaseOrders []PurchaseOrder `gorm:"foreignKey:VendorID;constraint:OnDelete:RESTRICT" json:"purchase_orders,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
+	Documents      []Document      `gorm:"-" json:"documents,omitempty"` // Polymorphic - query via EntityType="vendor" and EntityID=ID
+	VendorRatings  []VendorRating  `gorm:"foreignKey:VendorID;constraint:OnDelete:CASCADE" json:"vendor_ratings,omitempty"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
 // Brand represents a manufacturing entity
@@ -90,13 +93,14 @@ type Product struct {
 
 // Requisition represents a purchasing requirement
 type Requisition struct {
-	ID            uint              `gorm:"primaryKey" json:"id"`
-	Name          string            `gorm:"uniqueIndex;not null" json:"name"`
-	Justification string            `gorm:"type:text" json:"justification,omitempty"`
-	Budget        float64           `json:"budget,omitempty"` // Optional overall budget limit
-	Items         []RequisitionItem `gorm:"foreignKey:RequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
+	ID             uint              `gorm:"primaryKey" json:"id"`
+	Name           string            `gorm:"uniqueIndex;not null" json:"name"`
+	Justification  string            `gorm:"type:text" json:"justification,omitempty"`
+	Budget         float64           `json:"budget,omitempty"` // Optional overall budget limit
+	Items          []RequisitionItem `gorm:"foreignKey:RequisitionID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
+	PurchaseOrders []PurchaseOrder   `gorm:"foreignKey:RequisitionID;constraint:OnDelete:SET NULL" json:"purchase_orders,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 // RequisitionItem represents a line item in a requisition
@@ -176,11 +180,35 @@ type PurchaseOrder struct {
 	InvoiceNumber    string       `gorm:"size:100" json:"invoice_number,omitempty"`
 	Notes            string       `gorm:"type:text" json:"notes,omitempty"`
 
+	// Relationships
+	Documents        []Document      `gorm:"-" json:"documents,omitempty"` // Polymorphic - query via EntityType="purchase_order" and EntityID=ID
+	VendorRatings    []VendorRating  `gorm:"foreignKey:PurchaseOrderID;constraint:OnDelete:CASCADE" json:"vendor_ratings,omitempty"`
+
 	// Audit fields
 	CreatedBy        string       `gorm:"size:100" json:"created_by,omitempty"`
 	UpdatedBy        string       `gorm:"size:100" json:"updated_by,omitempty"`
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
+}
+
+// VendorRating represents performance ratings for vendors
+type VendorRating struct {
+	ID              uint          `gorm:"primaryKey" json:"id"`
+	VendorID        uint          `gorm:"not null;index" json:"vendor_id"`
+	Vendor          *Vendor       `gorm:"foreignKey:VendorID;constraint:OnDelete:CASCADE" json:"vendor,omitempty"`
+	PurchaseOrderID *uint         `gorm:"index" json:"purchase_order_id,omitempty"` // Optional link to specific order
+	PurchaseOrder   *PurchaseOrder `gorm:"foreignKey:PurchaseOrderID;constraint:OnDelete:SET NULL" json:"purchase_order,omitempty"`
+
+	// Ratings (1-5 scale)
+	PriceRating     *int          `json:"price_rating,omitempty"`    // 1-5 scale
+	QualityRating   *int          `json:"quality_rating,omitempty"`  // 1-5 scale
+	DeliveryRating  *int          `json:"delivery_rating,omitempty"` // 1-5 scale
+	ServiceRating   *int          `json:"service_rating,omitempty"`  // 1-5 scale
+
+	Comments        string        `gorm:"type:text" json:"comments,omitempty"`
+	RatedBy         string        `gorm:"size:100" json:"rated_by,omitempty"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
 }
 
 // Forex represents currency exchange rates
@@ -269,6 +297,7 @@ func (Requisition) TableName() string             { return "requisitions" }
 func (RequisitionItem) TableName() string         { return "requisition_items" }
 func (Quote) TableName() string                   { return "quotes" }
 func (PurchaseOrder) TableName() string           { return "purchase_orders" }
+func (VendorRating) TableName() string            { return "vendor_ratings" }
 func (Forex) TableName() string                   { return "forex" }
 func (Project) TableName() string                 { return "projects" }
 func (BillOfMaterials) TableName() string         { return "bills_of_materials" }
