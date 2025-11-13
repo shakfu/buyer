@@ -128,11 +128,13 @@ var webCmd = &cobra.Command{
 		projectSvc := services.NewProjectService(cfg.DB)
 		projectReqSvc := services.NewProjectRequisitionService(cfg.DB)
 		poSvc := services.NewPurchaseOrderService(cfg.DB)
+		docSvc := services.NewDocumentService(cfg.DB)
+		ratingsSvc := services.NewVendorRatingService(cfg.DB)
 
 		slog.Debug("services initialized successfully")
 
 		// Routes
-		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc)
+		setupRoutes(app, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc, dashboardSvc, projectSvc, projectReqSvc, poSvc, docSvc, ratingsSvc)
 
 		// Setup graceful shutdown
 		c := make(chan os.Signal, 1)
@@ -178,6 +180,8 @@ func setupRoutes(
 	projectSvc *services.ProjectService,
 	projectReqSvc *services.ProjectRequisitionService,
 	poSvc *services.PurchaseOrderService,
+	docSvc *services.DocumentService,
+	ratingsSvc *services.VendorRatingService,
 ) {
 	// Home page
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -464,6 +468,98 @@ func setupRoutes(
 		})
 	})
 
+	// Document routes
+	app.Get("/documents", func(c *fiber.Ctx) error {
+		docs, err := docSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "documents.html", fiber.Map{
+			"Title":     "Documents",
+			"Documents": docs,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Documents", "Active": true},
+			},
+		})
+	})
+
+	// Vendor Rating routes
+	app.Get("/vendor-ratings", func(c *fiber.Ctx) error {
+		ratings, err := ratingsSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		vendors, err := vendorSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+		return renderTemplate(c, "vendor-ratings.html", fiber.Map{
+			"Title":   "Vendor Ratings",
+			"Ratings": ratings,
+			"Vendors": vendors,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Vendor Ratings", "Active": true},
+			},
+		})
+	})
+
+	// Vendor Performance Dashboard
+	app.Get("/vendor-performance", func(c *fiber.Ctx) error {
+		performance, err := ratingsSvc.GetVendorPerformance()
+		if err != nil {
+			return err
+		}
+
+		categoryAverages, err := ratingsSvc.GetCategoryAverages()
+		if err != nil {
+			return err
+		}
+
+		totalRatings, err := ratingsSvc.Count()
+		if err != nil {
+			return err
+		}
+
+		// Count vendors that have been rated
+		ratedVendors := len(performance)
+
+		// Get total vendor count
+		allVendors, err := vendorSvc.List(0, 0)
+		if err != nil {
+			return err
+		}
+
+		// Calculate average overall rating
+		avgOverall := 0.0
+		if len(performance) > 0 {
+			sum := 0.0
+			for _, p := range performance {
+				sum += p.AvgRating
+			}
+			avgOverall = sum / float64(len(performance))
+		}
+
+		// Find top vendor
+		var topVendor *services.VendorPerformance
+		if len(performance) > 0 {
+			topVendor = &performance[0]
+		}
+
+		return renderTemplate(c, "vendor-performance.html", fiber.Map{
+			"Title":            "Vendor Performance Dashboard",
+			"VendorRatings":    performance,
+			"CategoryAverages": categoryAverages,
+			"TotalRatings":     totalRatings,
+			"RatedVendors":     ratedVendors,
+			"TotalVendors":     len(allVendors),
+			"AvgOverallRating": avgOverall,
+			"TopVendor":        topVendor,
+			"Breadcrumb": []map[string]interface{}{
+				{"Name": "Vendor Performance", "Active": true},
+			},
+		})
+	})
+
 	// Project routes
 	app.Get("/projects", func(c *fiber.Ctx) error {
 		projects, err := projectSvc.List(0, 0)
@@ -709,6 +805,120 @@ func setupRoutes(
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
 		}
 		if err := poSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
+
+	// Document CRUD handlers
+	app.Post("/documents", func(c *fiber.Ctx) error {
+		entityType := c.FormValue("entity_type")
+		entityID, err := strconv.ParseUint(c.FormValue("entity_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid entity ID")
+		}
+
+		fileSize, _ := strconv.ParseInt(c.FormValue("file_size"), 10, 64)
+
+		doc, err := docSvc.Create(services.CreateDocumentInput{
+			EntityType:  entityType,
+			EntityID:    uint(entityID),
+			FileName:    c.FormValue("file_name"),
+			FileType:    c.FormValue("file_type"),
+			FileSize:    fileSize,
+			FilePath:    c.FormValue("file_path"),
+			Description: c.FormValue("description"),
+			UploadedBy:  c.FormValue("uploaded_by"),
+		})
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderDocumentRow(doc)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/documents/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := docSvc.Delete(uint(id)); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+		return c.SendString("")
+	})
+
+	// Vendor Rating CRUD handlers
+	app.Post("/vendor-ratings", func(c *fiber.Ctx) error {
+		vendorID, err := strconv.ParseUint(c.FormValue("vendor_id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid vendor ID")
+		}
+
+		var poIDPtr *uint
+		poIDStr := c.FormValue("po_id")
+		if poIDStr != "" {
+			poID, err := strconv.ParseUint(poIDStr, 10, 32)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid PO ID")
+			}
+			poIDUint := uint(poID)
+			poIDPtr = &poIDUint
+		}
+
+		var pricePtr, qualityPtr, deliveryPtr, servicePtr *int
+		if priceStr := c.FormValue("price_rating"); priceStr != "" {
+			if price, err := strconv.Atoi(priceStr); err == nil {
+				pricePtr = &price
+			}
+		}
+		if qualityStr := c.FormValue("quality_rating"); qualityStr != "" {
+			if quality, err := strconv.Atoi(qualityStr); err == nil {
+				qualityPtr = &quality
+			}
+		}
+		if deliveryStr := c.FormValue("delivery_rating"); deliveryStr != "" {
+			if delivery, err := strconv.Atoi(deliveryStr); err == nil {
+				deliveryPtr = &delivery
+			}
+		}
+		if serviceStr := c.FormValue("service_rating"); serviceStr != "" {
+			if service, err := strconv.Atoi(serviceStr); err == nil {
+				servicePtr = &service
+			}
+		}
+
+		rating, err := ratingsSvc.Create(services.CreateVendorRatingInput{
+			VendorID:        uint(vendorID),
+			PurchaseOrderID: poIDPtr,
+			PriceRating:     pricePtr,
+			QualityRating:   qualityPtr,
+			DeliveryRating:  deliveryPtr,
+			ServiceRating:   servicePtr,
+			Comments:        c.FormValue("comments"),
+			RatedBy:         c.FormValue("rated_by"),
+		})
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
+		}
+
+		html, err := RenderVendorRatingRow(rating)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to render response")
+		}
+		return c.SendString(html.String())
+	})
+
+	app.Delete("/vendor-ratings/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid ID")
+		}
+		if err := ratingsSvc.Delete(uint(id)); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 		}
 		return c.SendString("")

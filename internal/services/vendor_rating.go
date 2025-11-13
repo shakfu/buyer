@@ -328,3 +328,156 @@ func (s *VendorRatingService) Count() (int64, error) {
 	}
 	return count, nil
 }
+
+// VendorPerformance represents vendor rating analytics
+type VendorPerformance struct {
+	VendorID    uint
+	Name        string
+	AvgRating   float64
+	AvgPrice    float64
+	AvgQuality  float64
+	AvgDelivery float64
+	AvgService  float64
+	Count       int64
+}
+
+// GetVendorPerformance returns performance analytics for all vendors with ratings
+func (s *VendorRatingService) GetVendorPerformance() ([]VendorPerformance, error) {
+	type RawResult struct {
+		VendorID    uint
+		VendorName  string
+		AvgPrice    *float64
+		AvgQuality  *float64
+		AvgDelivery *float64
+		AvgService  *float64
+		Count       int64
+	}
+
+	var results []RawResult
+	err := s.db.Model(&models.VendorRating{}).
+		Select(`
+			vendor_ratings.vendor_id,
+			vendors.name as vendor_name,
+			AVG(CASE WHEN price_rating IS NOT NULL THEN price_rating END) as avg_price,
+			AVG(CASE WHEN quality_rating IS NOT NULL THEN quality_rating END) as avg_quality,
+			AVG(CASE WHEN delivery_rating IS NOT NULL THEN delivery_rating END) as avg_delivery,
+			AVG(CASE WHEN service_rating IS NOT NULL THEN service_rating END) as avg_service,
+			COUNT(*) as count
+		`).
+		Joins("LEFT JOIN vendors ON vendors.id = vendor_ratings.vendor_id").
+		Group("vendor_ratings.vendor_id, vendors.name").
+		Having("COUNT(*) > 0").
+		Find(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	performance := make([]VendorPerformance, 0, len(results))
+	for _, r := range results {
+		// Calculate overall average from non-null category averages
+		var sum float64
+		var count int
+		if r.AvgPrice != nil {
+			sum += *r.AvgPrice
+			count++
+		}
+		if r.AvgQuality != nil {
+			sum += *r.AvgQuality
+			count++
+		}
+		if r.AvgDelivery != nil {
+			sum += *r.AvgDelivery
+			count++
+		}
+		if r.AvgService != nil {
+			sum += *r.AvgService
+			count++
+		}
+
+		avgRating := 0.0
+		if count > 0 {
+			avgRating = sum / float64(count)
+		}
+
+		perf := VendorPerformance{
+			VendorID:  r.VendorID,
+			Name:      r.VendorName,
+			AvgRating: avgRating,
+			Count:     r.Count,
+		}
+		if r.AvgPrice != nil {
+			perf.AvgPrice = *r.AvgPrice
+		}
+		if r.AvgQuality != nil {
+			perf.AvgQuality = *r.AvgQuality
+		}
+		if r.AvgDelivery != nil {
+			perf.AvgDelivery = *r.AvgDelivery
+		}
+		if r.AvgService != nil {
+			perf.AvgService = *r.AvgService
+		}
+
+		performance = append(performance, perf)
+	}
+
+	// Sort by average rating descending
+	for i := 0; i < len(performance)-1; i++ {
+		for j := i + 1; j < len(performance); j++ {
+			if performance[j].AvgRating > performance[i].AvgRating {
+				performance[i], performance[j] = performance[j], performance[i]
+			}
+		}
+	}
+
+	return performance, nil
+}
+
+// CategoryAverages represents average ratings by category
+type CategoryAverages struct {
+	Price    float64
+	Quality  float64
+	Delivery float64
+	Service  float64
+}
+
+// GetCategoryAverages returns average ratings for each category across all vendors
+func (s *VendorRatingService) GetCategoryAverages() (*CategoryAverages, error) {
+	type RawResult struct {
+		AvgPrice    *float64
+		AvgQuality  *float64
+		AvgDelivery *float64
+		AvgService  *float64
+	}
+
+	var result RawResult
+	err := s.db.Model(&models.VendorRating{}).
+		Select(`
+			AVG(CASE WHEN price_rating IS NOT NULL THEN price_rating END) as avg_price,
+			AVG(CASE WHEN quality_rating IS NOT NULL THEN quality_rating END) as avg_quality,
+			AVG(CASE WHEN delivery_rating IS NOT NULL THEN delivery_rating END) as avg_delivery,
+			AVG(CASE WHEN service_rating IS NOT NULL THEN service_rating END) as avg_service
+		`).
+		Scan(&result).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	averages := &CategoryAverages{}
+	if result.AvgPrice != nil {
+		averages.Price = *result.AvgPrice
+	}
+	if result.AvgQuality != nil {
+		averages.Quality = *result.AvgQuality
+	}
+	if result.AvgDelivery != nil {
+		averages.Delivery = *result.AvgDelivery
+	}
+	if result.AvgService != nil {
+		averages.Service = *result.AvgService
+	}
+
+	return averages, nil
+}

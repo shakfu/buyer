@@ -1,0 +1,240 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <article style="margin: 0;">
+        <h3>Total Ratings</h3>
+        <h2 style="margin: 0;">{{.TotalRatings}}</h2>
+        <small>Vendor ratings collected</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Rated Vendors</h3>
+        <h2 style="margin: 0;">{{.RatedVendors}}</h2>
+        <small>Out of {{.TotalVendors}} total</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Avg Overall Rating</h3>
+        <h2 style="margin: 0;">{{printf "%.1f" .AvgOverallRating}}/5</h2>
+        <small>Across all vendors</small>
+    </article>
+    <article style="margin: 0;">
+        <h3>Top Performer</h3>
+        <h2 style="margin: 0;">
+            {{if .TopVendor}}
+                {{printf "%.1f" .TopVendor.AvgRating}}/5
+            {{else}}
+                N/A
+            {{end}}
+        </h2>
+        <small>
+            {{if .TopVendor}}
+                {{.TopVendor.Name}}
+            {{else}}
+                No ratings yet
+            {{end}}
+        </small>
+    </article>
+</div>
+
+{{if .VendorRatings}}
+<article>
+    <h2>Vendor Performance Rankings</h2>
+    <p>Average ratings by vendor (minimum 1 rating required)</p>
+
+    <!-- Visualization -->
+    <div id="vendor-performance-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <!-- Detailed Table -->
+    <details open>
+        <summary>View detailed table</summary>
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Vendor</th>
+                        <th>Overall</th>
+                        <th>Price</th>
+                        <th>Quality</th>
+                        <th>Delivery</th>
+                        <th>Service</th>
+                        <th># Ratings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $vendor := .VendorRatings}}
+                    <tr>
+                        <td><strong>{{add $index 1}}</strong></td>
+                        <td>
+                            <a href="/vendors/{{$vendor.VendorID}}">{{$vendor.Name}}</a>
+                        </td>
+                        <td style="font-weight: bold;">
+                            {{printf "%.1f" $vendor.AvgRating}}/5
+                            {{if ge $vendor.AvgRating 4.5}}⭐{{end}}
+                        </td>
+                        <td>{{if $vendor.AvgPrice}}{{printf "%.1f" $vendor.AvgPrice}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+                        <td>{{if $vendor.AvgQuality}}{{printf "%.1f" $vendor.AvgQuality}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+                        <td>{{if $vendor.AvgDelivery}}{{printf "%.1f" $vendor.AvgDelivery}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+                        <td>{{if $vendor.AvgService}}{{printf "%.1f" $vendor.AvgService}}{{else}}<span style="color: gray;">—</span>{{end}}</td>
+                        <td>{{$vendor.Count}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+    </details>
+
+    <script>
+    // Vendor Performance Bar Chart
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof vegaEmbed !== 'function') {
+            console.error('vegaEmbed is not available');
+            return;
+        }
+
+        const vendorData = [
+            {{range .VendorRatings}}
+            {
+                vendor: "{{.Name}}",
+                avgRating: {{printf "%.2f" .AvgRating}},
+                count: {{.Count}}
+            },
+            {{end}}
+        ];
+
+        const spec = {
+            $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+            description: "Vendor Performance by Average Rating",
+            data: { values: vendorData },
+            width: "container",
+            height: 400,
+            mark: {
+                type: "bar",
+                tooltip: true
+            },
+            encoding: {
+                x: {
+                    field: "vendor",
+                    type: "nominal",
+                    axis: {
+                        title: "Vendor",
+                        labelAngle: -45
+                    },
+                    sort: "-y"
+                },
+                y: {
+                    field: "avgRating",
+                    type: "quantitative",
+                    axis: { title: "Average Rating" },
+                    scale: { domain: [0, 5] }
+                },
+                color: {
+                    field: "avgRating",
+                    type: "quantitative",
+                    scale: {
+                        scheme: "viridis",
+                        domain: [0, 5]
+                    },
+                    legend: { title: "Avg Rating" }
+                },
+                tooltip: [
+                    { field: "vendor", type: "nominal", title: "Vendor" },
+                    { field: "avgRating", type: "quantitative", title: "Avg Rating", format: ".2f" },
+                    { field: "count", type: "quantitative", title: "# Ratings" }
+                ]
+            }
+        };
+
+        vegaEmbed('#vendor-performance-chart', spec, {
+            actions: {
+                source: false,
+                compiled: false,
+                editor: false
+            }
+        }).catch(console.error);
+    });
+    </script>
+</article>
+
+<article>
+    <h2>Rating Category Breakdown</h2>
+    <p>Average ratings by category across all vendors</p>
+
+    <div id="category-breakdown-chart" style="margin-bottom: 2rem; width: 100%;"></div>
+
+    <script>
+    // Category Breakdown Chart
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof vegaEmbed !== 'function') {
+            return;
+        }
+
+        const categoryData = [
+            {{if .CategoryAverages}}
+            { category: "Price", avgRating: {{printf "%.2f" .CategoryAverages.Price}} },
+            { category: "Quality", avgRating: {{printf "%.2f" .CategoryAverages.Quality}} },
+            { category: "Delivery", avgRating: {{printf "%.2f" .CategoryAverages.Delivery}} },
+            { category: "Service", avgRating: {{printf "%.2f" .CategoryAverages.Service}} }
+            {{else}}
+            { category: "Price", avgRating: 0 },
+            { category: "Quality", avgRating: 0 },
+            { category: "Delivery", avgRating: 0 },
+            { category: "Service", avgRating: 0 }
+            {{end}}
+        ];
+
+        const spec = {
+            $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+            description: "Average Rating by Category",
+            data: { values: categoryData },
+            width: "container",
+            height: 300,
+            mark: {
+                type: "bar",
+                tooltip: true
+            },
+            encoding: {
+                x: {
+                    field: "category",
+                    type: "nominal",
+                    axis: { title: "Category" }
+                },
+                y: {
+                    field: "avgRating",
+                    type: "quantitative",
+                    axis: { title: "Average Rating" },
+                    scale: { domain: [0, 5] }
+                },
+                color: {
+                    field: "avgRating",
+                    type: "quantitative",
+                    scale: {
+                        scheme: "goldorange",
+                        domain: [0, 5]
+                    },
+                    legend: null
+                },
+                tooltip: [
+                    { field: "category", type: "nominal", title: "Category" },
+                    { field: "avgRating", type: "quantitative", title: "Avg Rating", format: ".2f" }
+                ]
+            }
+        };
+
+        vegaEmbed('#category-breakdown-chart', spec, {
+            actions: {
+                source: false,
+                compiled: false,
+                editor: false
+            }
+        }).catch(console.error);
+    });
+    </script>
+</article>
+{{else}}
+<article>
+    <p>No vendor ratings available yet. <a href="/vendor-ratings">Add some ratings</a> to see performance analytics.</p>
+</article>
+{{end}}
+
+{{end}}

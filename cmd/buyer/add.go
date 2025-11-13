@@ -14,8 +14,8 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add entities (specification, brand, product, vendor, quote, forex, requisition, project)",
-	Long:  "Add specifications, brands, products, vendors, quotes, forex rates, requisitions, or projects to the database",
+	Short: "Add entities (specification, brand, product, vendor, quote, forex, requisition, project, document, vendor-rating)",
+	Long:  "Add specifications, brands, products, vendors, quotes, forex rates, requisitions, projects, documents, or vendor ratings to the database",
 }
 
 var addSpecificationCmd = &cobra.Command{
@@ -543,6 +543,170 @@ var addPurchaseOrderCmd = &cobra.Command{
 	},
 }
 
+var addDocumentCmd = &cobra.Command{
+	Use:   "document --entity-type [type] --entity-id [id] --file-name [name] --file-path [path]",
+	Short: "Add a new document to an entity",
+	Run: func(cmd *cobra.Command, args []string) {
+		entityType, _ := cmd.Flags().GetString("entity-type")
+		entityID, _ := cmd.Flags().GetUint("entity-id")
+		fileName, _ := cmd.Flags().GetString("file-name")
+		filePath, _ := cmd.Flags().GetString("file-path")
+		fileType, _ := cmd.Flags().GetString("file-type")
+		fileSize, _ := cmd.Flags().GetInt64("file-size")
+		description, _ := cmd.Flags().GetString("description")
+		uploadedBy, _ := cmd.Flags().GetString("uploaded-by")
+
+		if entityType == "" || entityID == 0 || fileName == "" || filePath == "" {
+			fmt.Fprintln(os.Stderr, "Error: --entity-type, --entity-id, --file-name, and --file-path are required")
+			os.Exit(1)
+		}
+
+		svc := services.NewDocumentService(cfg.DB)
+		doc, err := svc.Create(services.CreateDocumentInput{
+			EntityType:  entityType,
+			EntityID:    entityID,
+			FileName:    fileName,
+			FileType:    fileType,
+			FileSize:    fileSize,
+			FilePath:    filePath,
+			Description: description,
+			UploadedBy:  uploadedBy,
+		})
+		if err != nil {
+			slog.Error("failed to create document",
+				slog.String("entity_type", entityType),
+				slog.Uint64("entity_id", uint64(entityID)),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("document created successfully",
+			slog.Uint64("id", uint64(doc.ID)),
+			slog.String("file_name", doc.FileName))
+
+		fmt.Printf("Document created successfully:\n")
+		fmt.Printf("  ID: %d\n", doc.ID)
+		fmt.Printf("  Entity Type: %s\n", doc.EntityType)
+		fmt.Printf("  Entity ID: %d\n", doc.EntityID)
+		fmt.Printf("  File Name: %s\n", doc.FileName)
+		fmt.Printf("  File Path: %s\n", doc.FilePath)
+		if doc.FileType != "" {
+			fmt.Printf("  File Type: %s\n", doc.FileType)
+		}
+		if doc.FileSize > 0 {
+			fmt.Printf("  File Size: %.1f KB\n", float64(doc.FileSize)/1024)
+		}
+		if doc.Description != "" {
+			fmt.Printf("  Description: %s\n", doc.Description)
+		}
+		if doc.UploadedBy != "" {
+			fmt.Printf("  Uploaded By: %s\n", doc.UploadedBy)
+		}
+	},
+}
+
+var addVendorRatingCmd = &cobra.Command{
+	Use:   "vendor-rating --vendor [name_or_id] --price [1-5] --quality [1-5] --delivery [1-5] --service [1-5]",
+	Short: "Add a vendor rating",
+	Run: func(cmd *cobra.Command, args []string) {
+		vendorInput, _ := cmd.Flags().GetString("vendor")
+		poID, _ := cmd.Flags().GetUint("po-id")
+		priceRating, _ := cmd.Flags().GetInt("price")
+		qualityRating, _ := cmd.Flags().GetInt("quality")
+		deliveryRating, _ := cmd.Flags().GetInt("delivery")
+		serviceRating, _ := cmd.Flags().GetInt("service")
+		comments, _ := cmd.Flags().GetString("comments")
+		ratedBy, _ := cmd.Flags().GetString("rated-by")
+
+		if vendorInput == "" {
+			fmt.Fprintln(os.Stderr, "Error: --vendor flag is required")
+			os.Exit(1)
+		}
+
+		// Get vendor by name or ID
+		vendorSvc := services.NewVendorService(cfg.DB)
+		var vendor *services.Vendor
+		var err error
+
+		// Try parsing as ID first
+		var vendorID uint
+		_, parseErr := fmt.Sscanf(vendorInput, "%d", &vendorID)
+		if parseErr == nil {
+			vendor, err = vendorSvc.GetByID(vendorID)
+		} else {
+			vendor, err = vendorSvc.GetByName(vendorInput)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding vendor: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Build input
+		input := services.CreateVendorRatingInput{
+			VendorID: vendor.ID,
+			Comments: comments,
+			RatedBy:  ratedBy,
+		}
+
+		if poID > 0 {
+			input.PurchaseOrderID = &poID
+		}
+		if priceRating > 0 {
+			input.PriceRating = &priceRating
+		}
+		if qualityRating > 0 {
+			input.QualityRating = &qualityRating
+		}
+		if deliveryRating > 0 {
+			input.DeliveryRating = &deliveryRating
+		}
+		if serviceRating > 0 {
+			input.ServiceRating = &serviceRating
+		}
+
+		ratingSvc := services.NewVendorRatingService(cfg.DB)
+		rating, err := ratingSvc.Create(input)
+		if err != nil {
+			slog.Error("failed to create vendor rating",
+				slog.Uint64("vendor_id", uint64(vendor.ID)),
+				slog.String("error", err.Error()))
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		slog.Info("vendor rating created successfully",
+			slog.Uint64("id", uint64(rating.ID)),
+			slog.Uint64("vendor_id", uint64(vendor.ID)))
+
+		fmt.Printf("Vendor Rating created successfully:\n")
+		fmt.Printf("  ID: %d\n", rating.ID)
+		fmt.Printf("  Vendor: %s (ID: %d)\n", rating.Vendor.Name, rating.VendorID)
+		if rating.PurchaseOrderID != nil {
+			fmt.Printf("  Purchase Order ID: %d\n", *rating.PurchaseOrderID)
+		}
+		if rating.PriceRating != nil {
+			fmt.Printf("  Price Rating: %d/5\n", *rating.PriceRating)
+		}
+		if rating.QualityRating != nil {
+			fmt.Printf("  Quality Rating: %d/5\n", *rating.QualityRating)
+		}
+		if rating.DeliveryRating != nil {
+			fmt.Printf("  Delivery Rating: %d/5\n", *rating.DeliveryRating)
+		}
+		if rating.ServiceRating != nil {
+			fmt.Printf("  Service Rating: %d/5\n", *rating.ServiceRating)
+		}
+		if rating.Comments != "" {
+			fmt.Printf("  Comments: %s\n", rating.Comments)
+		}
+		if rating.RatedBy != "" {
+			fmt.Printf("  Rated By: %s\n", rating.RatedBy)
+		}
+	},
+}
+
 func init() {
 	addCmd.AddCommand(addSpecificationCmd)
 	addCmd.AddCommand(addBrandCmd)
@@ -556,6 +720,8 @@ func init() {
 	addCmd.AddCommand(addProjectCmd)
 	addCmd.AddCommand(addBOMItemCmd)
 	addCmd.AddCommand(addProjectRequisitionCmd)
+	addCmd.AddCommand(addDocumentCmd)
+	addCmd.AddCommand(addVendorRatingCmd)
 
 	// Specification flags
 	addSpecificationCmd.Flags().String("description", "", "Description of the specification")
@@ -617,4 +783,24 @@ func init() {
 	addProjectRequisitionCmd.Flags().Float64("budget", 0, "Budget for this requisition")
 	addProjectRequisitionCmd.Flags().String("bom-items", "", "BOM items in format id:qty,id:qty,... (required)")
 	addProjectRequisitionCmd.Flags().String("notes", "", "Notes for items, separated by | (optional)")
+
+	// Document flags
+	addDocumentCmd.Flags().String("entity-type", "", "Entity type (vendor, brand, product, quote, purchase_order, requisition, project) - required")
+	addDocumentCmd.Flags().Uint("entity-id", 0, "Entity ID - required")
+	addDocumentCmd.Flags().String("file-name", "", "File name - required")
+	addDocumentCmd.Flags().String("file-path", "", "File path - required")
+	addDocumentCmd.Flags().String("file-type", "", "File type (pdf, doc, xls, etc.)")
+	addDocumentCmd.Flags().Int64("file-size", 0, "File size in bytes")
+	addDocumentCmd.Flags().String("description", "", "Description")
+	addDocumentCmd.Flags().String("uploaded-by", "", "Uploaded by (user email or name)")
+
+	// Vendor rating flags
+	addVendorRatingCmd.Flags().String("vendor", "", "Vendor name or ID - required")
+	addVendorRatingCmd.Flags().Uint("po-id", 0, "Purchase Order ID (optional)")
+	addVendorRatingCmd.Flags().Int("price", 0, "Price rating (1-5)")
+	addVendorRatingCmd.Flags().Int("quality", 0, "Quality rating (1-5)")
+	addVendorRatingCmd.Flags().Int("delivery", 0, "Delivery rating (1-5)")
+	addVendorRatingCmd.Flags().Int("service", 0, "Service rating (1-5)")
+	addVendorRatingCmd.Flags().String("comments", "", "Comments about the rating")
+	addVendorRatingCmd.Flags().String("rated-by", "", "Rated by (user email or name)")
 }
