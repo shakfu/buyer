@@ -1285,7 +1285,7 @@ require (
    - Session management
    - Role-based access control
 
-3. **Export Functionality**
+3. [x] **Export Functionality**
    - CSV export for reports
    - Excel support for complex data
 
