@@ -2,7 +2,7 @@
 
 This document provides a comprehensive analysis of Content Security Policy (CSP) and Subresource Integrity (SRI) issues in the Buyer application, with recommendations for production deployment.
 
-**Status:** ⚠️ Non-critical - Can be addressed when preparing for production deployment
+**Status:** [!] Non-critical - Can be addressed when preparing for production deployment
 
 ---
 
@@ -30,9 +30,9 @@ Content-Security-Policy: script-src 'self' https://trusted-cdn.com
 ```
 
 This tells the browser:
-- ✅ Load scripts from same origin (`'self'`)
-- ✅ Load scripts from `https://trusted-cdn.com`
-- ❌ Block all other scripts (inline, other domains, data: URIs)
+- [x] Load scripts from same origin (`'self'`)
+- [x] Load scripts from `https://trusted-cdn.com`
+- [X] Block all other scripts (inline, other domains, data: URIs)
 
 **Benefits:**
 - Blocks injected malicious scripts even if XSS vulnerability exists
@@ -61,7 +61,7 @@ If the CDN is compromised and serves different content:
 
 ## Current Security Posture
 
-### Good News ✅
+### Good News [x]
 
 1. **Using Local Scripts**: Application already serves all JavaScript/CSS from embedded static files
    - `htmx.min-2.0.8.js`
@@ -74,7 +74,7 @@ If the CDN is compromised and serves different content:
 
 3. **HTML Escaping**: All error messages and dynamic content properly escaped
 
-### Issues ⚠️
+### Issues [!]
 
 1. **Permissive CSP Header**: Allows unsafe directives that weaken security
 2. **Inline Scripts**: Multiple templates contain inline `<script>` blocks
@@ -266,17 +266,17 @@ function toggleEdit(id) {
 ### Solution 1: Move Inline Scripts to External Files (Recommended)
 
 **Advantages:**
-- ✅ Simplest to implement
-- ✅ Works with embedded static files
-- ✅ No template changes needed (minimal)
-- ✅ No per-request overhead (no nonce generation)
-- ✅ Scripts cached by browser
-- ✅ Can remove `'unsafe-inline'` entirely
+- [x] Simplest to implement
+- [x] Works with embedded static files
+- [x] No template changes needed (minimal)
+- [x] No per-request overhead (no nonce generation)
+- [x] Scripts cached by browser
+- [x] Can remove `'unsafe-inline'` entirely
 
 **Disadvantages:**
-- ⚠️ Requires refactoring existing inline scripts
-- ⚠️ Need to ensure proper script loading order
-- ⚠️ More files to manage
+- [!] Requires refactoring existing inline scripts
+- [!] Need to ensure proper script loading order
+- [!] More files to manage
 
 **Implementation steps:**
 1. Create individual JS files for each page's inline scripts
@@ -334,16 +334,16 @@ c.Set("Content-Security-Policy",
 ### Solution 2: Use CSP Nonces (More Flexible)
 
 **Advantages:**
-- ✅ Keeps inline scripts in templates
-- ✅ Still secure (each nonce is unique per request)
-- ✅ More flexible for dynamic content
-- ✅ No need to extract scripts
+- [x] Keeps inline scripts in templates
+- [x] Still secure (each nonce is unique per request)
+- [x] More flexible for dynamic content
+- [x] No need to extract scripts
 
 **Disadvantages:**
-- ⚠️ More complex implementation
-- ⚠️ Per-request overhead (nonce generation)
-- ⚠️ Must update all template script tags
-- ⚠️ Nonce must be passed to all templates
+- [!] More complex implementation
+- [!] Per-request overhead (nonce generation)
+- [!] Must update all template script tags
+- [!] Nonce must be passed to all templates
 
 **Implementation:**
 
@@ -676,12 +676,12 @@ After deployment, monitor CSP violations to catch:
 ### Priority: MEDIUM (Not Blocker)
 
 **Current security posture:**
-- ✅ HTML escaping implemented
-- ✅ No external CDN dependencies
-- ✅ Input validation in place
-- ✅ CSRF tokens cryptographically secure
-- ✅ Authentication with bcrypt
-- ⚠️ CSP is permissive but application is otherwise secure
+- [x] HTML escaping implemented
+- [x] No external CDN dependencies
+- [x] Input validation in place
+- [x] CSRF tokens cryptographically secure
+- [x] Authentication with bcrypt
+- [!] CSP is permissive but application is otherwise secure
 
 **When to address:**
 - Before marketing as "security-focused"
@@ -809,12 +809,12 @@ Schedule periodic reviews:
 
 | Keyword | Meaning | Security Impact |
 |---------|---------|-----------------|
-| `'none'` | Block all sources | ✅ Most secure |
-| `'self'` | Same origin only | ✅ Secure |
-| `'unsafe-inline'` | Allow inline scripts/styles | ❌ Dangerous |
-| `'unsafe-eval'` | Allow eval() | ❌ Dangerous |
-| `'nonce-{value}'` | Allow script with matching nonce | ✅ Secure |
-| `'strict-dynamic'` | Trust scripts loaded by trusted scripts | ⚠️ Moderate |
+| `'none'` | Block all sources | [x] Most secure |
+| `'self'` | Same origin only | [x] Secure |
+| `'unsafe-inline'` | Allow inline scripts/styles | [X] Dangerous |
+| `'unsafe-eval'` | Allow eval() | [X] Dangerous |
+| `'nonce-{value}'` | Allow script with matching nonce | [x] Secure |
+| `'strict-dynamic'` | Trust scripts loaded by trusted scripts | [!] Moderate |
 
 ---
 

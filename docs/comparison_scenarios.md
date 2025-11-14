@@ -10,11 +10,11 @@ Access via: `/quotes/compare/specification/1`
 
 | Product | Brand | Compliance | Key Attributes | Price Range | Scenario |
 |---------|-------|------------|----------------|-------------|----------|
-| **MacBook Pro 15"** | Apple | ✓ 100% | 36GB RAM, 512GB SSD, 15.3", 12 cores | $2,399-2,499 | Premium option, complete specs, highest price |
-| **Dell XPS 15** | Dell | ✓ 100% | 32GB RAM, 1024GB SSD, 15.6", 8 cores, Touchscreen | $1,649-1,699 | High-end option, complete specs, has touchscreen |
-| **ThinkPad X1 Carbon** | Lenovo | ✓ 100% | 16GB RAM, 512GB SSD, 14", 10 cores | $1,299-1,399 | Business option, complete specs, smaller 14" display |
-| **HP EliteBook 850** | HP | ⚠ 67% | 16GB RAM, **NO STORAGE SIZE**, 15", 8 cores | $1,099-1,149 | **INCOMPLETE** - Missing required Storage attribute |
-| **Dell Latitude 5530** | Dell | ✓ 100% | 16GB RAM, 256GB SSD, 15", 6 cores | $899-979 | Budget option, complete specs, lowest price |
+| **MacBook Pro 15"** | Apple | [x] 100% | 36GB RAM, 512GB SSD, 15.3", 12 cores | $2,399-2,499 | Premium option, complete specs, highest price |
+| **Dell XPS 15** | Dell | [x] 100% | 32GB RAM, 1024GB SSD, 15.6", 8 cores, Touchscreen | $1,649-1,699 | High-end option, complete specs, has touchscreen |
+| **ThinkPad X1 Carbon** | Lenovo | [x] 100% | 16GB RAM, 512GB SSD, 14", 10 cores | $1,299-1,399 | Business option, complete specs, smaller 14" display |
+| **HP EliteBook 850** | HP | [!] 67% | 16GB RAM, **NO STORAGE SIZE**, 15", 8 cores | $1,099-1,149 | **INCOMPLETE** - Missing required Storage attribute |
+| **Dell Latitude 5530** | Dell | [x] 100% | 16GB RAM, 256GB SSD, 15", 6 cores | $899-979 | Budget option, complete specs, lowest price |
 
 ### Key Observations
 
@@ -47,9 +47,9 @@ Access via: `/quotes/compare/specification/2`
 
 | Product | Brand | Compliance | Key Attributes | Price Range | Scenario |
 |---------|-------|------------|----------------|-------------|----------|
-| **Dell UltraSharp U2720Q** | Dell | ✓ 100% | 27", 3840x2160, 60Hz, IPS | $649.99 | Professional option, ACCEPTED quote |
-| **LG 27UK850-W** | LG | ✓ 100% | 27", 3840x2160, 60Hz, IPS | $599-629 | Nearly identical specs, cheaper |
-| **Samsung M7** | Samsung | ✓ 100% | 32", 3840x2160, VA panel | $499-529 | Larger display, missing optional Refresh Rate |
+| **Dell UltraSharp U2720Q** | Dell | [x] 100% | 27", 3840x2160, 60Hz, IPS | $649.99 | Professional option, ACCEPTED quote |
+| **LG 27UK850-W** | LG | [x] 100% | 27", 3840x2160, 60Hz, IPS | $599-629 | Nearly identical specs, cheaper |
+| **Samsung M7** | Samsung | [x] 100% | 32", 3840x2160, VA panel | $499-529 | Larger display, missing optional Refresh Rate |
 
 ### Key Observations
 
@@ -67,8 +67,8 @@ Access via: `/quotes/compare/specification/2`
 ## Comparison Features Demonstrated
 
 ### 1. Attribute Compliance Tracking
-- **Green ✓ 100%**: All required attributes present
-- **Orange ⚠ XX%**: Missing required attributes with score
+- **Green [x] 100%**: All required attributes present
+- **Orange [!] XX%**: Missing required attributes with score
 - **Hover tooltip**: Shows which attributes are missing
 
 ### 2. Sorting
@@ -135,9 +135,9 @@ Toggle "Show extra attributes" on laptop comparison:
 
 ### Incomplete Products (<100% Compliance)
 - HP EliteBook 850: Missing "Storage" (required)
-  - Has RAM (16GB) ✓
-  - Has Screen Size (15") ✓
-  - **Missing Storage** ✗
+  - Has RAM (16GB) [x]
+  - Has Screen Size (15") [x]
+  - **Missing Storage**
   - Has Storage Type (SSD) - but no capacity!
   - Compliance: 67% (2 of 3 required attributes)
 

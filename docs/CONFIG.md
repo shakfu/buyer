@@ -84,10 +84,10 @@ BUYER_PASSWORD=SecureP@ssw0rd123!
 ```
 
 **Behavior**:
-- ✅ **Optional** - Application works without it
-- ✅ **Gitignored** - Safe for local development (`.env` in `.gitignore`)
-- ✅ **Overridable** - Environment variables take precedence
-- ✅ **Silent failure** - No error if file missing
+- [x] **Optional** - Application works without it
+- [x] **Gitignored** - Safe for local development (`.env` in `.gitignore`)
+- [x] **Overridable** - Environment variables take precedence
+- [x] **Silent failure** - No error if file missing
 
 **Creating .env file**:
 ```bash
@@ -277,11 +277,11 @@ When `BUYER_ENABLE_AUTH=true`, passwords are validated against strict requiremen
 // cmd/buyer/web_security.go - ValidatePassword()
 ```
 
-- ✅ **Minimum length**: 12 characters
-- ✅ **Uppercase letter**: At least one (A-Z)
-- ✅ **Lowercase letter**: At least one (a-z)
-- ✅ **Digit**: At least one (0-9)
-- ✅ **Special character**: At least one (punctuation/symbol)
+- [x] **Minimum length**: 12 characters
+- [x] **Uppercase letter**: At least one (A-Z)
+- [x] **Lowercase letter**: At least one (a-z)
+- [x] **Digit**: At least one (0-9)
+- [x] **Special character**: At least one (punctuation/symbol)
 
 **Valid password examples:**
 - `SecureP@ssw0rd123!`
@@ -290,9 +290,9 @@ When `BUYER_ENABLE_AUTH=true`, passwords are validated against strict requiremen
 
 **Invalid passwords:**
 ```
-admin123         ❌ Too short, no uppercase, no special char
-Password123      ❌ No special character
-Password123!     ✅ Valid
+admin123         [X] Too short, no uppercase, no special char
+Password123      [X] No special character
+Password123!     [x] Valid
 ```
 
 **What happens on invalid password:**
@@ -756,25 +756,25 @@ CSRF:        Disabled by default
 ## Security Best Practices
 
 ### Development
-- ✅ Authentication disabled (default)
-- ✅ Use `.env` file for local settings
-- ✅ Add `.env` to `.gitignore` (already done)
-- ✅ Never commit credentials
+- [x] Authentication disabled (default)
+- [x] Use `.env` file for local settings
+- [x] Add `.env` to `.gitignore` (already done)
+- [x] Never commit credentials
 
 ### Production
-- ✅ Enable authentication: `BUYER_ENABLE_AUTH=true`
-- ✅ Enable CSRF: `BUYER_ENABLE_CSRF=true`
-- ✅ Use strong password (12+ chars, complexity)
-- ✅ Use environment variables, not `.env` file
-- ✅ Set `BUYER_ENV=production`
-- ✅ Restrict file permissions: `chmod 600 .env`
-- ✅ Use HTTPS reverse proxy (nginx, Caddy)
-- ✅ Regular database backups
+- [x] Enable authentication: `BUYER_ENABLE_AUTH=true`
+- [x] Enable CSRF: `BUYER_ENABLE_CSRF=true`
+- [x] Use strong password (12+ chars, complexity)
+- [x] Use environment variables, not `.env` file
+- [x] Set `BUYER_ENV=production`
+- [x] Restrict file permissions: `chmod 600 .env`
+- [x] Use HTTPS reverse proxy (nginx, Caddy)
+- [x] Regular database backups
 
 ### Multi-User Environments
-- ⚠️ Current limitation: Single user only
-- ⚠️ Future: Multi-user RBAC support needed
-- 💡 Workaround: Use reverse proxy with auth (nginx, Caddy)
+- [!] Current limitation: Single user only
+- [!] Future: Multi-user RBAC support needed
+-  Workaround: Use reverse proxy with auth (nginx, Caddy)
 
 ---
 
@@ -820,15 +820,15 @@ buyer web
 ## Change Log
 
 ### 2024-01 - Security Hardening
-- ✅ Removed default credentials (admin/admin)
-- ✅ Added password strength validation
-- ✅ Implemented bcrypt password hashing
-- ✅ Added cryptographically secure CSRF tokens
-- ✅ Added authentication-specific rate limiting
-- ✅ Added graceful shutdown on signals
+- [x] Removed default credentials (admin/admin)
+- [x] Added password strength validation
+- [x] Implemented bcrypt password hashing
+- [x] Added cryptographically secure CSRF tokens
+- [x] Added authentication-specific rate limiting
+- [x] Added graceful shutdown on signals
 
 ### 2024-01 - Configuration Improvements
-- ✅ Added godotenv support for `.env` files
-- ✅ Documented complete configuration sequence
-- ✅ Added comprehensive error messages
-- ✅ Environment variable precedence documented
+- [x] Added godotenv support for `.env` files
+- [x] Documented complete configuration sequence
+- [x] Added comprehensive error messages
+- [x] Environment variable precedence documented

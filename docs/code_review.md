@@ -14,14 +14,14 @@ This is a well-structured Go project implementing a vendor quote management syst
 
 The following critical security and quality issues have been **FIXED**:
 
-- **✅ S1 (CRITICAL):** Fixed CSRF token generation to use `crypto/rand` instead of timestamp
-- **✅ S6 (HIGH):** Removed default credentials - authentication now requires explicit env vars
-- **✅ S7 (HIGH):** Implemented bcrypt password hashing with secure verification
-- **✅ S3 (HIGH):** Added authentication-specific rate limiting (5 attempts/minute)
-- **✅ C1 (HIGH):** Eliminated ~850 lines of duplicated code by consolidating CRUD handlers
-- **✅ CF2 (MEDIUM):** Added graceful shutdown with signal handling
-- **✅ C2 (MEDIUM):** Fixed all error handlers to properly escape HTML output
-- **✅ C3 (MEDIUM):** Refactored HTML rendering to use proper template auto-escaping
+- **[x] S1 (CRITICAL):** Fixed CSRF token generation to use `crypto/rand` instead of timestamp
+- **[x] S6 (HIGH):** Removed default credentials - authentication now requires explicit env vars
+- **[x] S7 (HIGH):** Implemented bcrypt password hashing with secure verification
+- **[x] S3 (HIGH):** Added authentication-specific rate limiting (5 attempts/minute)
+- **[x] C1 (HIGH):** Eliminated ~850 lines of duplicated code by consolidating CRUD handlers
+- **[x] CF2 (MEDIUM):** Added graceful shutdown with signal handling
+- **[x] C2 (MEDIUM):** Fixed all error handlers to properly escape HTML output
+- **[x] C3 (MEDIUM):** Refactored HTML rendering to use proper template auto-escaping
 
 **Security improvements:** The application now enforces strong passwords (12+ chars, uppercase, lowercase, digit, special char) and requires explicit configuration when authentication is enabled. No more dangerous defaults. All HTML rendering uses Go's template auto-escaping to prevent XSS.
 
@@ -33,7 +33,7 @@ The following critical security and quality issues have been **FIXED**:
 
 ### CRITICAL Issues
 
-#### **C1: Massive Route Handler Function with Code Duplication** ✅ FIXED
+#### **C1: Massive Route Handler Function with Code Duplication** [x] FIXED
 **Severity: HIGH**
 **Location:** `cmd/buyer/web.go` (was lines 530-1320, now consolidated)
 **Status:** Eliminated ~850 lines of duplicated code
@@ -51,7 +51,7 @@ The following critical security and quality issues have been **FIXED**:
 - Added single 2-line call to `SetupCRUDHandlers()` which was already implemented in `web_handlers.go`
 - All tests continue to pass
 
-#### **C2: Missing Error Handling in Template Execution** ✅ FIXED
+#### **C2: Missing Error Handling in Template Execution** [x] FIXED
 **Severity: MEDIUM**
 **Location:** Multiple render functions in `cmd/buyer/web_security.go`
 **Status:** All error messages in handlers now properly escaped using `escapeHTML(err.Error())`
@@ -65,7 +65,7 @@ return c.Status(fiber.StatusBadRequest).SendString(escapeHTML(err.Error()))
 
 **Resolution:** Used sed to replace all 19 instances of `SendString(err.Error())` with `SendString(escapeHTML(err.Error()))` throughout web.go.
 
-#### **C3: Unsafe String Concatenation in HTML Generation** ✅ FIXED
+#### **C3: Unsafe String Concatenation in HTML Generation** [x] FIXED
 **Severity: MEDIUM**
 **Location:** `cmd/buyer/web_security.go` (lines 364-526, now refactored)
 **Status:** Eliminated all manual HTML string building with `fmt.Sprintf` and `template.HTML` casting
@@ -262,7 +262,7 @@ Specifications can change over time, but there's no version tracking. If a speci
 
 ### CRITICAL Security Issues
 
-#### **S1: CSRF Token Generation is Cryptographically Weak** ✅ FIXED
+#### **S1: CSRF Token Generation is Cryptographically Weak** [x] FIXED
 **Severity: CRITICAL**
 **Location:** `cmd/buyer/web_security.go` lines 76-79
 **Status:** Now uses `crypto/rand` with 32 bytes of entropy
@@ -293,7 +293,7 @@ While GORM provides parameterization, there's no explicit SQL injection protecti
 
 **Status:** Currently safe, but needs documentation/testing.
 
-#### **S3: No Rate Limiting on Authentication** ✅ FIXED
+#### **S3: No Rate Limiting on Authentication** [x] FIXED
 **Severity: HIGH**
 **Location:** `cmd/buyer/web_security.go` lines 62-73
 **Status:** Auth-specific rate limiting now implemented (5 attempts/minute per IP)
@@ -367,7 +367,7 @@ if len(name) > MaxNameLength {
 
 ### MEDIUM Security Issues
 
-#### **S6: Default Credentials** ✅ FIXED
+#### **S6: Default Credentials** [x] FIXED
 **Severity: HIGH**
 **Location:** `cmd/buyer/web.go` lines 47-48
 **Status:** No default credentials - auth requires explicit env vars with strong password validation
@@ -382,7 +382,7 @@ if len(name) > MaxNameLength {
 
 **Resolution:** Removed all default credentials. Authentication now requires explicit configuration with strong password enforcement.
 
-#### **S7: No Password Hashing** ✅ FIXED
+#### **S7: No Password Hashing** [x] FIXED
 **Severity: HIGH**
 **Status:** Now uses bcrypt for password hashing and verification
 
@@ -487,7 +487,7 @@ List endpoints accept limit/offset but don't return total counts or pagination m
 
 SQLite is used, but there's no configuration for max open connections, idle connections, or connection lifetime.
 
-#### **CF2: No Graceful Shutdown** ✅ FIXED
+#### **CF2: No Graceful Shutdown** [x] FIXED
 **Severity: MEDIUM**
 **Location:** `cmd/buyer/web.go` line 91
 **Status:** Graceful shutdown with signal handling now implemented
@@ -687,11 +687,11 @@ Tests cover happy paths well but few error cases:
 
 ### BLOCKER Issues (Must Fix Before Production)
 
-- [x] **S1:** Fix CSRF token generation (use crypto/rand) ✅ **FIXED**
-- [x] **S3:** Add auth-specific rate limiting ✅ **FIXED**
-- [x] **S6:** Remove default credentials ✅ **FIXED**
-- [x] **S7:** Implement proper authentication (hash passwords or use OAuth) ✅ **FIXED**
-- [x] **CF2:** Add graceful shutdown ✅ **FIXED**
+- [x] **S1:** Fix CSRF token generation (use crypto/rand) [x] **FIXED**
+- [x] **S3:** Add auth-specific rate limiting [x] **FIXED**
+- [x] **S6:** Remove default credentials [x] **FIXED**
+- [x] **S7:** Implement proper authentication (hash passwords or use OAuth) [x] **FIXED**
+- [x] **CF2:** Add graceful shutdown [x] **FIXED**
 - [ ] **F7:** Multi-user support with RBAC
 - [ ] **D1:** Purchase Order tracking
 - [ ] **T2:** Security testing
@@ -700,7 +700,7 @@ Tests cover happy paths well but few error cases:
 
 ### HIGH Priority (Production-Ready, But Essential Soon After)
 
-- [x] **C2:** Fix error handling to escape all errors ✅ **FIXED**
+- [x] **C2:** Fix error handling to escape all errors [x] **FIXED**
 - [ ] **C1:** Refactor massive web.go handlers
 - [ ] **M2:** Add context.Context to all service methods
 - [ ] **S4:** Fix CSP, use SRI for external scripts
@@ -1039,11 +1039,11 @@ func (s *VendorService) Create(name, currency, discountCode string) (*models.Ven
 
 ### Immediate Action Required (Before Any Production Use)
 
-1. ~~Fix CSRF token generation (Security)~~ ✅ **COMPLETED**
-2. ~~Remove default credentials (Security)~~ ✅ **COMPLETED**
-3. ~~Add authentication/authorization system (Security)~~ ✅ **COMPLETED** (bcrypt password hashing)
-4. ~~Add graceful shutdown (Reliability)~~ ✅ **COMPLETED**
-5. Fix CSP and add SRI for external scripts (Security) ⚠️ **REMAINING**
+1. ~~Fix CSRF token generation (Security)~~ [x] **COMPLETED**
+2. ~~Remove default credentials (Security)~~ [x] **COMPLETED**
+3. ~~Add authentication/authorization system (Security)~~ [x] **COMPLETED** (bcrypt password hashing)
+4. ~~Add graceful shutdown (Reliability)~~ [x] **COMPLETED**
+5. Fix CSP and add SRI for external scripts (Security) [!] **REMAINING**
 
 **Progress: 4 out of 5 items completed (80%)**
 
@@ -1055,7 +1055,7 @@ func (s *VendorService) Create(name, currency, discountCode string) (*models.Ven
 4. Add web handler integration tests
 5. Add input length validation
 6. Add vendor contact information
-7. ~~Implement proper password hashing~~ ✅ **COMPLETED** (moved from this list)
+7. ~~Implement proper password hashing~~ [x] **COMPLETED** (moved from this list)
 
 ### Medium Term (3-6 Months)
 
@@ -1082,15 +1082,15 @@ func (s *VendorService) Create(name, currency, discountCode string) (*models.Ven
 
 This is a **solid foundation** for a vendor quote management system with good architectural decisions and clean code structure. The service layer pattern is well-implemented, the domain model is thoughtful, and the dual CLI/web interface is a strong design choice.
 
-### Security Status: ✅ SIGNIFICANTLY IMPROVED
+### Security Status: [x] SIGNIFICANTLY IMPROVED
 
 **Critical security vulnerabilities have been addressed:**
-- ✅ ~~Weak CSRF token generation~~ → **FIXED**: Now uses crypto/rand with 256-bit entropy
-- ✅ ~~Default credentials~~ → **FIXED**: Removed all defaults, explicit config required
-- ✅ ~~No password hashing~~ → **FIXED**: bcrypt with DefaultCost=10
-- ✅ ~~Insufficient rate limiting~~ → **FIXED**: Auth-specific 5 attempts/min per IP
-- ✅ ~~No graceful shutdown~~ → **FIXED**: Signal handling with 10s timeout
-- ✅ ~~Unescaped error messages~~ → **FIXED**: All errors properly escaped
+- [x] ~~Weak CSRF token generation~~ → **FIXED**: Now uses crypto/rand with 256-bit entropy
+- [x] ~~Default credentials~~ → **FIXED**: Removed all defaults, explicit config required
+- [x] ~~No password hashing~~ → **FIXED**: bcrypt with DefaultCost=10
+- [x] ~~Insufficient rate limiting~~ → **FIXED**: Auth-specific 5 attempts/min per IP
+- [x] ~~No graceful shutdown~~ → **FIXED**: Signal handling with 10s timeout
+- [x] ~~Unescaped error messages~~ → **FIXED**: All errors properly escaped
 
 **Security grade improved: C → B+**
 
@@ -1112,7 +1112,7 @@ The application is now **secure for single-user deployments** with proper authen
 **Recommended Action:** The critical security issues are resolved. Focus now shifts to feature development (Purchase Orders, multi-user support, approval workflows) and code quality improvements.
 
 **Updated Estimated Effort to Production Ready:** 3-4 weeks for a small team (2-3 developers), focusing on:
-1. ~~Security hardening~~ ✅ **COMPLETED**
+1. ~~Security hardening~~ [x] **COMPLETED**
 2. Purchase Order implementation (Week 1-2)
 3. Multi-user support and RBAC (Week 2-3)
 4. Integration tests for web handlers (Week 3)
@@ -1125,27 +1125,27 @@ The project demonstrates strong Go fundamentals and architectural thinking. With
 ## Summary of Completed Work
 
 ### Security Improvements (All Completed)
-- ✅ Cryptographically secure CSRF tokens using `crypto/rand` (32 bytes)
-- ✅ Removed dangerous default credentials (admin/admin)
-- ✅ Implemented bcrypt password hashing (cost=10)
-- ✅ Strong password validation (12+ chars, complexity requirements)
-- ✅ Authentication-specific rate limiting (5 attempts/min per IP)
-- ✅ Graceful shutdown with signal handling (SIGINT/SIGTERM)
-- ✅ All error messages properly HTML-escaped
-- ✅ Configuration system with `.env` file support (godotenv)
+- [x] Cryptographically secure CSRF tokens using `crypto/rand` (32 bytes)
+- [x] Removed dangerous default credentials (admin/admin)
+- [x] Implemented bcrypt password hashing (cost=10)
+- [x] Strong password validation (12+ chars, complexity requirements)
+- [x] Authentication-specific rate limiting (5 attempts/min per IP)
+- [x] Graceful shutdown with signal handling (SIGINT/SIGTERM)
+- [x] All error messages properly HTML-escaped
+- [x] Configuration system with `.env` file support (godotenv)
 
 ### Documentation Improvements
-- ✅ Updated CODE_REVIEW.md with fix status
-- ✅ Created comprehensive CONFIG.md documenting full configuration sequence
-- ✅ Updated README.md with security notes
-- ✅ Updated CLAUDE.md with security improvements
-- ✅ Updated .env.example with proper security documentation
+- [x] Updated CODE_REVIEW.md with fix status
+- [x] Created comprehensive CONFIG.md documenting full configuration sequence
+- [x] Updated README.md with security notes
+- [x] Updated CLAUDE.md with security improvements
+- [x] Updated .env.example with proper security documentation
 
 ### Configuration Enhancements
-- ✅ Added godotenv for `.env` file support
-- ✅ Documented configuration precedence and defaults
-- ✅ Clear error messages when required config missing
-- ✅ Development-friendly defaults (auth disabled by default)
+- [x] Added godotenv for `.env` file support
+- [x] Documented configuration precedence and defaults
+- [x] Clear error messages when required config missing
+- [x] Development-friendly defaults (auth disabled by default)
 
 **Overall Progress:**
 - **Security:** C → B+ (62.5% of blockers resolved)
