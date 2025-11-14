@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+  - **CSV and Excel export/import system** - Comprehensive data export/import functionality using excelize library
+    - CSV export for: brands, vendors, products, quotes, and forex rates
+    - Excel (.xlsx) export for: brands, vendors, products, quotes, and forex rates
+    - CSV import for: brands, vendors, and forex rates with comprehensive validation
+    - CLI commands: `buyer export {entity} {filename}` and `buyer import {entity} {filename}`
+    - Web API endpoints: GET `/export/{entity}/{csv|excel}` for downloads, POST `/import/{entity}` for uploads
+    - ExportImportService with 15+ export/import methods in `internal/services/export_import.go`
+    - Auto-format detection by file extension (.csv or .xlsx)
+    - Excel exports include formatted headers (bold, gray background) and auto-sized columns
+    - Import validation with detailed error reporting including row numbers and specific error messages
+    - Import returns success/error counts with detailed error list for troubleshooting
+    - Comprehensive test suite with 10 test functions covering all export/import scenarios
+    - Complete documentation in `docs/EXPORT_IMPORT.md` with CSV format specifications, usage examples, and best practices
+    - Support for UTF-8 and international characters in Excel exports
   - **Document management system** - Full implementation of document management features (D8 from MODEL_ANALYSIS.md)
     - DocumentService with complete CRUD operations
     - CLI commands: `buyer add document` and `buyer list documents` with entity filtering

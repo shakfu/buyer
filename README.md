@@ -239,13 +239,18 @@ Then visit http://localhost:8080 in your browser.
 
 **Available Pages:**
 - `/` - Dashboard with key metrics and recent activity
-- `/brands` - Brand management with CRUD operations
-- `/products` - Product catalog management
-- `/vendors` - Vendor management
-- `/quotes` - Price quote tracking and comparison
+- `/brands` - Brand management with CRUD operations (export/import available)
+- `/products` - Product catalog management (export available)
+- `/vendors` - Vendor management (export/import available)
+- `/quotes` - Price quote tracking and comparison (export available)
 - `/documents` - Document management for all entities
 - `/vendor-ratings` - Vendor rating submission and listing
 - `/vendor-performance` - Performance analytics dashboard with charts
+
+**Export/Import API:**
+- `GET /export/{entity}/csv` - Download CSV file
+- `GET /export/{entity}/excel` - Download Excel (.xlsx) file
+- `POST /import/{entity}` - Upload and import CSV file
 
 ## Configuration
 
@@ -313,8 +318,11 @@ buyer/
 │   ├── list.go          # List commands
 │   ├── update.go        # Update commands
 │   ├── delete.go        # Delete commands
+│   ├── export.go        # Export commands (CSV/Excel)
+│   ├── import.go        # Import commands (CSV)
 │   ├── search.go        # Search command
-│   └── web.go           # Web server
+│   ├── web.go           # Web server
+│   └── web_export.go    # Export/import web handlers
 ├── internal/
 │   ├── models/          # GORM data models
 │   ├── services/        # Business logic layer
@@ -323,6 +331,7 @@ buyer/
 │   │   ├── vendor.go
 │   │   ├── quote.go
 │   │   ├── forex.go
+│   │   ├── export_import.go  # CSV/Excel export/import
 │   │   └── errors.go
 │   └── config/          # Configuration management
 ├── Makefile             # Build automation
@@ -440,6 +449,7 @@ make clean
 - **ORM**: GORM v1.31+ with SQLite driver
 - **CLI Framework**: Cobra v1.10+
 - **Web Framework**: Fiber v2.52+
+- **Excel Library**: excelize v2.10+ for .xlsx export/import
 - **Table Rendering**: rodaine/table v1.3+
 - **Testing**: Go standard testing package
 
