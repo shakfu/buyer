@@ -70,12 +70,12 @@ type SpecificationAttribute struct {
 	SpecificationID uint           `gorm:"not null;index:idx_spec_attr,priority:1" json:"specification_id"`
 	Specification   *Specification `gorm:"foreignKey:SpecificationID;constraint:OnDelete:CASCADE" json:"specification,omitempty"`
 	Name            string         `gorm:"not null;size:100;index:idx_spec_attr,priority:2" json:"name"` // "RAM", "Screen Size", "Storage Type"
-	DataType        string         `gorm:"size:20;not null;default:'text'" json:"data_type"`              // "number", "text", "boolean"
-	Unit            string         `gorm:"size:50" json:"unit,omitempty"`                                 // "GB", "inches", "GHz" (optional)
-	IsRequired      bool           `gorm:"default:false" json:"is_required"`                              // Must product have this attribute?
-	MinValue        *float64       `json:"min_value,omitempty"`                                           // Validation for numbers
-	MaxValue        *float64       `json:"max_value,omitempty"`                                           // Validation for numbers
-	Description     string         `gorm:"type:text" json:"description,omitempty"`                        // Help text
+	DataType        string         `gorm:"size:20;not null;default:'text'" json:"data_type"`             // "number", "text", "boolean"
+	Unit            string         `gorm:"size:50" json:"unit,omitempty"`                                // "GB", "inches", "GHz" (optional)
+	IsRequired      bool           `gorm:"default:false" json:"is_required"`                             // Must product have this attribute?
+	MinValue        *float64       `json:"min_value,omitempty"`                                          // Validation for numbers
+	MaxValue        *float64       `json:"max_value,omitempty"`                                          // Validation for numbers
+	Description     string         `gorm:"type:text" json:"description,omitempty"`                       // Help text
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
@@ -323,24 +323,24 @@ type ProjectRequisitionItem struct {
 }
 
 // TableName overrides for GORM
-func (Vendor) TableName() string                   { return "vendors" }
-func (Brand) TableName() string                    { return "brands" }
-func (Specification) TableName() string            { return "specifications" }
-func (SpecificationAttribute) TableName() string   { return "specification_attributes" }
-func (Product) TableName() string                  { return "products" }
-func (ProductAttribute) TableName() string         { return "product_attributes" }
-func (Requisition) TableName() string              { return "requisitions" }
-func (RequisitionItem) TableName() string          { return "requisition_items" }
-func (Quote) TableName() string                    { return "quotes" }
-func (PurchaseOrder) TableName() string            { return "purchase_orders" }
-func (VendorRating) TableName() string             { return "vendor_ratings" }
-func (Forex) TableName() string                    { return "forex" }
-func (Project) TableName() string                  { return "projects" }
-func (BillOfMaterials) TableName() string          { return "bills_of_materials" }
-func (BillOfMaterialsItem) TableName() string      { return "bill_of_materials_items" }
-func (ProjectRequisition) TableName() string       { return "project_requisitions" }
-func (ProjectRequisitionItem) TableName() string   { return "project_requisition_items" }
-func (Document) TableName() string                 { return "documents" }
+func (Vendor) TableName() string                 { return "vendors" }
+func (Brand) TableName() string                  { return "brands" }
+func (Specification) TableName() string          { return "specifications" }
+func (SpecificationAttribute) TableName() string { return "specification_attributes" }
+func (Product) TableName() string                { return "products" }
+func (ProductAttribute) TableName() string       { return "product_attributes" }
+func (Requisition) TableName() string            { return "requisitions" }
+func (RequisitionItem) TableName() string        { return "requisition_items" }
+func (Quote) TableName() string                  { return "quotes" }
+func (PurchaseOrder) TableName() string          { return "purchase_orders" }
+func (VendorRating) TableName() string           { return "vendor_ratings" }
+func (Forex) TableName() string                  { return "forex" }
+func (Project) TableName() string                { return "projects" }
+func (BillOfMaterials) TableName() string        { return "bills_of_materials" }
+func (BillOfMaterialsItem) TableName() string    { return "bill_of_materials_items" }
+func (ProjectRequisition) TableName() string     { return "project_requisitions" }
+func (ProjectRequisitionItem) TableName() string { return "project_requisition_items" }
+func (Document) TableName() string               { return "documents" }
 
 // Document represents file attachments for various entities
 type Document struct {

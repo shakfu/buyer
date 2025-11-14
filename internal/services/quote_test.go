@@ -1059,7 +1059,7 @@ func TestQuoteService_GetQuoteComparisonMatrix(t *testing.T) {
 	// Missing storage (required!)
 
 	// Create quotes for products
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	quote1, _ := quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor1.ID,
@@ -1196,7 +1196,7 @@ func TestQuoteService_GetProductQuoteComparisonMatrix(t *testing.T) {
 	vendor1, _ := vendorSvc.Create("Amazon", "USD", "")
 	vendor2, _ := vendorSvc.Create("Best Buy", "USD", "")
 
-	forexSvc.Create("USD", "USD", 1.0, time.Now())
+	_, _ = forexSvc.Create("USD", "USD", 1.0, time.Now())
 
 	// Create multiple quotes for same product
 	quote1, _ := quoteSvc.Create(CreateQuoteInput{

@@ -89,7 +89,9 @@ func (s *ExportImportService) ExportBrandsExcel() (*excelize.File, error) {
 	headers := []string{"ID", "Name", "Created At", "Updated At"}
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		f.SetCellValue(sheetName, cell, header)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply header styling
@@ -98,24 +100,42 @@ func (s *ExportImportService) ExportBrandsExcel() (*excelize.File, error) {
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#E0E0E0"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
-	f.SetCellStyle(sheetName, "A1", "D1", headerStyle)
+	if err := f.SetCellStyle(sheetName, "A1", "D1", headerStyle); err != nil {
+		return nil, err
+	}
 
 	// Write data
 	for i, brand := range brands {
 		row := i + 2
-		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), brand.ID)
-		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), brand.Name)
-		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), brand.CreatedAt.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), brand.UpdatedAt.Format(time.RFC3339))
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), brand.ID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), brand.Name); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), brand.CreatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), brand.UpdatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 10)
-	f.SetColWidth(sheetName, "B", "B", 30)
-	f.SetColWidth(sheetName, "C", "D", 25)
+	if err := f.SetColWidth(sheetName, "A", "A", 10); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "B", "B", 30); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "C", "D", 25); err != nil {
+		return nil, err
+	}
 
 	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }
@@ -242,7 +262,9 @@ func (s *ExportImportService) ExportVendorsExcel() (*excelize.File, error) {
 
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		f.SetCellValue(sheetName, cell, header)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply header styling
@@ -252,43 +274,99 @@ func (s *ExportImportService) ExportVendorsExcel() (*excelize.File, error) {
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
 	endCol, _ := excelize.ColumnNumberToName(len(headers))
-	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle)
+	if err := f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle); err != nil {
+		return nil, err
+	}
 
 	// Write data
 	for i, vendor := range vendors {
 		row := i + 2
-		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), vendor.ID)
-		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), vendor.Name)
-		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), vendor.Currency)
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), vendor.DiscountCode)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), vendor.ContactPerson)
-		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), vendor.Email)
-		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), vendor.Phone)
-		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), vendor.Website)
-		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), vendor.AddressLine1)
-		f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), vendor.AddressLine2)
-		f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), vendor.City)
-		f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), vendor.State)
-		f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), vendor.PostalCode)
-		f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), vendor.Country)
-		f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), vendor.TaxID)
-		f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), vendor.PaymentTerms)
-		f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), vendor.CreatedAt.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("R%d", row), vendor.UpdatedAt.Format(time.RFC3339))
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), vendor.ID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), vendor.Name); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), vendor.Currency); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), vendor.DiscountCode); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), vendor.ContactPerson); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), vendor.Email); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), vendor.Phone); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), vendor.Website); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), vendor.AddressLine1); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), vendor.AddressLine2); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), vendor.City); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), vendor.State); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), vendor.PostalCode); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), vendor.Country); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), vendor.TaxID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), vendor.PaymentTerms); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), vendor.CreatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("R%d", row), vendor.UpdatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 10)
-	f.SetColWidth(sheetName, "B", "B", 30)
-	f.SetColWidth(sheetName, "C", "D", 15)
-	f.SetColWidth(sheetName, "E", "H", 20)
-	f.SetColWidth(sheetName, "I", "J", 25)
-	f.SetColWidth(sheetName, "K", "N", 15)
-	f.SetColWidth(sheetName, "O", "P", 20)
-	f.SetColWidth(sheetName, "Q", "R", 25)
+	if err := f.SetColWidth(sheetName, "A", "A", 10); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "B", "B", 30); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "C", "D", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "E", "H", 20); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "I", "J", 25); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "K", "N", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "O", "P", 20); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "Q", "R", 25); err != nil {
+		return nil, err
+	}
 
 	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }
@@ -444,7 +522,9 @@ func (s *ExportImportService) ExportProductsExcel() (*excelize.File, error) {
 
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		f.SetCellValue(sheetName, cell, header)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply header styling
@@ -454,7 +534,9 @@ func (s *ExportImportService) ExportProductsExcel() (*excelize.File, error) {
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
 	endCol, _ := excelize.ColumnNumberToName(len(headers))
-	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle)
+	if err := f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle); err != nil {
+		return nil, err
+	}
 
 	// Write data
 	for i, product := range products {
@@ -484,37 +566,89 @@ func (s *ExportImportService) ExportProductsExcel() (*excelize.File, error) {
 			discontinuedAt = product.DiscontinuedAt.Format(time.RFC3339)
 		}
 
-		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), product.ID)
-		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), product.Name)
-		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), product.BrandID)
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), brandName)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), specID)
-		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), specName)
-		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), sku)
-		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), product.Description)
-		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), product.UnitOfMeasure)
-		f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), product.MinOrderQty)
-		f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), product.LeadTimeDays)
-		f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), product.IsActive)
-		f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), discontinuedAt)
-		f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), product.CreatedBy)
-		f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), product.UpdatedBy)
-		f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), product.CreatedAt.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), product.UpdatedAt.Format(time.RFC3339))
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), product.ID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), product.Name); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), product.BrandID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), brandName); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), specID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), specName); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), sku); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), product.Description); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), product.UnitOfMeasure); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), product.MinOrderQty); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), product.LeadTimeDays); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), product.IsActive); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), discontinuedAt); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), product.CreatedBy); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), product.UpdatedBy); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), product.CreatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), product.UpdatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 10)
-	f.SetColWidth(sheetName, "B", "B", 30)
-	f.SetColWidth(sheetName, "C", "F", 15)
-	f.SetColWidth(sheetName, "G", "G", 20)
-	f.SetColWidth(sheetName, "H", "H", 40)
-	f.SetColWidth(sheetName, "I", "K", 15)
-	f.SetColWidth(sheetName, "L", "L", 12)
-	f.SetColWidth(sheetName, "M", "Q", 25)
+	if err := f.SetColWidth(sheetName, "A", "A", 10); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "B", "B", 30); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "C", "F", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "G", "G", 20); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "H", "H", 40); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "I", "K", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "L", "L", 12); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "M", "Q", 25); err != nil {
+		return nil, err
+	}
 
 	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }
@@ -612,7 +746,9 @@ func (s *ExportImportService) ExportQuotesExcel() (*excelize.File, error) {
 
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		f.SetCellValue(sheetName, cell, header)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply header styling
@@ -622,7 +758,9 @@ func (s *ExportImportService) ExportQuotesExcel() (*excelize.File, error) {
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
 	endCol, _ := excelize.ColumnNumberToName(len(headers))
-	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle)
+	if err := f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%s1", endCol), headerStyle); err != nil {
+		return nil, err
+	}
 
 	// Write data
 	for i, quote := range quotes {
@@ -643,38 +781,92 @@ func (s *ExportImportService) ExportQuotesExcel() (*excelize.File, error) {
 			validUntil = quote.ValidUntil.Format(time.RFC3339)
 		}
 
-		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), quote.ID)
-		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), quote.VendorID)
-		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), vendorName)
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), quote.ProductID)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), productName)
-		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), quote.Price)
-		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), quote.Currency)
-		f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), quote.ConvertedPrice)
-		f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), quote.ConversionRate)
-		f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), quote.MinQuantity)
-		f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), quote.QuoteDate.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), validUntil)
-		f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), quote.Status)
-		f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), quote.Version)
-		f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), quote.Notes)
-		f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), quote.CreatedBy)
-		f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), quote.UpdatedBy)
-		f.SetCellValue(sheetName, fmt.Sprintf("R%d", row), quote.CreatedAt.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("S%d", row), quote.UpdatedAt.Format(time.RFC3339))
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), quote.ID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), quote.VendorID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), vendorName); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), quote.ProductID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), productName); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), quote.Price); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), quote.Currency); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("H%d", row), quote.ConvertedPrice); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("I%d", row), quote.ConversionRate); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("J%d", row), quote.MinQuantity); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("K%d", row), quote.QuoteDate.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("L%d", row), validUntil); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("M%d", row), quote.Status); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("N%d", row), quote.Version); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("O%d", row), quote.Notes); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("P%d", row), quote.CreatedBy); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("Q%d", row), quote.UpdatedBy); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("R%d", row), quote.CreatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("S%d", row), quote.UpdatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "B", 10)
-	f.SetColWidth(sheetName, "C", "E", 25)
-	f.SetColWidth(sheetName, "F", "J", 15)
-	f.SetColWidth(sheetName, "K", "L", 20)
-	f.SetColWidth(sheetName, "M", "N", 12)
-	f.SetColWidth(sheetName, "O", "O", 40)
-	f.SetColWidth(sheetName, "P", "S", 25)
+	if err := f.SetColWidth(sheetName, "A", "B", 10); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "C", "E", 25); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "F", "J", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "K", "L", 20); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "M", "N", 12); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "O", "O", 40); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "P", "S", 25); err != nil {
+		return nil, err
+	}
 
 	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }
@@ -733,7 +925,9 @@ func (s *ExportImportService) ExportForexExcel() (*excelize.File, error) {
 	headers := []string{"ID", "From Currency", "To Currency", "Rate", "Effective Date", "Created At", "Updated At"}
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-		f.SetCellValue(sheetName, cell, header)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply header styling
@@ -742,28 +936,54 @@ func (s *ExportImportService) ExportForexExcel() (*excelize.File, error) {
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#E0E0E0"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
-	f.SetCellStyle(sheetName, "A1", "G1", headerStyle)
+	if err := f.SetCellStyle(sheetName, "A1", "G1", headerStyle); err != nil {
+		return nil, err
+	}
 
 	// Write data
 	for i, rate := range rates {
 		row := i + 2
-		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), rate.ID)
-		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), rate.FromCurrency)
-		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), rate.ToCurrency)
-		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), rate.Rate)
-		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), rate.EffectiveDate.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), rate.CreatedAt.Format(time.RFC3339))
-		f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), rate.UpdatedAt.Format(time.RFC3339))
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), rate.ID); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), rate.FromCurrency); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), rate.ToCurrency); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), rate.Rate); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), rate.EffectiveDate.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("F%d", row), rate.CreatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue(sheetName, fmt.Sprintf("G%d", row), rate.UpdatedAt.Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 10)
-	f.SetColWidth(sheetName, "B", "C", 15)
-	f.SetColWidth(sheetName, "D", "D", 15)
-	f.SetColWidth(sheetName, "E", "G", 25)
+	if err := f.SetColWidth(sheetName, "A", "A", 10); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "B", "C", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "D", "D", 15); err != nil {
+		return nil, err
+	}
+	if err := f.SetColWidth(sheetName, "E", "G", 25); err != nil {
+		return nil, err
+	}
 
 	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }

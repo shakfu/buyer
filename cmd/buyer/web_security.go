@@ -62,7 +62,7 @@ func SetupSecurityMiddleware(app *fiber.App, config SecurityConfig) {
 			LimitReached: func(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusTooManyRequests).SendString("Too many authentication attempts. Please try again later.")
 			},
-			SkipFailedRequests: true,
+			SkipFailedRequests:     true,
 			SkipSuccessfulRequests: true,
 			Next: func(c *fiber.Ctx) bool {
 				// Only apply to non-static requests (auth is checked on these)

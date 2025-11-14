@@ -34,7 +34,7 @@ func setupTestDB(t *testing.T) *config.Config {
 		&models.ProjectRequisition{},
 		&models.ProjectRequisitionItem{},
 		&models.Document{},
-	); err != nil{
+	); err != nil {
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 

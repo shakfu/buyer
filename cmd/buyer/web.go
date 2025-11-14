@@ -466,8 +466,8 @@ func setupRoutes(
 		}
 
 		return renderTemplate(c, "product-detail.html", fiber.Map{
-			"Title":              product.Name,
-			"Product":            product,
+			"Title":               product.Name,
+			"Product":             product,
 			"AvailableAttributes": availableAttrs,
 			"Breadcrumb": []map[string]interface{}{
 				{"Name": "Products", "URL": "/products"},

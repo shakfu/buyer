@@ -243,12 +243,12 @@ func (s *QuoteService) GetBestQuoteForSpecification(specificationID uint) (*mode
 
 // QuoteAttributeComparison represents a quote with attribute compliance information
 type QuoteAttributeComparison struct {
-	Quote                  *models.Quote
-	AttributeCompliance    map[uint]bool // attribute_id -> has_value
-	MissingRequiredAttrs   []string      // names of missing required attributes
-	HasAllRequiredAttrs    bool
-	ExtraAttributes        []models.ProductAttribute // attributes not in specification
-	ComplianceScore        float64                   // 0-100, percentage of required attrs present
+	Quote                *models.Quote
+	AttributeCompliance  map[uint]bool // attribute_id -> has_value
+	MissingRequiredAttrs []string      // names of missing required attributes
+	HasAllRequiredAttrs  bool
+	ExtraAttributes      []models.ProductAttribute // attributes not in specification
+	ComplianceScore      float64                   // 0-100, percentage of required attrs present
 }
 
 // AttributeComparisonMatrix represents a full comparison matrix for quotes
@@ -361,11 +361,11 @@ func (s *QuoteService) GetProductQuoteComparisonMatrix(productID uint, showExtra
 // analyzeQuoteCompliance checks if a product meets specification attribute requirements
 func (s *QuoteService) analyzeQuoteCompliance(quote *models.Quote, specAttrs []models.SpecificationAttribute, includeExtra bool) QuoteAttributeComparison {
 	compliance := QuoteAttributeComparison{
-		Quote:               quote,
-		AttributeCompliance: make(map[uint]bool),
+		Quote:                quote,
+		AttributeCompliance:  make(map[uint]bool),
 		MissingRequiredAttrs: make([]string, 0),
-		ExtraAttributes:     make([]models.ProductAttribute, 0),
-		HasAllRequiredAttrs: true,
+		ExtraAttributes:      make([]models.ProductAttribute, 0),
+		HasAllRequiredAttrs:  true,
 	}
 
 	// Build map of product attributes by specification_attribute_id

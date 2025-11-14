@@ -203,13 +203,13 @@ func TestDocumentService_ListByEntity(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create documents for vendor 1
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc2.pdf",
@@ -217,7 +217,7 @@ func TestDocumentService_ListByEntity(t *testing.T) {
 	})
 
 	// Create document for vendor 2
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor2.ID,
 		FileName:   "doc3.pdf",
@@ -276,13 +276,13 @@ func TestDocumentService_ListByEntityType(t *testing.T) {
 	brand, _ := brandService.Create("Test Brand")
 
 	// Create vendor documents
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "vendor_doc1.pdf",
 		FilePath:   "/docs/vendor_doc1.pdf",
 	})
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "vendor_doc2.pdf",
@@ -290,7 +290,7 @@ func TestDocumentService_ListByEntityType(t *testing.T) {
 	})
 
 	// Create brand document
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "brand",
 		EntityID:   brand.ID,
 		FileName:   "brand_doc1.pdf",
@@ -463,13 +463,13 @@ func TestDocumentService_DeleteByEntity(t *testing.T) {
 	vendor, _ := vendorService.Create("Test Vendor", "USD", "")
 
 	// Create multiple documents for the vendor
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc2.pdf",
@@ -503,13 +503,13 @@ func TestDocumentService_Count(t *testing.T) {
 	}
 
 	// Create documents
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor.ID,
 		FileName:   "doc2.pdf",
@@ -532,13 +532,13 @@ func TestDocumentService_CountByEntity(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create documents for vendor 1
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc1.pdf",
 		FilePath:   "/docs/doc1.pdf",
 	})
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor1.ID,
 		FileName:   "doc2.pdf",
@@ -546,7 +546,7 @@ func TestDocumentService_CountByEntity(t *testing.T) {
 	})
 
 	// Create document for vendor 2
-	_, _ = 	service.Create(CreateDocumentInput{
+	_, _ = service.Create(CreateDocumentInput{
 		EntityType: "vendor",
 		EntityID:   vendor2.ID,
 		FileName:   "doc3.pdf",

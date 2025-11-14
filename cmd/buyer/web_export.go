@@ -187,8 +187,8 @@ func SetupExportHandlers(app *fiber.App, db *gorm.DB) {
 
 		// Return import summary
 		return c.JSON(fiber.Map{
-			"success":      result.SuccessCount,
-			"errors":       result.ErrorCount,
+			"success":       result.SuccessCount,
+			"errors":        result.ErrorCount,
 			"error_details": result.Errors,
 		})
 	})

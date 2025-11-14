@@ -220,17 +220,17 @@ func TestVendorRatingService_ListByVendor(t *testing.T) {
 	vendor2, _ := vendorService.Create("Vendor 2", "USD", "")
 
 	// Create ratings for vendor 1
-	_, _ = 	service.Create(CreateVendorRatingInput{
+	_, _ = service.Create(CreateVendorRatingInput{
 		VendorID:    vendor1.ID,
 		PriceRating: intPtr(5),
 	})
-	_, _ = 	service.Create(CreateVendorRatingInput{
+	_, _ = service.Create(CreateVendorRatingInput{
 		VendorID:      vendor1.ID,
 		QualityRating: intPtr(4),
 	})
 
 	// Create rating for vendor 2
-	_, _ = 	service.Create(CreateVendorRatingInput{
+	_, _ = service.Create(CreateVendorRatingInput{
 		VendorID:    vendor2.ID,
 		PriceRating: intPtr(3),
 	})
@@ -412,14 +412,14 @@ func TestVendorRatingService_GetAverageRatings(t *testing.T) {
 	vendor, _ := vendorService.Create("Test Vendor", "USD", "")
 
 	// Create multiple ratings
-	_, _ = 	service.Create(CreateVendorRatingInput{
+	_, _ = service.Create(CreateVendorRatingInput{
 		VendorID:       vendor.ID,
 		PriceRating:    intPtr(5),
 		QualityRating:  intPtr(4),
 		DeliveryRating: intPtr(5),
 		ServiceRating:  intPtr(5),
 	})
-	_, _ = 	service.Create(CreateVendorRatingInput{
+	_, _ = service.Create(CreateVendorRatingInput{
 		VendorID:       vendor.ID,
 		PriceRating:    intPtr(3),
 		QualityRating:  intPtr(4),
@@ -513,4 +513,3 @@ func intPtr(i int) *int {
 func uintPtr(u uint) *uint {
 	return &u
 }
-

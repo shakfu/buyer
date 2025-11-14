@@ -182,7 +182,6 @@ func getEnvString(key string, defaultValue string) string {
 	return defaultValue
 }
 
-
 // SetupLogger configures structured logging with slog
 func SetupLogger(env Environment, verbose bool) *slog.Logger {
 	var handler slog.Handler
