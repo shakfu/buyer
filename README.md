@@ -14,6 +14,7 @@ A purchasing support and vendor quote management tool written in Go.
 - **Document Management**: Attach documents to any entity (vendors, quotes, products, etc.)
 - **Vendor Rating System**: Rate vendors on price, quality, delivery, and service
 - **Performance Dashboard**: Visualize vendor performance with interactive charts and analytics
+- **Export/Import**: Export to CSV or Excel (.xlsx), import from CSV with validation
 - **CLI Interface**: Full-featured command-line interface with verbose mode
 - **Web Interface**: Modern HTMX-powered web UI with CRUD operations
 - **Comprehensive Testing**: Full test coverage for all services
@@ -182,6 +183,40 @@ buyer list vendor-ratings --vendor-id [id]
 # Delete a vendor rating
 buyer delete vendor-rating [id] [-f|--force]
 ```
+
+### Export Commands
+
+```bash
+# Export brands to CSV
+buyer export brands brands.csv
+
+# Export brands to Excel
+buyer export brands brands.xlsx
+
+# Export vendors to CSV or Excel
+buyer export vendors vendors.csv
+buyer export vendors vendors.xlsx
+
+# Export products, quotes, or forex rates
+buyer export products products.csv
+buyer export quotes quotes.xlsx
+buyer export forex rates.csv
+```
+
+### Import Commands
+
+```bash
+# Import brands from CSV
+buyer import brands brands.csv
+
+# Import vendors from CSV
+buyer import vendors vendors.csv
+
+# Import forex rates from CSV
+buyer import forex rates.csv
+```
+
+**Note:** CSV format is auto-detected by file extension. See [EXPORT_IMPORT.md](docs/EXPORT_IMPORT.md) for detailed format specifications.
 
 ### Search
 

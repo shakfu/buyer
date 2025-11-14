@@ -1056,6 +1056,9 @@ func setupRoutes(
 	// Setup CRUD handlers for all entities
 	SetupCRUDHandlers(app, db, specSvc, brandSvc, productSvc, vendorSvc, requisitionSvc, quoteSvc, forexSvc)
 
+	// Setup export/import handlers
+	SetupExportHandlers(app, db)
+
 	// Purchase Order CRUD handlers
 	app.Post("/purchase-orders", func(c *fiber.Ctx) error {
 		quoteID, err := strconv.ParseUint(c.FormValue("quote_id"), 10, 32)

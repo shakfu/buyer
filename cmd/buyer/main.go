@@ -113,5 +113,7 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(webCmd)
+	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(versionCmd)
 }
