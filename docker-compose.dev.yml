@@ -1,0 +1,184 @@
+version: '3.8'
+
+# Development Docker Compose Configuration
+# This setup includes:
+# - PostgreSQL database
+# - Single-node MinIO for object storage
+# - Buyer application
+# - Development-friendly settings (no TLS, relaxed security)
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: buyer-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-buyer}
+      POSTGRES_USER: ${POSTGRES_USER:-buyer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buyerdev123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-buyer}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - buyer-network
+
+  # MinIO Object Storage (Single Node)
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: buyer-minio-dev
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"   # MinIO API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"   # MinIO Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_BROWSER: "on"
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    networks:
+      - buyer-network
+
+  # MinIO Client for setup automation
+  mc:
+    image: minio/mc:latest
+    container_name: buyer-mc-dev
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to be ready...';
+      sleep 5;
+      /usr/bin/mc alias set buyerlocal http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+      /usr/bin/mc mb --ignore-existing buyerlocal/vendor-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/product-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/quote-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/po-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/requisition-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/project-docs;
+      /usr/bin/mc mb --ignore-existing buyerlocal/brand-docs;
+      /usr/bin/mc version enable buyerlocal/vendor-docs;
+      /usr/bin/mc version enable buyerlocal/quote-docs;
+      /usr/bin/mc version enable buyerlocal/po-docs;
+      echo 'MinIO setup completed!';
+      echo 'Buckets created:';
+      /usr/bin/mc ls buyerlocal;
+      exit 0;
+      "
+    networks:
+      - buyer-network
+
+  # Buyer Application
+  buyer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+    container_name: buyer-app-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "${BUYER_WEB_PORT:-8080}:8080"
+    environment:
+      # Application settings
+      - BUYER_ENV=${BUYER_ENV:-development}
+      - BUYER_WEB_PORT=8080
+
+      # PostgreSQL connection
+      - BUYER_DB_HOST=postgres
+      - BUYER_DB_PORT=5432
+      - BUYER_DB_NAME=${POSTGRES_DB:-buyer}
+      - BUYER_DB_USER=${POSTGRES_USER:-buyer}
+      - BUYER_DB_PASSWORD=${POSTGRES_PASSWORD:-buyerdev123}
+      - BUYER_DB_SSLMODE=disable
+
+      # Authentication
+      - BUYER_ENABLE_AUTH=${BUYER_ENABLE_AUTH:-true}
+      - BUYER_USERNAME=${BUYER_USERNAME:-admin}
+      - BUYER_PASSWORD=${BUYER_PASSWORD:-admin}
+      - BUYER_ENABLE_CSRF=${BUYER_ENABLE_CSRF:-false}
+
+      # MinIO settings (if needed by the app)
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_USE_SSL=false
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - buyer-network
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  buyer-network:
+    driver: bridge
+
+# Usage:
+#
+# 1. Start all services:
+#    docker-compose -f docker-compose.dev.yml up -d
+#
+# 2. View logs:
+#    docker-compose -f docker-compose.dev.yml logs -f
+#    docker-compose -f docker-compose.dev.yml logs -f buyer
+#
+# 3. Access services:
+#    - Buyer App:     http://localhost:8080
+#    - MinIO Console: http://localhost:9001 (minioadmin/minioadmin)
+#    - PostgreSQL:    localhost:5432 (buyer/buyerdev123)
+#
+# 4. Stop services:
+#    docker-compose -f docker-compose.dev.yml down
+#
+# 5. Stop and remove volumes:
+#    docker-compose -f docker-compose.dev.yml down -v
+#
+# 6. Rebuild buyer image:
+#    docker-compose -f docker-compose.dev.yml build buyer
+#    docker-compose -f docker-compose.dev.yml up -d buyer
+#
+# Environment Variables (create .env file):
+#   POSTGRES_DB=buyer
+#   POSTGRES_USER=buyer
+#   POSTGRES_PASSWORD=buyerdev123
+#   POSTGRES_PORT=5432
+#   MINIO_ROOT_USER=minioadmin
+#   MINIO_ROOT_PASSWORD=minioadmin
+#   MINIO_API_PORT=9000
+#   MINIO_CONSOLE_PORT=9001
+#   BUYER_WEB_PORT=8080
+#   BUYER_USERNAME=admin
+#   BUYER_PASSWORD=admin

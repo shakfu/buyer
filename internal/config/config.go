@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -25,6 +26,7 @@ const (
 type Config struct {
 	Environment  Environment
 	DatabasePath string
+	DatabaseURL  string // PostgreSQL connection string
 	WebPort      int
 	LogLevel     logger.LogLevel
 	DB           *gorm.DB
@@ -39,17 +41,39 @@ func NewConfig(env Environment, verbose bool) (*Config, error) {
 	// Set web port from environment variable or default
 	config.WebPort = getEnvInt("BUYER_WEB_PORT", 8080)
 
-	// Set database path based on environment
+	// Set database path/URL based on environment
 	switch env {
 	case Testing:
+		// Use SQLite in-memory for testing
 		config.DatabasePath = ":memory:"
 		config.LogLevel = logger.Silent
 	case Development, Production:
-		// Check for custom database path from environment
-		if dbPath := os.Getenv("BUYER_DB_PATH"); dbPath != "" {
+		// Check if PostgreSQL connection string is provided
+		if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+			config.DatabaseURL = dbURL
+		} else if dbHost := os.Getenv("BUYER_DB_HOST"); dbHost != "" {
+			// Build PostgreSQL connection string from individual env vars
+			dbPort := getEnvString("BUYER_DB_PORT", "5432")
+			dbName := getEnvString("BUYER_DB_NAME", "buyer")
+			dbUser := getEnvString("BUYER_DB_USER", "buyer")
+			dbPassword := getEnvString("BUYER_DB_PASSWORD", "")
+			dbSSLMode := getEnvString("BUYER_DB_SSLMODE", "disable")
+
+			config.DatabaseURL = fmt.Sprintf(
+				"host=%s port=%s user=%s dbname=%s sslmode=%s",
+				dbHost, dbPort, dbUser, dbName, dbSSLMode,
+			)
+			if dbPassword != "" {
+				config.DatabaseURL = fmt.Sprintf(
+					"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+					dbHost, dbPort, dbUser, dbPassword, dbName, dbSSLMode,
+				)
+			}
+		} else if dbPath := os.Getenv("BUYER_DB_PATH"); dbPath != "" {
+			// Fallback to SQLite if DB_PATH is explicitly set
 			config.DatabasePath = dbPath
 		} else {
-			// Default path: ~/.buyer/buyer.db
+			// Default: use SQLite in ~/.buyer/buyer.db for local development
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get home directory: %w", err)
@@ -81,16 +105,32 @@ func NewConfig(env Environment, verbose bool) (*Config, error) {
 
 // InitDB initializes the database connection
 func (c *Config) InitDB() error {
-	db, err := gorm.Open(sqlite.Open(c.DatabasePath), &gorm.Config{
-		Logger: logger.Default.LogMode(c.LogLevel),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
+	var db *gorm.DB
+	var err error
 
-	// Enable foreign key constraints for SQLite
-	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
-		return fmt.Errorf("failed to enable foreign key constraints: %w", err)
+	if c.DatabaseURL != "" {
+		// Use PostgreSQL
+		db, err = gorm.Open(postgres.Open(c.DatabaseURL), &gorm.Config{
+			Logger: logger.Default.LogMode(c.LogLevel),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+		}
+	} else if c.DatabasePath != "" {
+		// Use SQLite
+		db, err = gorm.Open(sqlite.Open(c.DatabasePath), &gorm.Config{
+			Logger: logger.Default.LogMode(c.LogLevel),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to connect to SQLite: %w", err)
+		}
+
+		// Enable foreign key constraints for SQLite
+		if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+			return fmt.Errorf("failed to enable foreign key constraints: %w", err)
+		}
+	} else {
+		return fmt.Errorf("no database configuration provided")
 	}
 
 	c.DB = db
@@ -130,6 +170,14 @@ func getEnvInt(key string, defaultValue int) int {
 		if intVal, err := strconv.Atoi(val); err == nil {
 			return intVal
 		}
+	}
+	return defaultValue
+}
+
+// getEnvString returns a string from an environment variable or a default value
+func getEnvString(key string, defaultValue string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
 	}
 	return defaultValue
 }

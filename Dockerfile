@@ -24,15 +24,12 @@ RUN go build -ldflags "-X main.Version=${VERSION} -s -w" -o /app/bin/buyer ./cmd
 # Runtime stage
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates sqlite
+# Install runtime dependencies (PostgreSQL client for connectivity)
+RUN apk --no-cache add ca-certificates postgresql-client
 
 # Create non-root user
 RUN addgroup -g 1000 buyer && \
     adduser -D -u 1000 -G buyer buyer
-
-# Create data directory
-RUN mkdir -p /data && chown buyer:buyer /data
 
 # Set working directory
 WORKDIR /app
@@ -48,11 +45,12 @@ USER buyer
 
 # Environment variables
 ENV BUYER_ENV=production \
-    BUYER_DB_PATH=/data/buyer.db \
-    BUYER_WEB_PORT=8080
-
-# Volume for persistent database
-VOLUME /data
+    BUYER_WEB_PORT=8080 \
+    BUYER_DB_HOST=postgres \
+    BUYER_DB_PORT=5432 \
+    BUYER_DB_NAME=buyer \
+    BUYER_DB_USER=buyer \
+    BUYER_DB_SSLMODE=disable
 
 # Expose web server port
 EXPOSE 8080
