@@ -871,6 +871,7 @@ func (s *ProjectProcurementService) generateFewestVendorsRecommendations(
 		// Find vendor covering most uncovered specs
 		for i, vendor := range consolidation {
 			coverage := 0
+			quotes, _ := s.quoteService.CompareQuotesForSpecification(0) // We'll check per spec
 
 			for _, bomItem := range project.BillOfMaterials.Items {
 				if coveredSpecs[bomItem.SpecificationID] {
@@ -878,7 +879,7 @@ func (s *ProjectProcurementService) generateFewestVendorsRecommendations(
 				}
 
 				// Check if this vendor can supply this spec
-				quotes, _ := s.quoteService.CompareQuotesForSpecification(bomItem.SpecificationID)
+				quotes, _ = s.quoteService.CompareQuotesForSpecification(bomItem.SpecificationID)
 				canSupply := false
 				for _, quote := range quotes {
 					if quote.VendorID == vendor.VendorID {
@@ -2476,7 +2477,6 @@ func (s *ProjectProcurementService) generateChartData(
 	return chartsData, nil
 }
 
-
 // calculateBOMItemsByValue generates horizontal bar chart of fulfilled requisition items by value
 // Value = quantity × product price (from PO if available, otherwise best quote)
 // Sorted by highest value descending
@@ -2484,7 +2484,7 @@ func (s *ProjectProcurementService) calculateBOMItemsByValue(projectID uint) ([]
 	// Get project with all requisitions and their items
 	var project models.Project
 	err := s.db.Preload("BillOfMaterials.Items.Specification").
-		Preload("Requisitions.Items.BOMItem.Specification").
+		Preload("Requisitions.Items.BillOfMaterialsItem.Specification").
 		Preload("Requisitions.Items.SelectedQuote.Product").
 		First(&project, projectID).Error
 	if err != nil {
@@ -2505,15 +2505,15 @@ func (s *ProjectProcurementService) calculateBOMItemsByValue(projectID uint) ([]
 	// Iterate through all requisition items
 	for _, req := range project.Requisitions {
 		for _, item := range req.Items {
-			if item.BOMItem == nil {
+			if item.BillOfMaterialsItem == nil {
 				continue
 			}
 
 			bomID := item.BillOfMaterialsItemID
 			if _, exists := bomValues[bomID]; !exists {
 				specName := "Unknown"
-				if item.BOMItem.Specification != nil {
-					specName = item.BOMItem.Specification.Name
+				if item.BillOfMaterialsItem.Specification != nil {
+					specName = item.BillOfMaterialsItem.Specification.Name
 				}
 				bomValues[bomID] = &bomItemValue{
 					bomItemID: bomID,
@@ -2535,8 +2535,8 @@ func (s *ProjectProcurementService) calculateBOMItemsByValue(projectID uint) ([]
 					unitPrice = item.TargetUnitPrice
 				} else {
 					// Try to find best quote for this spec
-					if item.BOMItem.Specification != nil {
-						quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BOMItem.SpecificationID)
+					if item.BillOfMaterialsItem.Specification != nil {
+						quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BillOfMaterialsItem.SpecificationID)
 						if len(quotes) > 0 {
 							unitPrice = quotes[0].ConvertedPrice
 						}
@@ -2557,9 +2557,9 @@ func (s *ProjectProcurementService) calculateBOMItemsByValue(projectID uint) ([]
 				Value: bv.totalValue,
 				Color: "",
 				Metadata: map[string]interface{}{
-					"quantity":         bv.totalQuantity,
+					"quantity":        bv.totalQuantity,
 					"fulfilled_orders": bv.fulfilledOrders,
-					"bom_item_id":      bv.bomItemID,
+					"bom_item_id":     bv.bomItemID,
 				},
 			})
 		}
@@ -2583,7 +2583,7 @@ func (s *ProjectProcurementService) calculateSourcingPerformance(projectID uint)
 	// Get project with BOM and requisitions
 	var project models.Project
 	err := s.db.Preload("BillOfMaterials.Items.Specification").
-		Preload("Requisitions.Items.BOMItem").
+		Preload("Requisitions.Items.BillOfMaterialsItem").
 		First(&project, projectID).Error
 	if err != nil {
 		return perf, err
@@ -2645,8 +2645,8 @@ func (s *ProjectProcurementService) calculateSourcingPerformance(projectID uint)
 		for _, item := range req.Items {
 			if item.TargetUnitPrice > 0 {
 				estimatedCost += item.TargetUnitPrice * float64(item.QuantityRequested)
-			} else if item.BOMItem != nil && item.BOMItem.Specification != nil {
-				quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BOMItem.SpecificationID)
+			} else if item.BillOfMaterialsItem != nil && item.BillOfMaterialsItem.Specification != nil {
+				quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BillOfMaterialsItem.SpecificationID)
 				if len(quotes) > 0 {
 					estimatedCost += quotes[0].ConvertedPrice * float64(item.QuantityRequested)
 				}
@@ -2671,11 +2671,11 @@ func (s *ProjectProcurementService) calculateSourcingPerformance(projectID uint)
 		reqCost := 0.0
 
 		for _, item := range req.Items {
-			if item.BOMItem == nil || item.BOMItem.Specification == nil {
+			if item.BillOfMaterialsItem == nil || item.BillOfMaterialsItem.Specification == nil {
 				continue
 			}
 
-			quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BOMItem.SpecificationID)
+			quotes, _ := s.quoteService.CompareQuotesForSpecification(item.BillOfMaterialsItem.SpecificationID)
 			nonStaleCount := 0
 			for _, quote := range quotes {
 				if !quote.IsStale() {
@@ -2734,37 +2734,29 @@ func (s *ProjectProcurementService) calculateSourcingPerformance(projectID uint)
 }
 
 // calculateProcurementPerformance analyzes PO execution and compliance
-// NOTE: Currently simplified due to schema limitations - PurchaseOrder links to Requisition, not ProjectRequisitionItem
 func (s *ProjectProcurementService) calculateProcurementPerformance(projectID uint) (ProcurementPerformanceData, error) {
 	perf := ProcurementPerformanceData{
 		ByRequisition: []RequisitionProcurementMetrics{},
 		ChartData:     []ChartDataPoint{},
 	}
 
-	// Get project with requisitions
+	// Get project with requisitions and purchase orders
 	var project models.Project
 	err := s.db.Preload("BillOfMaterials.Items.Specification").
-		Preload("Requisitions.Items.BOMItem.Specification").
+		Preload("Requisitions.Items.BillOfMaterialsItem.Specification").
 		Preload("Requisitions.Items.SelectedQuote.Product").
 		First(&project, projectID).Error
 	if err != nil {
 		return perf, err
 	}
 
-	// Get all purchase orders linked to project requisitions
-	var requisitionIDs []uint
-	for _, req := range project.Requisitions {
-		requisitionIDs = append(requisitionIDs, req.ID)
-	}
-
-	if len(requisitionIDs) == 0 {
-		return perf, nil
-	}
-
+	// Get all purchase orders for this project
 	var purchaseOrders []models.PurchaseOrder
 	err = s.db.Preload("Quote.Product.Specification").
-		Preload("Requisition").
-		Where("requisition_id IN ?", requisitionIDs).
+		Preload("ProjectRequisitionItem.BillOfMaterialsItem.Specification").
+		Joins("LEFT JOIN project_requisition_items ON project_requisition_items.id = purchase_orders.project_requisition_item_id").
+		Joins("LEFT JOIN project_requisitions ON project_requisitions.id = project_requisition_items.project_requisition_id").
+		Where("project_requisitions.project_id = ? OR purchase_orders.project_requisition_item_id IS NULL", projectID).
 		Find(&purchaseOrders).Error
 	if err != nil {
 		return perf, err
@@ -2779,7 +2771,7 @@ func (s *ProjectProcurementService) calculateProcurementPerformance(projectID ui
 
 	// Analyze each PO
 	for _, po := range purchaseOrders {
-		totalValue += po.TotalAmount
+		totalValue += po.TotalPrice
 
 		// Check if on time
 		if po.ExpectedDelivery != nil && po.ActualDelivery != nil {
@@ -2801,21 +2793,21 @@ func (s *ProjectProcurementService) calculateProcurementPerformance(projectID ui
 		}
 
 		// Check compliance: PO is for lowest-price compliant product
-		// Match PO product to BOM items via specification
-		if po.Quote != nil && po.Quote.Product != nil && po.Quote.Product.Specification != nil {
-			specID := po.Quote.Product.SpecificationID
-			quotes, _ := s.quoteService.CompareQuotesForSpecification(*specID)
-			if len(quotes) > 0 {
-				bestQuote := quotes[0]
-				// Check if PO quote is within 5% of best price (compliance threshold)
-				if po.Quote.ConvertedPrice <= bestQuote.ConvertedPrice*1.05 {
-					perf.CompliantPOs++
+		if po.ProjectRequisitionItem != nil && po.ProjectRequisitionItem.BillOfMaterialsItem != nil {
+			bomItem := po.ProjectRequisitionItem.BillOfMaterialsItem
+			if bomItem.Specification != nil {
+				// Get all quotes for this specification
+				quotes, _ := s.quoteService.CompareQuotesForSpecification(bomItem.SpecificationID)
+				if len(quotes) > 0 {
+					bestQuote := quotes[0]
+					// Check if PO quote is within 5% of best price (compliance threshold)
+					if po.Quote != nil && po.Quote.ConvertedPrice <= bestQuote.ConvertedPrice*1.05 {
+						perf.CompliantPOs++
 
-					// Estimate savings: compare to average market price (2nd cheapest quote)
-					if len(quotes) > 1 {
-						avgPrice := quotes[1].ConvertedPrice
-						savings := (avgPrice - po.Quote.ConvertedPrice) * float64(po.Quantity)
-						if savings > 0 {
+						// Calculate savings: target price - actual price
+						targetPrice := po.ProjectRequisitionItem.TargetUnitPrice
+						if targetPrice > 0 {
+							savings := (targetPrice - po.Quote.ConvertedPrice) * float64(po.Quantity)
 							totalSavings += savings
 						}
 					}
@@ -2842,8 +2834,13 @@ func (s *ProjectProcurementService) calculateProcurementPerformance(projectID ui
 	// Calculate by requisition
 	requisitionPOs := make(map[uint][]models.PurchaseOrder)
 	for _, po := range purchaseOrders {
-		if po.RequisitionID != nil {
-			requisitionPOs[*po.RequisitionID] = append(requisitionPOs[*po.RequisitionID], po)
+		if po.ProjectRequisitionItem != nil {
+			var reqItem models.ProjectRequisitionItem
+			s.db.Preload("BillOfMaterialsItem.Specification").
+				First(&reqItem, po.ProjectRequisitionItemID)
+
+			requisitionPOs[reqItem.ProjectRequisitionID] = append(
+				requisitionPOs[reqItem.ProjectRequisitionID], po)
 		}
 	}
 
@@ -2860,7 +2857,7 @@ func (s *ProjectProcurementService) calculateProcurementPerformance(projectID ui
 		reqSavings := 0.0
 
 		for _, po := range pos {
-			reqValue += po.TotalAmount
+			reqValue += po.TotalPrice
 
 			// Count on-time
 			if po.ExpectedDelivery != nil && po.ActualDelivery != nil {
@@ -2872,18 +2869,18 @@ func (s *ProjectProcurementService) calculateProcurementPerformance(projectID ui
 			}
 
 			// Check compliance
-			if po.Quote != nil && po.Quote.Product != nil && po.Quote.Product.Specification != nil {
-				specID := po.Quote.Product.SpecificationID
-				quotes, _ := s.quoteService.CompareQuotesForSpecification(*specID)
-				if len(quotes) > 0 {
-					bestQuote := quotes[0]
-					if po.Quote.ConvertedPrice <= bestQuote.ConvertedPrice*1.05 {
-						reqMetrics.POsCompliant++
+			if po.ProjectRequisitionItem != nil && po.ProjectRequisitionItem.BillOfMaterialsItem != nil {
+				bomItem := po.ProjectRequisitionItem.BillOfMaterialsItem
+				if bomItem.Specification != nil {
+					quotes, _ := s.quoteService.CompareQuotesForSpecification(bomItem.SpecificationID)
+					if len(quotes) > 0 && po.Quote != nil {
+						bestQuote := quotes[0]
+						if po.Quote.ConvertedPrice <= bestQuote.ConvertedPrice*1.05 {
+							reqMetrics.POsCompliant++
 
-						if len(quotes) > 1 {
-							avgPrice := quotes[1].ConvertedPrice
-							savings := (avgPrice - po.Quote.ConvertedPrice) * float64(po.Quantity)
-							if savings > 0 {
+							targetPrice := po.ProjectRequisitionItem.TargetUnitPrice
+							if targetPrice > 0 {
+								savings := (targetPrice - po.Quote.ConvertedPrice) * float64(po.Quantity)
 								reqSavings += savings
 							}
 						}

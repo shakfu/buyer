@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+  - **Project procurement dashboard enhancements** - Three new chart calculation functions for comprehensive procurement analysis
+    - BOM Items by Value chart: Horizontal bar chart showing aggregate value (quantity × price) for fulfilled requisition items, sorted by highest value
+    - Sourcing Performance chart: Tracks quote availability and quality for BOM items (3+ non-stale quotes, fresh quotes only, stale quotes only, no quotes) with savings vs budget calculation and breakdown by requisition
+    - Procurement Performance chart: Analyzes PO execution (on-time, delayed, pending), compliance rate (within 5% of best market price), and savings with breakdown by requisition
+    - calculateBOMItemsByValue() in project_procurement.go:2480
+    - calculateSourcingPerformance() in project_procurement.go:2576
+    - calculateProcurementPerformance() in project_procurement.go:2736
+    - Added SourcingPerformanceData and ProcurementPerformanceData structs with requisition-level metrics
+  - **Tab navigation for procurement dashboard** - CSS-based tab switching for Overview, Analysis, and Charts sections with visual active state indicators
   - **CSV and Excel export/import system** - Comprehensive data export/import functionality using excelize library
     - CSV export for: brands, vendors, products, quotes, and forex rates
     - Excel (.xlsx) export for: brands, vendors, products, quotes, and forex rates
@@ -80,6 +89,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Refactored web handlers to eliminate ~850 lines of duplicated code by consolidating CRUD endpoints into `SetupCRUDHandlers()` function
 
 ### Fixed
+  - **Procurement dashboard JavaScript bugs** - Fixed multiple data access and display issues
+    - Corrected field access path: `data.Progress.ItemsWithQuotes` to `data.Procurement.ItemsWithQuotes` in project-procurement.html:381
+    - Added defensive null checks for nested objects: `(item.BestQuote && item.BestQuote.ConvertedPrice)` before calling toFixed()
+    - Fixed JSON field naming mismatch: Changed PascalCase JavaScript references to snake_case to match Go's JSON serialization
+      - `item.BOMItem.ID` to `item.BOMItem.id`
+      - `item.BestQuote.ConvertedPrice` to `item.BestQuote.converted_price`
+      - `item.Specification.Name` to `item.BOMItem.specification.name`
+      - `item.BOMItem.Quantity` to `item.TotalQuantityNeeded`
+  - **Tab navigation styling** - Added CSS to properly hide inactive tabs and highlight active tab with border
+  - **Lint errors in project_procurement.go and tests**:
+    - Removed unused variable initialization at line 874 (staticcheck SA4006)
+    - Added explicit error ignoring (`_, _ =`) to 7 test helper calls in project_procurement_test.go (errcheck)
   - Removed massive code duplication in route handlers (C1 from CODE_REVIEW.md)
   - Replaced inline HTML generation with consistent use of render functions
   - Fixed unsafe string concatenation in HTML generation (C3 from CODE_REVIEW.md)

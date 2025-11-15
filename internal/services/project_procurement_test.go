@@ -1343,7 +1343,7 @@ func TestProjectProcurementService_CalculateProjectProgress(t *testing.T) {
 				brand, _ := brandSvc.Create("Brand")
 				spec, _ := specSvc.Create("Spec", "")
 				product, _ := productSvc.Create("Product", brand.ID, &spec.ID)
-				quoteSvc.Create(CreateQuoteInput{
+				_, _ = quoteSvc.Create(CreateQuoteInput{
 					VendorID:   vendor.ID,
 					ProductID:  product.ID,
 					Price:      1000.0,
@@ -1353,7 +1353,7 @@ func TestProjectProcurementService_CalculateProjectProgress(t *testing.T) {
 
 				dl := time.Now().AddDate(0, 0, 90)
 				project, _ := projectSvc.Create("Test Project", "", 10000.0, &dl)
-				projectSvc.AddBillOfMaterialsItem(project.ID, spec.ID, 5, "")
+				_, _ = projectSvc.AddBillOfMaterialsItem(project.ID, spec.ID, 5, "")
 				return project
 			},
 			expectedCoverage:   100.0,
@@ -1561,7 +1561,7 @@ func TestProjectProcurementService_ProcurementStatus(t *testing.T) {
 	product3, _ := productSvc.Create("Product3", brand.ID, &spec3.ID)
 
 	// Fresh quote (< 30 days)
-	quoteSvc.Create(CreateQuoteInput{
+	_, _ = quoteSvc.Create(CreateQuoteInput{
 		VendorID:   vendor.ID,
 		ProductID:  product1.ID,
 		Price:      1000.0,
@@ -1603,9 +1603,9 @@ func TestProjectProcurementService_ProcurementStatus(t *testing.T) {
 
 	project, _ := projectSvc.Create("Status Test Project", "", 30000.0, nil)
 
-	projectSvc.AddBillOfMaterialsItem(project.ID, spec1.ID, 10, "")
-	projectSvc.AddBillOfMaterialsItem(project.ID, spec2.ID, 10, "")
-	projectSvc.AddBillOfMaterialsItem(project.ID, spec3.ID, 10, "")
+	_, _ = projectSvc.AddBillOfMaterialsItem(project.ID, spec1.ID, 10, "")
+	_, _ = projectSvc.AddBillOfMaterialsItem(project.ID, spec2.ID, 10, "")
+	_, _ = projectSvc.AddBillOfMaterialsItem(project.ID, spec3.ID, 10, "")
 
 	// Reload project
 	var reloadedProject models.Project
@@ -1665,7 +1665,7 @@ func TestProjectProcurementService_ChartDataGeneration(t *testing.T) {
 
 	project, _ := projectSvc.Create("Chart Test Project", "", 15000.0, nil)
 
-	projectSvc.AddBillOfMaterialsItem(project.ID, spec.ID, 10, "")
+	_, _ = projectSvc.AddBillOfMaterialsItem(project.ID, spec.ID, 10, "")
 
 	// Create purchase order
 	cfg.DB.Create(&models.PurchaseOrder{

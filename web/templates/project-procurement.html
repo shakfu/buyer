@@ -316,6 +316,24 @@
     </article>
 </div>
 
+<style>
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.tab-link {
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+.tab-link.active {
+    border-bottom-color: var(--primary);
+    font-weight: bold;
+}
+</style>
+
 <script>
 const projectID = {{.Project.ID}};
 
@@ -367,12 +385,22 @@ function loadTabData(tabName) {
 // Load dashboard data
 async function loadDashboard() {
     try {
+        console.log('Loading dashboard for project:', projectID);
         const response = await fetch(`/api/projects/${projectID}/procurement/dashboard`);
+        console.log('Dashboard response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
+        console.log('Dashboard data loaded successfully', data);
+        console.log('Progress data:', data.Progress);
+        console.log('Procurement data:', data.Procurement);
 
         // Progress
+        console.log('Setting bom-coverage to:', data.Progress.BOMCoverage);
         document.getElementById('bom-coverage').textContent = data.Progress.BOMCoverage.toFixed(1) + '%';
-        document.getElementById('coverage-status').textContent = `${data.Progress.ItemsWithQuotes}/${data.Procurement.TotalItems} items`;
+        console.log('bom-coverage set successfully');
+        document.getElementById('coverage-status').textContent = `${data.Procurement.ItemsWithQuotes}/${data.Procurement.TotalItems} items`;
         document.getElementById('requisitions-count').textContent = data.Progress.RequisitionsTotal;
         document.getElementById('requisitions-status').textContent = `${data.Progress.RequisitionsComplete} complete`;
         document.getElementById('orders-count').textContent = data.Progress.OrdersPlaced;
@@ -443,14 +471,14 @@ async function loadAnalysis() {
         if (data.BOMItemAnalyses && data.BOMItemAnalyses.length > 0) {
             tbody.innerHTML = '';
             data.BOMItemAnalyses.forEach(item => {
-                const bestPrice = item.BestQuote ? '$' + item.BestQuote.ConvertedPrice.toFixed(2) : 'N/A';
-                const specName = item.Specification ? item.Specification.Name : 'N/A';
+                const bestPrice = (item.BestQuote && item.BestQuote.converted_price) ? '$' + item.BestQuote.converted_price.toFixed(2) : 'N/A';
+                const specName = (item.BOMItem && item.BOMItem.specification) ? item.BOMItem.specification.name : (item.Specification ? item.Specification.name : 'N/A');
                 const riskColor = item.RiskLevel === 'high' ? 'var(--del-color)' : item.RiskLevel === 'medium' ? 'orange' : 'green';
 
                 tbody.innerHTML += `<tr>
-                    <td>${item.BOMItem.ID}</td>
+                    <td>${item.BOMItem ? item.BOMItem.id : 'N/A'}</td>
                     <td>${specName}</td>
-                    <td>${item.BOMItem.Quantity}</td>
+                    <td>${item.TotalQuantityNeeded || 'N/A'}</td>
                     <td>${item.AvailableQuotes.length}</td>
                     <td>${bestPrice}</td>
                     <td style="color: ${riskColor}">${item.RiskLevel}</td>
