@@ -1,0 +1,672 @@
+{{define "content"}}
+{{template "breadcrumb" .}}
+
+<div style="margin-bottom: 2rem;">
+    <nav aria-label="Procurement tabs">
+        <ul style="list-style: none; padding: 0; display: flex; gap: 1rem; border-bottom: 2px solid var(--primary); margin-bottom: 1rem;">
+            <li><a href="#overview" class="tab-link active" data-tab="overview">Overview</a></li>
+            <li><a href="#analysis" class="tab-link" data-tab="analysis">Analysis</a></li>
+            <li><a href="#risks" class="tab-link" data-tab="risks">Risks</a></li>
+            <li><a href="#savings" class="tab-link" data-tab="savings">Savings</a></li>
+            <li><a href="#consolidation" class="tab-link" data-tab="consolidation">Consolidation</a></li>
+            <li><a href="#scenarios" class="tab-link" data-tab="scenarios">Scenarios</a></li>
+            <li><a href="#recommendations" class="tab-link" data-tab="recommendations">Recommendations</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- Overview Tab -->
+<div id="overview-tab" class="tab-content active">
+    <article>
+        <h2>Procurement Dashboard</h2>
+        <div id="dashboard-loading" aria-busy="true">Loading dashboard data...</div>
+        <div id="dashboard-content" style="display: none;">
+
+            <!-- Progress Metrics -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">BOM Coverage</h3>
+                    <h2 style="margin: 0;" id="bom-coverage">-</h2>
+                    <small id="coverage-status">-</small>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Requisitions</h3>
+                    <h2 style="margin: 0;" id="requisitions-count">-</h2>
+                    <small id="requisitions-status">-</small>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Orders</h3>
+                    <h2 style="margin: 0;" id="orders-count">-</h2>
+                    <small id="orders-status">-</small>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Timeline</h3>
+                    <h2 style="margin: 0;" id="timeline-status">-</h2>
+                    <small id="timeline-days">-</small>
+                </article>
+            </div>
+
+            <!-- Financial Overview -->
+            <article>
+                <h3>Financial Overview</h3>
+                <div id="financial-chart" style="margin-bottom: 1rem;"></div>
+                <figure>
+                    <table role="grid">
+                        <tbody>
+                            <tr>
+                                <td><strong>Budget</strong></td>
+                                <td id="budget-amount" style="text-align: right;">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Committed</strong></td>
+                                <td id="committed-amount" style="text-align: right;">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Estimated</strong></td>
+                                <td id="estimated-amount" style="text-align: right;">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Remaining</strong></td>
+                                <td id="remaining-amount" style="text-align: right;">-</td>
+                            </tr>
+                            <tr style="border-top: 2px solid var(--primary);">
+                                <td><strong>Savings</strong></td>
+                                <td id="savings-amount" style="text-align: right; color: var(--primary);">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </figure>
+            </article>
+
+            <!-- Vendor Performance -->
+            <article>
+                <h3>Vendor Performance</h3>
+                <div id="vendor-performance-container"></div>
+            </article>
+
+            <!-- Top Risks -->
+            <article>
+                <h3>Top Risks</h3>
+                <div id="top-risks-container"></div>
+            </article>
+        </div>
+    </article>
+</div>
+
+<!-- Analysis Tab -->
+<div id="analysis-tab" class="tab-content">
+    <article>
+        <h2>Procurement Analysis</h2>
+        <div id="analysis-loading" aria-busy="true">Loading analysis data...</div>
+        <div id="analysis-content" style="display: none;">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Total BOM Items</h3>
+                    <h2 style="margin: 0;" id="total-bom-items">-</h2>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Fully Covered</h3>
+                    <h2 style="margin: 0;" id="fully-covered">-</h2>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Partially Covered</h3>
+                    <h2 style="margin: 0;" id="partially-covered">-</h2>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Uncovered</h3>
+                    <h2 style="margin: 0; color: var(--del-color);" id="uncovered">-</h2>
+                </article>
+            </div>
+
+            <h3>BOM Item Analysis</h3>
+            <figure>
+                <table role="grid" id="bom-analysis-table">
+                    <thead>
+                        <tr>
+                            <th>Item ID</th>
+                            <th>Specification</th>
+                            <th>Quantity</th>
+                            <th>Quotes</th>
+                            <th>Best Price</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bom-analysis-tbody">
+                        <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </figure>
+        </div>
+    </article>
+</div>
+
+<!-- Risks Tab -->
+<div id="risks-tab" class="tab-content">
+    <article>
+        <h2>Risk Assessment</h2>
+        <div id="risks-loading" aria-busy="true">Loading risk data...</div>
+        <div id="risks-content" style="display: none;">
+
+            <div style="margin-bottom: 2rem; padding: 1rem; background: var(--card-background-color); border-left: 4px solid var(--primary);">
+                <h3 style="margin: 0 0 0.5rem 0;">Overall Risk</h3>
+                <h1 style="margin: 0;" id="overall-risk-level">-</h1>
+                <small id="overall-risk-score">-</small>
+            </div>
+
+            <h3>Risk Categories</h3>
+            <div id="risk-categories-chart" style="margin-bottom: 2rem;"></div>
+
+            <figure>
+                <table role="grid" id="risk-categories-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Level</th>
+                            <th>Issues</th>
+                        </tr>
+                    </thead>
+                    <tbody id="risk-categories-tbody">
+                        <tr><td colspan="3" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </figure>
+
+            <h3>Mitigation Actions</h3>
+            <div id="mitigation-actions-container"></div>
+        </div>
+    </article>
+</div>
+
+<!-- Savings Tab -->
+<div id="savings-tab" class="tab-content">
+    <article>
+        <h2>Savings Analysis</h2>
+        <div id="savings-loading" aria-busy="true">Loading savings data...</div>
+        <div id="savings-content" style="display: none;">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <article style="margin: 0; padding: 1rem; background: var(--primary); color: white;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem;">Total Savings</h3>
+                    <h1 style="margin: 0;" id="total-savings">-</h1>
+                    <small id="savings-percent">-</small>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Consolidation Savings</h3>
+                    <h2 style="margin: 0;" id="consolidation-savings">-</h2>
+                </article>
+            </div>
+
+            <h3>Savings by Category</h3>
+            <div id="savings-by-category-chart" style="margin-bottom: 2rem;"></div>
+
+            <h3>Detailed Breakdown</h3>
+            <figure>
+                <table role="grid" id="savings-breakdown-table">
+                    <thead>
+                        <tr>
+                            <th>Specification</th>
+                            <th>Qty</th>
+                            <th>Target Price</th>
+                            <th>Best Price</th>
+                            <th>Savings</th>
+                        </tr>
+                    </thead>
+                    <tbody id="savings-breakdown-tbody">
+                        <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </figure>
+        </div>
+    </article>
+</div>
+
+<!-- Consolidation Tab -->
+<div id="consolidation-tab" class="tab-content">
+    <article>
+        <h2>Vendor Consolidation Analysis</h2>
+        <div id="consolidation-loading" aria-busy="true">Loading consolidation data...</div>
+        <div id="consolidation-content" style="display: none;">
+
+            <div style="margin-bottom: 2rem;">
+                <h3>Current vs. Optimal Vendor Count</h3>
+                <div id="vendor-count-chart" style="margin-bottom: 1rem;"></div>
+            </div>
+
+            <h3>Consolidation Opportunities</h3>
+            <div id="consolidation-opportunities-container"></div>
+
+            <h3>Recommended Vendor Set</h3>
+            <div id="recommended-vendors-container"></div>
+        </div>
+    </article>
+</div>
+
+<!-- Scenarios Tab -->
+<div id="scenarios-tab" class="tab-content">
+    <article>
+        <h2>Scenario Comparison</h2>
+        <div id="scenarios-loading" aria-busy="true">Loading scenario data...</div>
+        <div id="scenarios-content" style="display: none;">
+
+            <h3>Strategy Comparison</h3>
+            <div id="scenarios-chart" style="margin-bottom: 2rem;"></div>
+
+            <figure>
+                <table role="grid" id="scenarios-table">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Total Cost</th>
+                            <th>Vendors</th>
+                            <th>Savings vs Budget</th>
+                            <th>Risk Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scenarios-tbody">
+                        <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </figure>
+        </div>
+    </article>
+</div>
+
+<!-- Recommendations Tab -->
+<div id="recommendations-tab" class="tab-content">
+    <article>
+        <h2>Vendor Recommendations</h2>
+
+        <div style="margin-bottom: 2rem;">
+            <label for="strategy-select">Procurement Strategy:</label>
+            <select id="strategy-select" name="strategy">
+                <option value="balanced">Balanced</option>
+                <option value="lowest_cost">Lowest Cost</option>
+                <option value="fewest_vendors">Fewest Vendors</option>
+                <option value="quality_focused">Quality Focused</option>
+            </select>
+            <button id="update-strategy-btn">Update Strategy</button>
+        </div>
+
+        <div id="recommendations-loading" aria-busy="true">Loading recommendations...</div>
+        <div id="recommendations-content" style="display: none;">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Recommended Vendors</h3>
+                    <h2 style="margin: 0;" id="recommended-vendor-count">-</h2>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Total Cost</h3>
+                    <h2 style="margin: 0;" id="recommended-total-cost">-</h2>
+                </article>
+                <article style="margin: 0; padding: 1rem;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Expected Savings</h3>
+                    <h2 style="margin: 0; color: var(--primary);" id="recommended-savings">-</h2>
+                </article>
+            </div>
+
+            <h3>Recommended Vendors</h3>
+            <div id="recommended-vendors-list"></div>
+
+            <div style="margin-top: 2rem;">
+                <button id="apply-recommendations-btn" class="contrast">Apply Recommendations</button>
+            </div>
+        </div>
+    </article>
+</div>
+
+<script>
+const projectID = {{.Project.ID}};
+
+// Tab switching
+document.querySelectorAll('.tab-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const tabName = this.dataset.tab;
+
+        // Update active states
+        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+        this.classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+
+        // Load data for the tab
+        loadTabData(tabName);
+    });
+});
+
+// Load data for specific tab
+function loadTabData(tabName) {
+    switch(tabName) {
+        case 'overview':
+            loadDashboard();
+            break;
+        case 'analysis':
+            loadAnalysis();
+            break;
+        case 'risks':
+            loadRisks();
+            break;
+        case 'savings':
+            loadSavings();
+            break;
+        case 'consolidation':
+            loadConsolidation();
+            break;
+        case 'scenarios':
+            loadScenarios();
+            break;
+        case 'recommendations':
+            loadRecommendations();
+            break;
+    }
+}
+
+// Load dashboard data
+async function loadDashboard() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/dashboard`);
+        const data = await response.json();
+
+        // Progress
+        document.getElementById('bom-coverage').textContent = data.Progress.BOMCoverage.toFixed(1) + '%';
+        document.getElementById('coverage-status').textContent = `${data.Progress.ItemsWithQuotes}/${data.Procurement.TotalItems} items`;
+        document.getElementById('requisitions-count').textContent = data.Progress.RequisitionsTotal;
+        document.getElementById('requisitions-status').textContent = `${data.Progress.RequisitionsComplete} complete`;
+        document.getElementById('orders-count').textContent = data.Progress.OrdersPlaced;
+        document.getElementById('orders-status').textContent = `${data.Progress.OrdersReceived} received`;
+        document.getElementById('timeline-status').textContent = data.Progress.TimelineStatus;
+        document.getElementById('timeline-days').textContent = `${data.Progress.DaysToDeadline} days to deadline`;
+
+        // Financial
+        document.getElementById('budget-amount').textContent = '$' + data.Financial.Budget.toFixed(2);
+        document.getElementById('committed-amount').textContent = '$' + data.Financial.Committed.toFixed(2);
+        document.getElementById('estimated-amount').textContent = '$' + data.Financial.Estimated.toFixed(2);
+        document.getElementById('remaining-amount').textContent = '$' + data.Financial.Remaining.toFixed(2);
+        document.getElementById('savings-amount').textContent = '$' + data.Financial.Savings.toFixed(2) +
+            ' (' + data.Financial.SavingsPercent.toFixed(1) + '%)';
+
+        // Vendor Performance
+        if (data.VendorPerformance && data.VendorPerformance.length > 0) {
+            let html = '<figure><table role="grid"><thead><tr><th>Vendor</th><th>Items</th><th>Value</th><th>Rating</th><th>On-Time %</th></tr></thead><tbody>';
+            data.VendorPerformance.forEach(vp => {
+                html += `<tr>
+                    <td>${vp.VendorName}</td>
+                    <td>${vp.ItemsSupplied}</td>
+                    <td>$${vp.TotalValue.toFixed(2)}</td>
+                    <td>${vp.AverageRating.toFixed(1)}</td>
+                    <td>${vp.OnTimeDelivery.toFixed(0)}%</td>
+                </tr>`;
+            });
+            html += '</tbody></table></figure>';
+            document.getElementById('vendor-performance-container').innerHTML = html;
+        } else {
+            document.getElementById('vendor-performance-container').innerHTML = '<p>No vendor performance data available</p>';
+        }
+
+        // Top Risks
+        if (data.Risks && data.Risks.length > 0) {
+            let html = '<ul>';
+            data.Risks.slice(0, 3).forEach((risk, i) => {
+                const color = risk.Level === 'high' ? 'var(--del-color)' : risk.Level === 'medium' ? 'orange' : 'green';
+                html += `<li><strong style="color: ${color}">[${risk.Level.toUpperCase()}]</strong> ${risk.Category}: ${risk.TopIssue}</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('top-risks-container').innerHTML = html;
+        } else {
+            document.getElementById('top-risks-container').innerHTML = '<p>No significant risks identified</p>';
+        }
+
+        document.getElementById('dashboard-loading').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        document.getElementById('dashboard-loading').innerHTML = '<p style="color: var(--del-color);">Error loading dashboard data</p>';
+    }
+}
+
+// Load analysis data
+async function loadAnalysis() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/analysis`);
+        const data = await response.json();
+
+        document.getElementById('total-bom-items').textContent = data.TotalBOMItems;
+        document.getElementById('fully-covered').textContent = data.FullyCoveredItems;
+        document.getElementById('partially-covered').textContent = data.PartiallyCoveredItems;
+        document.getElementById('uncovered').textContent = data.UncoveredItems;
+
+        // BOM Items table
+        const tbody = document.getElementById('bom-analysis-tbody');
+        if (data.BOMItemAnalyses && data.BOMItemAnalyses.length > 0) {
+            tbody.innerHTML = '';
+            data.BOMItemAnalyses.forEach(item => {
+                const bestPrice = item.BestQuote ? '$' + item.BestQuote.ConvertedPrice.toFixed(2) : 'N/A';
+                const specName = item.Specification ? item.Specification.Name : 'N/A';
+                const riskColor = item.RiskLevel === 'high' ? 'var(--del-color)' : item.RiskLevel === 'medium' ? 'orange' : 'green';
+
+                tbody.innerHTML += `<tr>
+                    <td>${item.BOMItem.ID}</td>
+                    <td>${specName}</td>
+                    <td>${item.BOMItem.Quantity}</td>
+                    <td>${item.AvailableQuotes.length}</td>
+                    <td>${bestPrice}</td>
+                    <td style="color: ${riskColor}">${item.RiskLevel}</td>
+                </tr>`;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No BOM items found</td></tr>';
+        }
+
+        document.getElementById('analysis-loading').style.display = 'none';
+        document.getElementById('analysis-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading analysis:', error);
+        document.getElementById('analysis-loading').innerHTML = '<p style="color: var(--del-color);">Error loading analysis data</p>';
+    }
+}
+
+// Load risks data
+async function loadRisks() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/risks`);
+        const data = await response.json();
+
+        document.getElementById('overall-risk-level').textContent = data.OverallRisk;
+        document.getElementById('overall-risk-score').textContent = 'Risk Score: ' + data.RiskScore + '/100';
+
+        // Risk categories table
+        const tbody = document.getElementById('risk-categories-tbody');
+        if (data.CategoryRisks) {
+            tbody.innerHTML = '';
+            for (const [category, catRisk] of Object.entries(data.CategoryRisks)) {
+                const levelColor = catRisk.Level === 'high' ? 'var(--del-color)' : catRisk.Level === 'medium' ? 'orange' : 'green';
+                tbody.innerHTML += `<tr>
+                    <td>${category}</td>
+                    <td style="color: ${levelColor}">${catRisk.Level}</td>
+                    <td>${catRisk.Issues.length}</td>
+                </tr>`;
+            }
+        }
+
+        // Mitigation actions
+        if (data.MitigationActions && data.MitigationActions.length > 0) {
+            let html = '<ul>';
+            data.MitigationActions.forEach(action => {
+                const priorityColor = action.Priority === 'high' ? 'var(--del-color)' : 'orange';
+                html += `<li><strong style="color: ${priorityColor}">[${action.Priority.toUpperCase()}]</strong> ${action.Category}: ${action.Action}</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('mitigation-actions-container').innerHTML = html;
+        } else {
+            document.getElementById('mitigation-actions-container').innerHTML = '<p>No mitigation actions required</p>';
+        }
+
+        document.getElementById('risks-loading').style.display = 'none';
+        document.getElementById('risks-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading risks:', error);
+        document.getElementById('risks-loading').innerHTML = '<p style="color: var(--del-color);">Error loading risk data</p>';
+    }
+}
+
+// Load savings data
+async function loadSavings() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/savings`);
+        const data = await response.json();
+
+        document.getElementById('total-savings').textContent = '$' + data.TotalSavingsUSD.toFixed(2);
+        document.getElementById('savings-percent').textContent = data.SavingsPercent.toFixed(1) + '% savings';
+        document.getElementById('consolidation-savings').textContent = '$' + data.ConsolidationSavings.toFixed(2);
+
+        // Breakdown table
+        const tbody = document.getElementById('savings-breakdown-tbody');
+        if (data.DetailedBreakdown && data.DetailedBreakdown.length > 0) {
+            tbody.innerHTML = '';
+            data.DetailedBreakdown.filter(item => item.TotalSavings > 0).forEach(item => {
+                tbody.innerHTML += `<tr>
+                    <td>${item.SpecificationName}</td>
+                    <td>${item.Quantity}</td>
+                    <td>$${item.TargetPrice.toFixed(2)}</td>
+                    <td>$${item.BestPrice.toFixed(2)}</td>
+                    <td style="color: var(--primary)">$${item.TotalSavings.toFixed(2)}</td>
+                </tr>`;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No savings data available</td></tr>';
+        }
+
+        document.getElementById('savings-loading').style.display = 'none';
+        document.getElementById('savings-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading savings:', error);
+        document.getElementById('savings-loading').innerHTML = '<p style="color: var(--del-color);">Error loading savings data</p>';
+    }
+}
+
+// Load consolidation data
+async function loadConsolidation() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/consolidation`);
+        const data = await response.json();
+
+        document.getElementById('consolidation-loading').style.display = 'none';
+        document.getElementById('consolidation-content').style.display = 'block';
+        document.getElementById('consolidation-content').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    } catch (error) {
+        console.error('Error loading consolidation:', error);
+        document.getElementById('consolidation-loading').innerHTML = '<p style="color: var(--del-color);">Error loading consolidation data</p>';
+    }
+}
+
+// Load scenarios data
+async function loadScenarios() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/scenarios`);
+        const data = await response.json();
+
+        const tbody = document.getElementById('scenarios-tbody');
+        if (data && data.length > 0) {
+            tbody.innerHTML = '';
+            data.forEach(scenario => {
+                tbody.innerHTML += `<tr>
+                    <td>${scenario.Name}</td>
+                    <td>$${scenario.TotalCost.toFixed(2)}</td>
+                    <td>${scenario.VendorCount}</td>
+                    <td style="color: var(--primary)">$${scenario.SavingsVsBudget.toFixed(2)}</td>
+                    <td>${scenario.RiskScore}</td>
+                </tr>`;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No scenario data available</td></tr>';
+        }
+
+        document.getElementById('scenarios-loading').style.display = 'none';
+        document.getElementById('scenarios-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading scenarios:', error);
+        document.getElementById('scenarios-loading').innerHTML = '<p style="color: var(--del-color);">Error loading scenario data</p>';
+    }
+}
+
+// Load recommendations data
+async function loadRecommendations() {
+    const strategy = document.getElementById('strategy-select').value;
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/recommendations?strategy=${strategy}`);
+        const data = await response.json();
+
+        document.getElementById('recommended-vendor-count').textContent = data.RecommendedVendors ? data.RecommendedVendors.length : 0;
+        document.getElementById('recommended-total-cost').textContent = '$' + (data.TotalCost || 0).toFixed(2);
+        document.getElementById('recommended-savings').textContent = '$' + (data.EstimatedSavings || 0).toFixed(2);
+
+        // Vendor list
+        const container = document.getElementById('recommended-vendors-list');
+        if (data.RecommendedVendors && data.RecommendedVendors.length > 0) {
+            let html = '';
+            data.RecommendedVendors.forEach(vendor => {
+                html += `<article>
+                    <h4>${vendor.VendorName}</h4>
+                    <p><strong>Total Cost:</strong> $${vendor.TotalCost.toFixed(2)}</p>
+                    <p><strong>Specifications Covered:</strong> ${vendor.SpecificationsCovered}</p>
+                    <p><strong>Rationale:</strong> ${vendor.Rationale}</p>
+                </article>`;
+            });
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p>No recommendations available</p>';
+        }
+
+        document.getElementById('recommendations-loading').style.display = 'none';
+        document.getElementById('recommendations-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        document.getElementById('recommendations-loading').innerHTML = '<p style="color: var(--del-color);">Error loading recommendations</p>';
+    }
+}
+
+// Update strategy
+document.getElementById('update-strategy-btn').addEventListener('click', async function() {
+    const strategy = document.getElementById('strategy-select').value;
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/strategy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategy: strategy })
+        });
+
+        if (response.ok) {
+            alert('Strategy updated successfully');
+            loadRecommendations();
+        } else {
+            alert('Error updating strategy');
+        }
+    } catch (error) {
+        console.error('Error updating strategy:', error);
+        alert('Error updating strategy');
+    }
+});
+
+// Load current strategy
+async function loadCurrentStrategy() {
+    try {
+        const response = await fetch(`/api/projects/${projectID}/procurement/strategy`);
+        const data = await response.json();
+        if (data.Strategy) {
+            document.getElementById('strategy-select').value = data.Strategy;
+        }
+    } catch (error) {
+        console.error('Error loading current strategy:', error);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+    loadCurrentStrategy();
+});
+</script>
+{{end}}

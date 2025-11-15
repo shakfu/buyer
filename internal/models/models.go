@@ -317,9 +317,35 @@ type ProjectRequisitionItem struct {
 	BillOfMaterialsItemID uint                 `gorm:"not null;index" json:"bill_of_materials_item_id"`
 	BOMItem               *BillOfMaterialsItem `gorm:"foreignKey:BillOfMaterialsItemID;constraint:OnDelete:RESTRICT" json:"bom_item,omitempty"`
 	QuantityRequested     int                  `gorm:"not null" json:"quantity_requested"` // How much of this BOM item to procure
-	Notes                 string               `gorm:"type:text" json:"notes,omitempty"`
-	CreatedAt             time.Time            `json:"created_at"`
-	UpdatedAt             time.Time            `json:"updated_at"`
+
+	// Procurement tracking fields
+	SelectedQuoteID   *uint   `gorm:"index" json:"selected_quote_id,omitempty"`
+	SelectedQuote     *Quote  `gorm:"foreignKey:SelectedQuoteID;constraint:OnDelete:SET NULL" json:"selected_quote,omitempty"`
+	TargetUnitPrice   float64 `json:"target_unit_price,omitempty"`                          // Budget or target price
+	ActualUnitPrice   float64 `json:"actual_unit_price,omitempty"`                          // Final negotiated price
+	ProcurementStatus string  `gorm:"size:20;default:'pending'" json:"procurement_status"` // pending, quoted, ordered, received, cancelled
+
+	Notes     string    `gorm:"type:text" json:"notes,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ProjectProcurementStrategy stores user-selected optimization strategies for a project
+type ProjectProcurementStrategy struct {
+	ID        uint     `gorm:"primaryKey" json:"id"`
+	ProjectID uint     `gorm:"uniqueIndex;not null" json:"project_id"`
+	Project   *Project `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"project,omitempty"`
+
+	// Strategy settings
+	Strategy            string   `gorm:"size:30;default:'lowest_cost'" json:"strategy"` // lowest_cost, fewest_vendors, balanced, quality_focused
+	MaxVendors          *int     `json:"max_vendors,omitempty"`                         // Optional vendor limit
+	MinVendorRating     *float64 `json:"min_vendor_rating,omitempty"`                   // Minimum acceptable rating (1-5)
+	PreferredVendorIDs  string   `gorm:"type:text" json:"preferred_vendor_ids,omitempty"` // Comma-separated IDs
+	ExcludedVendorIDs   string   `gorm:"type:text" json:"excluded_vendor_ids,omitempty"`  // Comma-separated IDs
+	AllowPartialFulfill bool     `gorm:"default:true" json:"allow_partial_fulfill"`       // Allow splitting orders
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // TableName overrides for GORM
@@ -338,9 +364,10 @@ func (Forex) TableName() string                  { return "forex" }
 func (Project) TableName() string                { return "projects" }
 func (BillOfMaterials) TableName() string        { return "bills_of_materials" }
 func (BillOfMaterialsItem) TableName() string    { return "bill_of_materials_items" }
-func (ProjectRequisition) TableName() string     { return "project_requisitions" }
-func (ProjectRequisitionItem) TableName() string { return "project_requisition_items" }
-func (Document) TableName() string               { return "documents" }
+func (ProjectRequisition) TableName() string          { return "project_requisitions" }
+func (ProjectRequisitionItem) TableName() string      { return "project_requisition_items" }
+func (ProjectProcurementStrategy) TableName() string  { return "project_procurement_strategies" }
+func (Document) TableName() string                    { return "documents" }
 
 // Document represents file attachments for various entities
 type Document struct {
@@ -576,6 +603,73 @@ func (pa *ProductAttribute) BeforeSave(tx *gorm.DB) error {
 		}
 	}
 
+	return nil
+}
+
+// BeforeSave hook for ProjectRequisitionItem - validates constraints
+func (pri *ProjectRequisitionItem) BeforeSave(tx *gorm.DB) error {
+	// Validate positive quantity
+	if pri.QuantityRequested <= 0 {
+		return fmt.Errorf("project requisition item quantity must be positive, got %d", pri.QuantityRequested)
+	}
+
+	// Validate procurement status enum
+	validStatuses := map[string]bool{
+		"pending": true, "quoted": true, "ordered": true, "received": true, "cancelled": true,
+	}
+	if pri.ProcurementStatus != "" && !validStatuses[pri.ProcurementStatus] {
+		return fmt.Errorf("invalid procurement status: %s (must be one of: pending, quoted, ordered, received, cancelled)", pri.ProcurementStatus)
+	}
+
+	// Validate prices are non-negative
+	if pri.TargetUnitPrice < 0 {
+		return fmt.Errorf("target unit price cannot be negative, got %.2f", pri.TargetUnitPrice)
+	}
+	if pri.ActualUnitPrice < 0 {
+		return fmt.Errorf("actual unit price cannot be negative, got %.2f", pri.ActualUnitPrice)
+	}
+
+	return nil
+}
+
+// BeforeCreate hook for ProjectRequisitionItem - sets default status
+func (pri *ProjectRequisitionItem) BeforeCreate(tx *gorm.DB) error {
+	if pri.ProcurementStatus == "" {
+		pri.ProcurementStatus = "pending"
+	}
+	return nil
+}
+
+// BeforeSave hook for ProjectProcurementStrategy - validates constraints
+func (pps *ProjectProcurementStrategy) BeforeSave(tx *gorm.DB) error {
+	// Validate strategy enum
+	validStrategies := map[string]bool{
+		"lowest_cost": true, "fewest_vendors": true, "balanced": true, "quality_focused": true,
+	}
+	if pps.Strategy != "" && !validStrategies[pps.Strategy] {
+		return fmt.Errorf("invalid strategy: %s (must be one of: lowest_cost, fewest_vendors, balanced, quality_focused)", pps.Strategy)
+	}
+
+	// Validate max vendors is positive if set
+	if pps.MaxVendors != nil && *pps.MaxVendors <= 0 {
+		return fmt.Errorf("max vendors must be positive, got %d", *pps.MaxVendors)
+	}
+
+	// Validate min vendor rating is in valid range if set
+	if pps.MinVendorRating != nil {
+		if *pps.MinVendorRating < 1.0 || *pps.MinVendorRating > 5.0 {
+			return fmt.Errorf("min vendor rating must be between 1.0 and 5.0, got %.2f", *pps.MinVendorRating)
+		}
+	}
+
+	return nil
+}
+
+// BeforeCreate hook for ProjectProcurementStrategy - sets default strategy
+func (pps *ProjectProcurementStrategy) BeforeCreate(tx *gorm.DB) error {
+	if pps.Strategy == "" {
+		pps.Strategy = "lowest_cost"
+	}
 	return nil
 }
 

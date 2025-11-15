@@ -57,6 +57,7 @@ func initConfig() {
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
 		&models.ProjectRequisitionItem{},
+		&models.ProjectProcurementStrategy{},
 		&models.Document{},
 	); err != nil {
 		logger.Error("failed to run migrations", slog.String("error", err.Error()))

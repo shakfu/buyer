@@ -1290,6 +1290,9 @@ func setupRoutes(
 
 	// Setup project handlers
 	SetupProjectHandlers(app, projectSvc, specSvc, requisitionSvc, projectReqSvc)
+
+	// Setup procurement handlers
+	registerProcurementRoutes(app)
 }
 
 func renderTemplate(c *fiber.Ctx, templateName string, data fiber.Map) error {

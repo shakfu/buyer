@@ -42,6 +42,7 @@ func setupTestApp(t *testing.T) (*fiber.App, *gorm.DB) {
 		&models.BillOfMaterialsItem{},
 		&models.ProjectRequisition{},
 		&models.ProjectRequisitionItem{},
+		&models.ProjectProcurementStrategy{},
 		&models.PurchaseOrder{},
 		&models.Document{},
 		&models.VendorRating{},

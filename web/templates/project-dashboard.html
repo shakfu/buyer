@@ -327,6 +327,274 @@
 </article>
 {{end}}
 
+<!-- Procurement Analysis Section -->
+<article id="procurement-section">
+    <h2>Procurement Analysis <a href="/projects/{{.Project.ID}}/procurement" role="button" class="outline" style="font-size: 0.8rem; padding: 0.25rem 0.75rem; float: right;">View Full Analysis</a></h2>
+    <div id="procurement-loading" aria-busy="true">Loading procurement data...</div>
+    <div id="procurement-content" style="display: none;">
+
+        <!-- Coverage Metrics -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <article style="margin: 0; padding: 1rem; background: var(--card-background-color);">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">BOM Coverage</h4>
+                <h2 style="margin: 0;" id="proc-bom-coverage">-</h2>
+            </article>
+            <article style="margin: 0; padding: 1rem; background: var(--card-background-color);">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Vendors Needed</h4>
+                <h2 style="margin: 0;" id="proc-vendor-count">-</h2>
+            </article>
+            <article style="margin: 0; padding: 1rem; background: var(--card-background-color);">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Estimated Savings</h4>
+                <h2 style="margin: 0; color: var(--primary);" id="proc-savings">-</h2>
+            </article>
+            <article style="margin: 0; padding: 1rem; background: var(--card-background-color);">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted-color);">Risk Level</h4>
+                <h2 style="margin: 0;" id="proc-risk-level">-</h2>
+            </article>
+        </div>
+
+        <!-- BOM Coverage Chart -->
+        <div style="margin-bottom: 2rem;">
+            <h3>BOM Coverage by Item</h3>
+            <div id="bom-coverage-chart"></div>
+        </div>
+
+        <!-- Vendor Distribution Chart -->
+        <div style="margin-bottom: 2rem;">
+            <h3>Vendor Distribution</h3>
+            <div id="vendor-distribution-chart"></div>
+        </div>
+
+        <!-- Risk Assessment Chart -->
+        <div style="margin-bottom: 2rem;">
+            <h3>Risk Assessment by Category</h3>
+            <div id="risk-category-chart"></div>
+        </div>
+    </div>
+</article>
+
+<script>
+const projectID = {{.Project.ID}};
+
+// Load procurement data
+async function loadProcurementData() {
+    try {
+        // Load analysis data
+        const analysisResp = await fetch(`/api/projects/${projectID}/procurement/analysis`);
+        const analysis = await analysisResp.json();
+
+        // Load savings data
+        const savingsResp = await fetch(`/api/projects/${projectID}/procurement/savings`);
+        const savings = await savingsResp.json();
+
+        // Load risks data
+        const risksResp = await fetch(`/api/projects/${projectID}/procurement/risks`);
+        const risks = await risksResp.json();
+
+        // Update metrics
+        document.getElementById('proc-bom-coverage').textContent =
+            `${analysis.FullyCoveredItems}/${analysis.TotalBOMItems} items`;
+
+        document.getElementById('proc-vendor-count').textContent = analysis.TotalVendorsNeeded || 'N/A';
+
+        document.getElementById('proc-savings').textContent =
+            '$' + (savings.TotalSavingsUSD || 0).toFixed(2);
+
+        const riskEl = document.getElementById('proc-risk-level');
+        riskEl.textContent = risks.OverallRisk || 'Unknown';
+        riskEl.style.color = risks.OverallRisk === 'high' ? 'var(--del-color)' :
+                             risks.OverallRisk === 'medium' ? 'orange' : 'green';
+
+        // Render charts
+        renderBOMCoverageChart(analysis);
+        renderVendorDistributionChart(analysis);
+        renderRiskCategoryChart(risks);
+
+        document.getElementById('procurement-loading').style.display = 'none';
+        document.getElementById('procurement-content').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading procurement data:', error);
+        document.getElementById('procurement-loading').innerHTML =
+            '<p style="color: var(--del-color);">Error loading procurement data</p>';
+    }
+}
+
+// Render BOM Coverage Chart
+function renderBOMCoverageChart(analysis) {
+    if (!analysis.BOMItemAnalyses || analysis.BOMItemAnalyses.length === 0) {
+        document.getElementById('bom-coverage-chart').innerHTML = '<p>No BOM items found</p>';
+        return;
+    }
+
+    const data = analysis.BOMItemAnalyses.map(item => ({
+        specification: item.Specification ? item.Specification.Name : 'Unknown',
+        quotes: item.AvailableQuotes ? item.AvailableQuotes.length : 0,
+        risk: item.RiskLevel
+    }));
+
+    const spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": 600,
+        "height": 300,
+        "data": {"values": data},
+        "mark": "bar",
+        "encoding": {
+            "x": {
+                "field": "specification",
+                "type": "nominal",
+                "title": "Specification",
+                "axis": {"labelAngle": -45}
+            },
+            "y": {
+                "field": "quotes",
+                "type": "quantitative",
+                "title": "Number of Quotes"
+            },
+            "color": {
+                "field": "risk",
+                "type": "nominal",
+                "scale": {
+                    "domain": ["low", "medium", "high"],
+                    "range": ["#2ecc71", "#f39c12", "#e74c3c"]
+                },
+                "legend": {"title": "Risk Level"}
+            },
+            "tooltip": [
+                {"field": "specification", "type": "nominal", "title": "Specification"},
+                {"field": "quotes", "type": "quantitative", "title": "Quotes Available"},
+                {"field": "risk", "type": "nominal", "title": "Risk Level"}
+            ]
+        }
+    };
+
+    vegaEmbed('#bom-coverage-chart', spec, {
+        actions: false,
+        theme: 'latimes'
+    }).catch(error => console.error('vegaEmbed error:', error));
+}
+
+// Render Vendor Distribution Chart
+function renderVendorDistributionChart(analysis) {
+    if (!analysis.BOMItemAnalyses || analysis.BOMItemAnalyses.length === 0) {
+        document.getElementById('vendor-distribution-chart').innerHTML = '<p>No vendor data found</p>';
+        return;
+    }
+
+    // Count quotes per vendor
+    const vendorCounts = {};
+    analysis.BOMItemAnalyses.forEach(item => {
+        if (item.AvailableQuotes) {
+            item.AvailableQuotes.forEach(quote => {
+                const vendorName = quote.Vendor ? quote.Vendor.Name : 'Unknown';
+                vendorCounts[vendorName] = (vendorCounts[vendorName] || 0) + 1;
+            });
+        }
+    });
+
+    const data = Object.entries(vendorCounts).map(([vendor, count]) => ({
+        vendor: vendor,
+        items: count
+    }));
+
+    if (data.length === 0) {
+        document.getElementById('vendor-distribution-chart').innerHTML = '<p>No vendor quotes found</p>';
+        return;
+    }
+
+    const spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": 400,
+        "height": 300,
+        "data": {"values": data},
+        "mark": "arc",
+        "encoding": {
+            "theta": {
+                "field": "items",
+                "type": "quantitative"
+            },
+            "color": {
+                "field": "vendor",
+                "type": "nominal",
+                "legend": {"title": "Vendor"}
+            },
+            "tooltip": [
+                {"field": "vendor", "type": "nominal", "title": "Vendor"},
+                {"field": "items", "type": "quantitative", "title": "Items Quoted"}
+            ]
+        }
+    };
+
+    vegaEmbed('#vendor-distribution-chart', spec, {
+        actions: false,
+        theme: 'latimes'
+    }).catch(error => console.error('vegaEmbed error:', error));
+}
+
+// Render Risk Category Chart
+function renderRiskCategoryChart(risks) {
+    if (!risks.CategoryRisks) {
+        document.getElementById('risk-category-chart').innerHTML = '<p>No risk data found</p>';
+        return;
+    }
+
+    const data = Object.entries(risks.CategoryRisks).map(([category, catRisk]) => ({
+        category: category,
+        level: catRisk.Level,
+        issues: catRisk.Issues ? catRisk.Issues.length : 0,
+        score: catRisk.Level === 'high' ? 3 : catRisk.Level === 'medium' ? 2 : 1
+    }));
+
+    if (data.length === 0) {
+        document.getElementById('risk-category-chart').innerHTML = '<p>No risk categories found</p>';
+        return;
+    }
+
+    const spec = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": 600,
+        "height": 300,
+        "data": {"values": data},
+        "mark": "bar",
+        "encoding": {
+            "x": {
+                "field": "category",
+                "type": "nominal",
+                "title": "Risk Category"
+            },
+            "y": {
+                "field": "issues",
+                "type": "quantitative",
+                "title": "Number of Issues"
+            },
+            "color": {
+                "field": "level",
+                "type": "nominal",
+                "scale": {
+                    "domain": ["low", "medium", "high"],
+                    "range": ["#2ecc71", "#f39c12", "#e74c3c"]
+                },
+                "legend": {"title": "Risk Level"}
+            },
+            "tooltip": [
+                {"field": "category", "type": "nominal", "title": "Category"},
+                {"field": "level", "type": "nominal", "title": "Risk Level"},
+                {"field": "issues", "type": "quantitative", "title": "Issues"}
+            ]
+        }
+    };
+
+    vegaEmbed('#risk-category-chart', spec, {
+        actions: false,
+        theme: 'latimes'
+    }).catch(error => console.error('vegaEmbed error:', error));
+}
+
+// Load procurement data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadProcurementData();
+});
+</script>
+
 <article>
     <h2>Actions</h2>
     <div style="display: flex; gap: 1rem;">
